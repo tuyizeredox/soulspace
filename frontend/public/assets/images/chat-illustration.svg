@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="400px" height="300px" viewBox="0 0 400 300" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+    <title>Chat Illustration</title>
+    <defs>
+        <linearGradient x1="0%" y1="0%" x2="100%" y2="100%" id="linearGradient-1">
+            <stop stop-color="#4F46E5" offset="0%"></stop>
+            <stop stop-color="#7C3AED" offset="100%"></stop>
+        </linearGradient>
+        <linearGradient x1="0%" y1="0%" x2="100%" y2="100%" id="linearGradient-2">
+            <stop stop-color="#3B82F6" offset="0%"></stop>
+            <stop stop-color="#2563EB" offset="100%"></stop>
+        </linearGradient>
+        <linearGradient x1="0%" y1="0%" x2="100%" y2="100%" id="linearGradient-3">
+            <stop stop-color="#8B5CF6" offset="0%"></stop>
+            <stop stop-color="#6D28D9" offset="100%"></stop>
+        </linearGradient>
+        <filter x="-15.0%" y="-15.0%" width="130.0%" height="130.0%" filterUnits="objectBoundingBox" id="filter-4">
+            <feGaussianBlur stdDeviation="5" in="SourceGraphic"></feGaussianBlur>
+        </filter>
+    </defs>
+    <g id="Chat-Illustration" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
+        <circle id="Glow" fill="#4F46E5" opacity="0.2" filter="url(#filter-4)" cx="200" cy="150" r="100"></circle>
+        <g id="Chat-Bubbles" transform="translate(50.000000, 50.000000)">
+            <!-- Left Chat Bubble -->
+            <g id="Left-Bubble" transform="translate(0.000000, 40.000000)">
+                <path d="M0,0 L120,0 C131.046,0 140,8.954 140,20 L140,80 C140,91.046 131.046,100 120,100 L20,100 L0,120 L0,0 Z" id="Bubble-Shape" fill="url(#linearGradient-1)"></path>
+                <rect id="Line-1" fill="#FFFFFF" opacity="0.7" x="20" y="30" width="100" height="6" rx="3"></rect>
+                <rect id="Line-2" fill="#FFFFFF" opacity="0.7" x="20" y="50" width="80" height="6" rx="3"></rect>
+                <rect id="Line-3" fill="#FFFFFF" opacity="0.7" x="20" y="70" width="60" height="6" rx="3"></rect>
+            </g>
+            
+            <!-- Right Chat Bubble -->
+            <g id="Right-Bubble" transform="translate(160.000000, 0.000000)">
+                <path d="M0,0 L120,0 C131.046,0 140,8.954 140,20 L140,80 C140,91.046 131.046,100 120,100 L20,100 L0,120 L0,0 Z" id="Bubble-Shape" fill="url(#linearGradient-2)"></path>
+                <rect id="Line-1" fill="#FFFFFF" opacity="0.7" x="20" y="30" width="100" height="6" rx="3"></rect>
+                <rect id="Line-2" fill="#FFFFFF" opacity="0.7" x="20" y="50" width="80" height="6" rx="3"></rect>
+                <rect id="Line-3" fill="#FFFFFF" opacity="0.7" x="20" y="70" width="60" height="6" rx="3"></rect>
+            </g>
+            
+            <!-- Bottom Chat Bubble -->
+            <g id="Bottom-Bubble" transform="translate(80.000000, 120.000000)">
+                <path d="M0,0 L120,0 C131.046,0 140,8.954 140,20 L140,60 C140,71.046 131.046,80 120,80 L20,80 L0,100 L0,0 Z" id="Bubble-Shape" fill="url(#linearGradient-3)"></path>
+                <rect id="Line-1" fill="#FFFFFF" opacity="0.7" x="20" y="20" width="100" height="6" rx="3"></rect>
+                <rect id="Line-2" fill="#FFFFFF" opacity="0.7" x="20" y="40" width="80" height="6" rx="3"></rect>
+                <rect id="Line-3" fill="#FFFFFF" opacity="0.7" x="20" y="60" width="60" height="6" rx="3"></rect>
+            </g>
+            
+            <!-- Dots -->
+            <circle id="Dot-1" fill="#FFFFFF" cx="150" cy="100" r="5"></circle>
+            <circle id="Dot-2" fill="#FFFFFF" cx="170" cy="100" r="5"></circle>
+            <circle id="Dot-3" fill="#FFFFFF" cx="190" cy="100" r="5"></circle>
+        </g>
+    </g>
+</svg>
