@@ -1,10 +1,11 @@
 import React from 'react';
-import { Card, CardContent, Typography, Box, Avatar, useTheme, alpha } from '@mui/material';
+import { Card, CardContent, Typography, Box, Avatar, useTheme, alpha, useMediaQuery } from '@mui/material';
 import { motion } from 'framer-motion';
 import { ArrowUpward, ArrowDownward } from '@mui/icons-material';
 
 const StatCard = ({ title, value, icon, color, subtitle, trend, trendUp }) => {
   const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
 
   return (
     <Card
@@ -17,6 +18,15 @@ const StatCard = ({ title, value, icon, color, subtitle, trend, trendUp }) => {
         height: '100%',
         position: 'relative',
         overflow: 'hidden',
+        borderRadius: 4,
+        background: `linear-gradient(135deg, ${alpha(color, 0.05)} 0%, ${alpha(color, 0.01)} 100%)`,
+        border: `1px solid ${alpha(color, 0.1)}`,
+        boxShadow: `0 10px 20px ${alpha(color, 0.1)}`,
+        transition: 'all 0.3s ease',
+        '&:hover': {
+          boxShadow: `0 15px 30px ${alpha(color, 0.2)}`,
+          borderColor: alpha(color, 0.2),
+        },
       }}
     >
       <Box
@@ -24,8 +34,8 @@ const StatCard = ({ title, value, icon, color, subtitle, trend, trendUp }) => {
           position: 'absolute',
           top: 0,
           right: 0,
-          width: 80,
-          height: 80,
+          width: { xs: 60, sm: 80 },
+          height: { xs: 60, sm: 80 },
           opacity: 0.1,
           transform: 'translate(20%, -20%)',
           display: 'flex',
@@ -33,24 +43,34 @@ const StatCard = ({ title, value, icon, color, subtitle, trend, trendUp }) => {
           justifyContent: 'center',
         }}
       >
-        {React.cloneElement(icon, { sx: { fontSize: 80, color } })}
+        {React.cloneElement(icon, { sx: { fontSize: { xs: 60, sm: 80 }, color } })}
       </Box>
 
-      <CardContent sx={{ position: 'relative', zIndex: 1 }}>
+      <CardContent sx={{ position: 'relative', zIndex: 1, p: { xs: 2, sm: 3 } }}>
         <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
           <Avatar
             sx={{
-              bgcolor: color,
+              bgcolor: alpha(color, 0.9),
               mr: 2,
-              boxShadow: `0 4px 8px ${theme.palette.mode === 'light' ? 'rgba(0,0,0,0.1)' : 'rgba(0,0,0,0.3)'}`,
-              width: 48,
-              height: 48,
+              boxShadow: `0 4px 12px ${alpha(color, 0.4)}`,
+              width: { xs: 40, sm: 48 },
+              height: { xs: 40, sm: 48 },
+              transition: 'all 0.3s ease',
+              '&:hover': {
+                transform: 'scale(1.1)',
+                boxShadow: `0 6px 16px ${alpha(color, 0.6)}`,
+              },
             }}
           >
             {icon}
           </Avatar>
           <Box>
-            <Typography variant="h6" component="div" fontWeight="600">
+            <Typography
+              variant={isMobile ? "subtitle1" : "h6"}
+              component="div"
+              fontWeight="600"
+              sx={{ lineHeight: 1.3 }}
+            >
               {title}
             </Typography>
             {subtitle && (
@@ -63,7 +83,7 @@ const StatCard = ({ title, value, icon, color, subtitle, trend, trendUp }) => {
 
         <Box sx={{ mt: 2 }}>
           <Typography
-            variant="h3"
+            variant={isMobile ? "h4" : "h3"}
             component={motion.h3}
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
@@ -71,6 +91,7 @@ const StatCard = ({ title, value, icon, color, subtitle, trend, trendUp }) => {
             sx={{
               fontWeight: 700,
               color: theme.palette.mode === 'light' ? theme.palette.grey[800] : theme.palette.grey[100],
+              textShadow: `0 2px 4px ${alpha(theme.palette.common.black, 0.1)}`,
             }}
           >
             {value}
@@ -88,7 +109,12 @@ const StatCard = ({ title, value, icon, color, subtitle, trend, trendUp }) => {
                     mr: 1,
                     display: 'flex',
                     alignItems: 'center',
-                    color: trendUp ? theme.palette.success.main : theme.palette.error.main
+                    color: trendUp ? theme.palette.success.main : theme.palette.error.main,
+                    background: trendUp
+                      ? alpha(theme.palette.success.main, 0.1)
+                      : alpha(theme.palette.error.main, 0.1),
+                    borderRadius: '50%',
+                    p: 0.5,
                   }}
                 >
                   {trendUp ? <ArrowUpward fontSize="small" /> : <ArrowDownward fontSize="small" />}
@@ -104,7 +130,13 @@ const StatCard = ({ title, value, icon, color, subtitle, trend, trendUp }) => {
                   color: trendUp !== undefined
                     ? (trendUp ? theme.palette.success.main : theme.palette.error.main)
                     : theme.palette.text.secondary,
-                  fontWeight: 500
+                  fontWeight: 600,
+                  background: trendUp !== undefined
+                    ? (trendUp ? alpha(theme.palette.success.main, 0.1) : alpha(theme.palette.error.main, 0.1))
+                    : 'transparent',
+                  borderRadius: 10,
+                  px: 1,
+                  py: 0.5,
                 }}
               >
                 {trend}

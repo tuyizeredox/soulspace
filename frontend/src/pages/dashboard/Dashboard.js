@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback, useMemo } from 'react';
-import { useSelector, useDispatch } from 'react-redux';
+import { useSelector } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 import {
   Box,
@@ -34,18 +34,14 @@ import {
   Refresh,
   ArrowUpward,
   ArrowDownward,
-  Person,
   PersonAdd,
   MedicalServices,
   MonitorHeart,
   Medication,
-  CheckCircleOutline,
   SmartToy,
-  Fullscreen,
   FitnessCenter,
   Restaurant,
   Spa,
-  Favorite,
   NightsStay,
   WbSunny,
   LocalHospitalOutlined,
@@ -53,7 +49,6 @@ import {
   VideoCall,
   Chat,
   Menu as MenuIcon,
-  Dashboard as DashboardIcon,
   Notifications,
   Notifications as NotificationsIcon,
   Settings as SettingsIcon,
@@ -72,7 +67,7 @@ import {
   Tooltip as ChartTooltip,
   Legend,
 } from 'chart.js';
-import { Line, Bar } from 'react-chartjs-2';
+import { Bar } from 'react-chartjs-2';
 import axios from '../../utils/axios';
 import NoHospitalDashboard from '../../components/dashboard/NoHospitalDashboard';
 import AiHealthAssistant from '../../components/dashboard/AiHealthAssistant';
@@ -89,7 +84,6 @@ ChartJS.register(
 );
 
 const Dashboard = () => {
-  const dispatch = useDispatch();
   const navigate = useNavigate();
   const { user: oldUser, isAuthenticated: oldAuth, token: oldToken } = useSelector((state) => state.auth);
   const { user: newUser, isAuthenticated: newAuth, token: newToken } = useSelector((state) => state.userAuth);
@@ -221,25 +215,6 @@ const Dashboard = () => {
   };
 
   // Example data for charts
-  const appointmentData = {
-    labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'],
-    datasets: [
-      {
-        label: 'Appointments',
-        data: [12, 19, 3, 5, 12, 18],
-        borderColor: theme.palette.primary.main,
-        backgroundColor: alpha(theme.palette.primary.main, 0.1),
-        borderWidth: 2,
-        tension: 0.4,
-        fill: true,
-        pointBackgroundColor: theme.palette.primary.main,
-        pointBorderColor: '#fff',
-        pointBorderWidth: 2,
-        pointRadius: 4,
-        pointHoverRadius: 6,
-      },
-    ],
-  };
 
   const patientData = {
     labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'],
@@ -307,12 +282,6 @@ const Dashboard = () => {
   };
 
   // Stats data
-  const adminStats = [
-    { title: 'Total Patients', value: '2,845', icon: <People />, color: theme.palette.primary.main, trend: '+12%', trendUp: true },
-    { title: 'New Appointments', value: '184', icon: <CalendarMonth />, color: theme.palette.success.main, trend: '+8%', trendUp: true },
-    { title: 'Active Doctors', value: '32', icon: <LocalHospital />, color: theme.palette.info.main, trend: '+5%', trendUp: true },
-    { title: 'Revenue', value: '$48,290', icon: <TrendingUp />, color: theme.palette.secondary.main, trend: '+18%', trendUp: true },
-  ];
 
   const doctorStats = [
     { title: 'My Patients', value: '124', icon: <People />, color: theme.palette.primary.main, trend: '+5%', trendUp: true },
@@ -428,13 +397,28 @@ const Dashboard = () => {
       };
 
       // Fetch hospital stats
-      const statsResponse = await axios.get(`/api/hospitals/${user.hospitalId}/stats`, config);
-      if (statsResponse.data) {
+      try {
+        // Make sure we have a valid hospitalId
+        const hospitalId = user.hospitalId || 'default';
+        console.log('Fetching stats for hospital ID:', hospitalId);
+
+        const statsResponse = await axios.get(`/api/hospitals/${hospitalId}/stats`, config);
+        if (statsResponse.data) {
+          setHospitalStats({
+            totalPatients: statsResponse.data.totalPatients || 0,
+            totalDoctors: statsResponse.data.totalDoctors || 0,
+            pendingAppointments: statsResponse.data.pendingAppointments || 0,
+            activeTreatments: statsResponse.data.activeTreatments || 0
+          });
+        }
+      } catch (error) {
+        console.error('Error fetching hospital stats:', error);
+        // Set default values if there's an error
         setHospitalStats({
-          totalPatients: statsResponse.data.totalPatients || 0,
-          totalDoctors: statsResponse.data.totalDoctors || 0,
-          pendingAppointments: statsResponse.data.pendingAppointments || 0,
-          activeTreatments: statsResponse.data.activeTreatments || 0
+          totalPatients: 0,
+          totalDoctors: 0,
+          pendingAppointments: 0,
+          activeTreatments: 0
         });
       }
 
@@ -459,35 +443,92 @@ const Dashboard = () => {
         setRecentPatients(recent);
       }
 
-      // Create mock doctor performance data (replace with real API when available)
-      const mockDoctorPerformance = [
-        { name: 'Dr. Smith', patients: 45, satisfaction: 92, department: 'Cardiology' },
-        { name: 'Dr. Johnson', patients: 38, satisfaction: 88, department: 'Neurology' },
-        { name: 'Dr. Williams', patients: 52, satisfaction: 95, department: 'Orthopedics' },
-        { name: 'Dr. Brown', patients: 31, satisfaction: 87, department: 'Pediatrics' },
-        { name: 'Dr. Davis', patients: 42, satisfaction: 91, department: 'General Medicine' }
-      ];
-      setDoctorPerformance(mockDoctorPerformance);
+      // Fetch real doctor performance data
+      try {
+        const doctorResponse = await axios.get('/api/doctors/hospital/performance', config);
+        if (doctorResponse.data && doctorResponse.data.length > 0) {
+          setDoctorPerformance(doctorResponse.data);
+        } else {
+          // Fallback to mock data if API returns empty array
+          const mockDoctorPerformance = [
+            { name: 'Dr. Smith', patients: 45, satisfaction: 92, department: 'Cardiology' },
+            { name: 'Dr. Johnson', patients: 38, satisfaction: 88, department: 'Neurology' },
+            { name: 'Dr. Williams', patients: 52, satisfaction: 95, department: 'Orthopedics' },
+            { name: 'Dr. Brown', patients: 31, satisfaction: 87, department: 'Pediatrics' },
+            { name: 'Dr. Davis', patients: 42, satisfaction: 91, department: 'General Medicine' }
+          ];
+          setDoctorPerformance(mockDoctorPerformance);
+        }
+      } catch (error) {
+        console.error('Error fetching doctor performance:', error);
+        // Fallback to mock data on error
+        const mockDoctorPerformance = [
+          { name: 'Dr. Smith', patients: 45, satisfaction: 92, department: 'Cardiology' },
+          { name: 'Dr. Johnson', patients: 38, satisfaction: 88, department: 'Neurology' },
+          { name: 'Dr. Williams', patients: 52, satisfaction: 95, department: 'Orthopedics' },
+          { name: 'Dr. Brown', patients: 31, satisfaction: 87, department: 'Pediatrics' },
+          { name: 'Dr. Davis', patients: 42, satisfaction: 91, department: 'General Medicine' }
+        ];
+        setDoctorPerformance(mockDoctorPerformance);
+      }
 
-      // Create mock department statistics (replace with real API when available)
-      const mockDepartmentStats = [
-        { name: 'Cardiology', patients: 120, appointments: 85, satisfaction: 90 },
-        { name: 'Neurology', patients: 95, appointments: 72, satisfaction: 88 },
-        { name: 'Orthopedics', patients: 110, appointments: 92, satisfaction: 93 },
-        { name: 'Pediatrics', patients: 150, appointments: 105, satisfaction: 91 },
-        { name: 'General Medicine', patients: 200, appointments: 145, satisfaction: 89 }
-      ];
-      setDepartmentStats(mockDepartmentStats);
+      // Fetch real department statistics
+      try {
+        const departmentResponse = await axios.get('/api/hospitals/departments/stats', config);
+        if (departmentResponse.data && departmentResponse.data.length > 0) {
+          setDepartmentStats(departmentResponse.data);
+        } else {
+          // Fallback to mock data if API returns empty array
+          const mockDepartmentStats = [
+            { name: 'Cardiology', patients: 120, appointments: 85, satisfaction: 90 },
+            { name: 'Neurology', patients: 95, appointments: 72, satisfaction: 88 },
+            { name: 'Orthopedics', patients: 110, appointments: 92, satisfaction: 93 },
+            { name: 'Pediatrics', patients: 150, appointments: 105, satisfaction: 91 },
+            { name: 'General Medicine', patients: 200, appointments: 145, satisfaction: 89 }
+          ];
+          setDepartmentStats(mockDepartmentStats);
+        }
+      } catch (error) {
+        console.error('Error fetching department stats:', error);
+        // Fallback to mock data on error
+        const mockDepartmentStats = [
+          { name: 'Cardiology', patients: 120, appointments: 85, satisfaction: 90 },
+          { name: 'Neurology', patients: 95, appointments: 72, satisfaction: 88 },
+          { name: 'Orthopedics', patients: 110, appointments: 92, satisfaction: 93 },
+          { name: 'Pediatrics', patients: 150, appointments: 105, satisfaction: 91 },
+          { name: 'General Medicine', patients: 200, appointments: 145, satisfaction: 89 }
+        ];
+        setDepartmentStats(mockDepartmentStats);
+      }
 
-      // Create mock notifications (replace with real API when available)
-      const mockNotifications = [
-        { id: 1, type: 'appointment', message: 'New appointment request from John Doe', time: '10 minutes ago', read: false },
-        { id: 2, type: 'message', message: 'Super Admin sent you a message', time: '1 hour ago', read: false },
-        { id: 3, type: 'system', message: 'System maintenance scheduled for tonight', time: '3 hours ago', read: true },
-        { id: 4, type: 'patient', message: 'Patient Sarah Johnson updated her information', time: '5 hours ago', read: true },
-        { id: 5, type: 'doctor', message: 'Dr. Smith requested time off next week', time: '1 day ago', read: true }
-      ];
-      setNotifications(mockNotifications);
+      // Fetch real notifications
+      try {
+        const notificationsResponse = await axios.get('/api/notifications', config);
+        if (notificationsResponse.data && notificationsResponse.data.length > 0) {
+          setNotifications(notificationsResponse.data);
+        } else {
+          // Fallback to mock data if API returns empty array
+          const mockNotifications = [
+            { id: 1, type: 'appointment', message: 'New appointment request from John Doe', time: '10 minutes ago', read: false },
+            { id: 2, type: 'message', message: 'Super Admin sent you a message', time: '1 hour ago', read: false },
+            { id: 3, type: 'system', message: 'System maintenance scheduled for tonight', time: '3 hours ago', read: true },
+            { id: 4, type: 'patient', message: 'Patient Sarah Johnson updated her information', time: '5 hours ago', read: true },
+            { id: 5, type: 'doctor', message: 'Dr. Smith requested time off next week', time: '1 day ago', read: true }
+          ];
+          setNotifications(mockNotifications);
+        }
+      } catch (error) {
+        console.error('Error fetching notifications:', error);
+        // Fallback to mock data on error
+        const mockNotifications = [
+          { id: 1, type: 'appointment', message: 'New appointment request from John Doe', time: '10 minutes ago', read: false },
+          { id: 2, type: 'message', message: 'Super Admin sent you a message', time: '1 hour ago', read: false },
+          { id: 3, type: 'system', message: 'System maintenance scheduled for tonight', time: '3 hours ago', read: true },
+          { id: 4, type: 'patient', message: 'Patient Sarah Johnson updated her information', time: '5 hours ago', read: true },
+          { id: 5, type: 'doctor', message: 'Dr. Smith requested time off next week', time: '1 day ago', read: true }
+        ];
+        setNotifications(mockNotifications);
+      }
 
     } catch (error) {
       console.error('Error fetching hospital admin data:', error);
@@ -1279,6 +1320,7 @@ const Dashboard = () => {
   const renderPatientDashboard = useCallback(() => {
     // If the patient has no hospital assignment, show the NoHospitalDashboard
     if (!patientAssignment && !loading && user?.role === 'patient') {
+      console.log('Rendering NoHospitalDashboard with user:', user);
       return <NoHospitalDashboard user={user} />
     }
 
@@ -1552,6 +1594,7 @@ const Dashboard = () => {
 
     switch (user.role) {
       case 'hospital_admin':
+        // Instead of redirecting, render the hospital admin dashboard directly
         return renderAdminDashboard();
       case 'doctor':
         return renderDoctorDashboard();

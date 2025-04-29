@@ -6,28 +6,28 @@ exports.getUserNotifications = async (req, res) => {
   try {
     const userId = req.user.id;
     const { page = 1, limit = 20, read, type } = req.query;
-    
+
     // Build query
-    const query = { userId };
-    
+    const query = { user: userId }; // Use 'user' field instead of 'userId'
+
     // Add filters if provided
     if (read !== undefined) {
       query.read = read === 'true';
     }
-    
+
     if (type) {
       query.type = type;
     }
-    
+
     // Get total count for pagination
     const total = await Notification.countDocuments(query);
-    
+
     // Get notifications with pagination
     const notifications = await Notification.find(query)
       .sort({ createdAt: -1 })
       .limit(parseInt(limit))
       .skip((parseInt(page) - 1) * parseInt(limit));
-    
+
     res.json({
       notifications,
       totalPages: Math.ceil(total / limit),
@@ -45,16 +45,16 @@ exports.markAsRead = async (req, res) => {
   try {
     const { id } = req.params;
     const userId = req.user.id;
-    
-    const notification = await Notification.findOne({ _id: id, userId });
-    
+
+    const notification = await Notification.findOne({ _id: id, user: userId });
+
     if (!notification) {
       return res.status(404).json({ message: 'Notification not found' });
     }
-    
+
     notification.read = true;
     await notification.save();
-    
+
     res.json({ message: 'Notification marked as read', notification });
   } catch (error) {
     console.error('Error marking notification as read:', error);
@@ -66,12 +66,12 @@ exports.markAsRead = async (req, res) => {
 exports.markAllAsRead = async (req, res) => {
   try {
     const userId = req.user.id;
-    
+
     await Notification.updateMany(
-      { userId, read: false },
+      { user: userId, read: false },
       { $set: { read: true } }
     );
-    
+
     res.json({ message: 'All notifications marked as read' });
   } catch (error) {
     console.error('Error marking all notifications as read:', error);
@@ -84,15 +84,15 @@ exports.deleteNotification = async (req, res) => {
   try {
     const { id } = req.params;
     const userId = req.user.id;
-    
-    const notification = await Notification.findOne({ _id: id, userId });
-    
+
+    const notification = await Notification.findOne({ _id: id, user: userId });
+
     if (!notification) {
       return res.status(404).json({ message: 'Notification not found' });
     }
-    
+
     await notification.deleteOne();
-    
+
     res.json({ message: 'Notification deleted successfully' });
   } catch (error) {
     console.error('Error deleting notification:', error);
@@ -104,29 +104,30 @@ exports.deleteNotification = async (req, res) => {
 exports.createNotification = async (req, res) => {
   try {
     const { userId, title, message, type, priority, actionLink, metadata, expiresAt } = req.body;
-    
+
     // Check if user exists
     const user = await User.findById(userId);
     if (!user) {
       return res.status(404).json({ message: 'User not found' });
     }
-    
+
     const notification = new Notification({
-      userId,
+      user: userId, // Use 'user' field instead of 'userId'
       title,
       message,
-      type: type || 'system',
-      priority: priority || 'normal',
+      type: type || 'info',
+      priority: priority || 'medium',
       actionLink,
       metadata,
-      expiresAt
+      read: false,
+      createdAt: new Date()
     });
-    
+
     await notification.save();
-    
-    res.status(201).json({ 
-      message: 'Notification created successfully', 
-      notification 
+
+    res.status(201).json({
+      message: 'Notification created successfully',
+      notification
     });
   } catch (error) {
     console.error('Error creating notification:', error);
@@ -138,9 +139,9 @@ exports.createNotification = async (req, res) => {
 exports.getUnreadCount = async (req, res) => {
   try {
     const userId = req.user.id;
-    
-    const count = await Notification.countDocuments({ userId, read: false });
-    
+
+    const count = await Notification.countDocuments({ user: userId, read: false });
+
     res.json({ count });
   } catch (error) {
     console.error('Error getting unread count:', error);

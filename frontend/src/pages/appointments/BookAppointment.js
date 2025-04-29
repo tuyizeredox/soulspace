@@ -10,13 +10,11 @@ import {
   Step,
   StepLabel,
   Button,
-  Grid,
   useTheme,
   Alert,
   CircularProgress,
   MobileStepper,
-  useMediaQuery,
-  Hidden
+  useMediaQuery
 } from '@mui/material';
 import { motion } from 'framer-motion';
 import { ArrowBack, ArrowForward, CheckCircle } from '@mui/icons-material';
@@ -72,6 +70,12 @@ const BookAppointment = () => {
       required: false,
       preferredPharmacy: '',
       deliveryOption: '' // 'delivery' or 'pickup'
+    },
+    insuranceInfo: {
+      provider: '',
+      policyNumber: '',
+      additionalInfo: '',
+      selfPay: false
     }
   });
 
@@ -119,27 +123,41 @@ const BookAppointment = () => {
     setError('');
 
     try {
+      // Format time if available
+      let formattedTime = '';
+      if (formData.time) {
+        if (typeof formData.time === 'string') {
+          formattedTime = formData.time;
+        } else if (formData.time instanceof Date) {
+          const hours = formData.time.getHours().toString().padStart(2, '0');
+          const minutes = formData.time.getMinutes().toString().padStart(2, '0');
+          formattedTime = `${hours}:${minutes}`;
+        }
+      }
+
       // Prepare appointment data
       const appointmentData = {
-        patient: user.id,
         doctor: formData.doctor,
         hospital: formData.hospital,
         date: formData.date,
-        time: formData.time,
+        time: formattedTime,
         type: formData.appointmentType === 'online' ? 'Online Consultation' : 'In-Person Visit',
         reason: formData.reason,
         isOnline: formData.appointmentType === 'online',
         wearableDevice: formData.wearableDevice.required ? formData.wearableDevice : null,
-        pharmacy: formData.pharmacy.required ? formData.pharmacy : null
+        pharmacy: formData.pharmacy.required ? formData.pharmacy : null,
+        insuranceInfo: formData.insuranceInfo
       };
 
-      // Submit appointment data to API
+      // Submit appointment data to API - patient ID will be taken from authenticated user
       const response = await axios.post('/api/appointments', appointmentData);
+      console.log('Appointment created successfully:', response.data);
 
       setSuccess('Appointment booked successfully!');
       // Move to confirmation step
       setActiveStep(steps.length - 1);
     } catch (error) {
+      console.error('Error booking appointment:', error);
       setError(error.response?.data?.message || 'Error booking appointment. Please try again.');
     } finally {
       setLoading(false);
@@ -198,8 +216,10 @@ const BookAppointment = () => {
             appointmentType={formData.appointmentType}
             wearableDevice={formData.wearableDevice}
             pharmacy={formData.pharmacy}
+            insuranceInfo={formData.insuranceInfo}
             onWearableChange={(field, value) => handleNestedFormChange('wearableDevice', field, value)}
             onPharmacyChange={(field, value) => handleNestedFormChange('pharmacy', field, value)}
+            onInsuranceChange={(field, value) => handleNestedFormChange('insuranceInfo', field, value)}
           />
         );
       case 4:

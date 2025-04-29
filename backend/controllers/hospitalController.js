@@ -1,6 +1,7 @@
 const Hospital = require('../models/Hospital');
 const User = require('../models/User');
 const bcrypt = require('bcryptjs');
+const mongoose = require('mongoose');
 
 exports.getHospitals = async (req, res) => {
     try {
@@ -810,5 +811,52 @@ exports.getHospitalAdmins = async (req, res) => {
     } catch (error) {
         console.error('Error fetching hospital admins:', error);
         res.status(500).json({ message: 'Error fetching hospital admins', error: error.message });
+    }
+};
+
+// Get all doctors for a specific hospital
+exports.getDoctorsByHospital = async (req, res) => {
+    try {
+        const hospitalId = req.params.id;
+
+        // Validate hospital ID
+        if (!mongoose.Types.ObjectId.isValid(hospitalId)) {
+            return res.status(400).json({ message: 'Invalid hospital ID format' });
+        }
+
+        // Find the hospital to verify it exists
+        const hospital = await Hospital.findById(hospitalId);
+        if (!hospital) {
+            return res.status(404).json({ message: 'Hospital not found' });
+        }
+
+        // Find all doctors associated with this hospital
+        const doctors = await User.find({
+            role: 'doctor',
+            hospitalId: hospitalId,
+            status: { $ne: 'inactive' } // Exclude inactive doctors
+        }).select('-password');
+
+        // Format the response
+        const formattedDoctors = doctors.map(doctor => ({
+            id: doctor._id,
+            name: doctor.name,
+            email: doctor.email,
+            status: doctor.status || 'Active',
+            phone: doctor.profile?.phone || 'Not provided',
+            specialization: doctor.profile?.specialization || 'General',
+            department: doctor.profile?.department || 'General',
+            qualifications: doctor.profile?.qualifications || '',
+            experience: doctor.profile?.experience || 0,
+            bio: doctor.profile?.bio || '',
+            createdAt: doctor.createdAt,
+            updatedAt: doctor.updatedAt
+        }));
+
+        console.log(`Returning ${formattedDoctors.length} doctors for hospital ${hospitalId}`);
+        res.json(formattedDoctors);
+    } catch (error) {
+        console.error('Error fetching hospital doctors:', error);
+        res.status(500).json({ message: 'Error fetching hospital doctors', error: error.message });
     }
 };

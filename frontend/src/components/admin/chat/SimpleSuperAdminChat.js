@@ -341,10 +341,27 @@ const SimpleSuperAdminChat = () => {
     setFilteredChats(filtered);
   }, [searchTerm, chats]);
 
-  // Fetch chats on component mount
+  // Fetch chats on component mount and handle selectedChatId from localStorage
   useEffect(() => {
-    fetchChats();
-  }, [fetchChats]);
+    const initializeChats = async () => {
+      await fetchChats();
+
+      // Check if there's a selectedChatId in localStorage (from doctor chat)
+      const selectedChatId = localStorage.getItem('selectedChatId');
+      if (selectedChatId && chats.length > 0) {
+        // Find the chat with the matching ID
+        const chatToSelect = chats.find(chat => chat._id === selectedChatId);
+        if (chatToSelect) {
+          // Select the chat
+          handleSelectChat(chatToSelect);
+          // Clear the selectedChatId from localStorage to avoid reselecting on refresh
+          localStorage.removeItem('selectedChatId');
+        }
+      }
+    };
+
+    initializeChats();
+  }, [fetchChats, chats.length]);
 
   // Fix ResizeObserver errors and text direction issues
   useEffect(() => {

@@ -72,9 +72,14 @@ import HospitalAdminDashboard from './pages/hospital/HospitalAdminDashboard';
 import HospitalPatients from './pages/hospital/Patients';
 import HospitalDoctors from './pages/hospital/Doctors';
 import HospitalPharmacists from './pages/hospital/Pharmacists';
+import HospitalNurses from './pages/hospital/Nurses';
 import HospitalAppointments from './pages/hospital/Appointments';
 import PatientAssignments from './pages/hospital/PatientAssignments';
 import HospitalChatPage from './pages/hospital/HospitalChatPage';
+import Staff from './pages/hospital/Staff';
+import StaffDetail from './pages/hospital/StaffDetail';
+import HospitalAnalytics from './pages/hospital/HospitalAnalytics';
+import HospitalDirectory from './pages/hospitals/HospitalDirectory';
 
 const App = () => {
   const dispatch = useDispatch();
@@ -261,6 +266,16 @@ const App = () => {
           />
 
           {/* Other Protected Routes - Using Layout component */}
+          <Route
+            path="/hospitals"
+            element={
+              <PrivateRoute>
+                <Layout>
+                  <HospitalDirectory />
+                </Layout>
+              </PrivateRoute>
+            }
+          />
           <Route
             path="/patients"
             element={
@@ -483,8 +498,15 @@ const App = () => {
                     <Route path="patients" element={<HospitalPatients />} />
                     <Route path="doctors" element={<HospitalDoctors />} />
                     <Route path="pharmacists" element={<HospitalPharmacists />} />
+                    <Route path="nurses" element={<HospitalNurses />} />
                     <Route path="appointments" element={<HospitalAppointments />} />
-                    <Route path="patient-assignments" element={<PatientAssignments />} />
+                    <Route path="staff" element={<Staff />} />
+                    <Route path="staff/:id" element={<StaffDetail />} />
+                    <Route path="analytics" element={
+                      <AuthProvider>
+                        <HospitalAnalytics />
+                      </AuthProvider>
+                    } />
                     <Route path="chat" element={
                       <AuthProvider>
                         <ChatProvider>

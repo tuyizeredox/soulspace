@@ -22,7 +22,7 @@ const appointmentSchema = new mongoose.Schema({
   },
   type: {
     type: String,
-    enum: ['General Checkup', 'Consultation', 'Follow-up', 'Specialist Visit', 'Emergency', 'Laboratory Test', 'Imaging'],
+    enum: ['General Checkup', 'Consultation', 'Follow-up', 'Specialist Visit', 'Emergency', 'Laboratory Test', 'Imaging', 'Online Consultation', 'In-Person Visit'],
     required: true
   },
   status: {

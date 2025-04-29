@@ -9,48 +9,57 @@ const jwt = require('jsonwebtoken');
  */
 exports.loginUser = async (req, res) => {
   console.log('Login request received:', req.body);
-  
+
   try {
     const { email, password } = req.body;
-    
+
     // Validate input
     if (!email || !password) {
       console.log('Missing required fields');
       return res.status(400).json({ success: false, message: 'Email and password are required' });
     }
-    
+
     // Find user by email
     console.log(`Looking for user with email: ${email}`);
     const user = await User.findOne({ email });
-    
+
     // Check if user exists
     if (!user) {
       console.log(`User not found with email: ${email}`);
       return res.status(404).json({ success: false, message: 'User not found' });
     }
-    
+
     // Compare passwords
     console.log('Comparing passwords');
     const isMatch = await bcrypt.compare(password, user.password);
-    
+
     if (!isMatch) {
       console.log('Password does not match');
       return res.status(401).json({ success: false, message: 'Invalid credentials' });
     }
-    
+
     // Create JWT token
     console.log('Creating JWT token');
+    // Include hospitalId in the token if the user is a hospital_admin
+    const tokenPayload = {
+      id: user._id,
+      role: user.role,
+      name: user.name,
+      email: user.email
+    };
+
+    // Add hospitalId to token payload if it exists
+    if (user.hospitalId) {
+      console.log(`Including hospitalId in token: ${user.hospitalId}`);
+      tokenPayload.hospitalId = user.hospitalId;
+    }
+
     const token = jwt.sign(
-      {
-        id: user._id,
-        role: user.role,
-        name: user.name,
-        email: user.email
-      },
+      tokenPayload,
       process.env.JWT_SECRET,
       { expiresIn: '7d' }
     );
-    
+
     // Send success response
     console.log('Login successful, sending response');
     res.status(200).json({
@@ -80,15 +89,15 @@ exports.loginUser = async (req, res) => {
 exports.getCurrentUser = async (req, res) => {
   try {
     console.log('Getting current user info for user ID:', req.user.id);
-    
+
     // Find user by ID (excluding password)
     const user = await User.findById(req.user.id).select('-password');
-    
+
     if (!user) {
       console.log('User not found in database');
       return res.status(404).json({ success: false, message: 'User not found' });
     }
-    
+
     // Send user data
     res.status(200).json({
       success: true,
@@ -114,7 +123,7 @@ exports.getCurrentUser = async (req, res) => {
  */
 exports.registerUser = async (req, res) => {
   console.log('Register request received:', req.body);
-  
+
   try {
     const {
       firstName,
@@ -130,24 +139,24 @@ exports.registerUser = async (req, res) => {
       chronicConditions,
       role
     } = req.body;
-    
+
     // Validate required fields
     if (!firstName || !lastName || !email || !password) {
-      return res.status(400).json({ 
-        success: false, 
-        message: 'First name, last name, email, and password are required' 
+      return res.status(400).json({
+        success: false,
+        message: 'First name, last name, email, and password are required'
       });
     }
-    
+
     // Check if user already exists
     const existingUser = await User.findOne({ email });
     if (existingUser) {
       return res.status(400).json({ success: false, message: 'User already exists with this email' });
     }
-    
+
     // Hash password
     const hashedPassword = await bcrypt.hash(password, 10);
-    
+
     // Create new user
     const user = new User({
       name: `${firstName} ${lastName}`,
@@ -164,22 +173,31 @@ exports.registerUser = async (req, res) => {
         chronicConditions
       }
     });
-    
+
     // Save user to database
     await user.save();
-    
+
     // Create JWT token
+    // Include hospitalId in the token if the user has one
+    const tokenPayload = {
+      id: user._id,
+      role: user.role,
+      name: user.name,
+      email: user.email
+    };
+
+    // Add hospitalId to token payload if it exists
+    if (user.hospitalId) {
+      console.log(`Including hospitalId in token: ${user.hospitalId}`);
+      tokenPayload.hospitalId = user.hospitalId;
+    }
+
     const token = jwt.sign(
-      {
-        id: user._id,
-        role: user.role,
-        name: user.name,
-        email: user.email
-      },
+      tokenPayload,
       process.env.JWT_SECRET,
       { expiresIn: '7d' }
     );
-    
+
     // Send success response
     res.status(201).json({
       success: true,

@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { getBestToken, clearAuthData } from './authUtils';
 
 // Configure axios defaults
 // When running in development with the proxy setting in package.json,
@@ -12,7 +13,15 @@ if (isProduction || process.env.REACT_APP_API_URL) {
   console.log('Using proxy configuration for API requests');
 }
 
+// Set default headers
 axios.defaults.headers.post['Content-Type'] = 'application/json';
+
+// Set auth header from localStorage if available
+const token = getBestToken();
+if (token) {
+  axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+  console.log('Initial auth token set from localStorage');
+}
 
 // Add a request interceptor to include the token in all requests
 axios.interceptors.request.use(
@@ -23,19 +32,22 @@ axios.interceptors.request.use(
       data: config.data
     });
 
-    // Try to get token from both auth systems
-    // First check userToken (new system)
-    let token = localStorage.getItem('userToken');
-
-    // If not found, fall back to token (old system)
-    if (!token) {
-      token = localStorage.getItem('token');
+    // Check if Authorization header is already set
+    if (config.headers.Authorization) {
+      console.log('Authorization header already set:', config.headers.Authorization.substring(0, 20) + '...');
+      return config;
     }
+
+    // Get the best available token using our utility function
+    const token = getBestToken();
 
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
-      console.log('Using token for request:', config.url);
+      console.log('Added token to request:', config.url);
+    } else {
+      console.warn('No token found for request:', config.url);
     }
+
     return config;
   },
   (error) => {
@@ -80,19 +92,31 @@ axios.interceptors.response.use(
       method: error.config?.method
     });
 
-    // Only handle 401 errors from actual server responses
-    if (error.response && error.response.status === 401) {
-      // If we get a 401 Unauthorized response, clear both token systems
-      localStorage.removeItem('token');
-      localStorage.removeItem('user');
-      localStorage.removeItem('userToken');
-      localStorage.removeItem('userData');
+    // Handle authentication errors (401 Unauthorized or 403 Forbidden)
+    if (error.response && (error.response.status === 401 || error.response.status === 403)) {
+      console.log('Authentication error detected, status:', error.response.status);
 
-      console.log('Authentication error detected, cleared all tokens');
+      // Check if we're already on the login page to avoid redirect loops
+      const isLoginPage = window.location.pathname === '/login' ||
+                         window.location.pathname === '/signin' ||
+                         window.location.pathname === '/register';
 
-      // Redirect to login page if not already there
-      if (window.location.pathname !== '/login') {
-        window.location.href = '/login';
+      // Only clear tokens and redirect if we're not already on a login page
+      if (!isLoginPage) {
+        console.log('Clearing auth tokens and redirecting to login');
+
+        // Clear all auth data using our utility function
+        clearAuthData();
+
+        // Remove auth header from axios defaults
+        delete axios.defaults.headers.common['Authorization'];
+
+        // Redirect to login page with a small delay to allow for any pending operations
+        setTimeout(() => {
+          window.location.href = '/login';
+        }, 100);
+      } else {
+        console.log('Already on login page, not redirecting');
       }
     }
 

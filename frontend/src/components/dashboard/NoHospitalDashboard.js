@@ -74,6 +74,8 @@ import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { DateTimePicker } from '@mui/x-date-pickers/DateTimePicker';
 import axios from '../../utils/axiosConfig';
 import AiHealthAssistant from './AiHealthAssistant';
+import HospitalDoctorSelection from '../appointments/HospitalDoctorSelection';
+import InsuranceInformation from '../appointments/InsuranceInformation';
 import { formatDistanceToNow } from 'date-fns';
 import {
   fetchUserNotifications,
@@ -130,24 +132,41 @@ const defaultHealthTips = [
   },
 ];
 
-const NoHospitalDashboard = ({ user }) => {
+const NoHospitalDashboard = ({ user: propUser }) => {
   const theme = useTheme();
   const navigate = useNavigate();
   const dispatch = useDispatch();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+
+  // Get user data from Redux store as a fallback
+  const { user: authUser } = useSelector((state) => state.auth);
+  const { user: userAuthUser } = useSelector((state) => state.userAuth);
+
+  // Use the prop user if available, otherwise fall back to Redux state
+  const user = propUser || userAuthUser || authUser;
+
+  console.log('NoHospitalDashboard received user prop:', propUser);
+  console.log('NoHospitalDashboard using user:', user);
+
   const [activeStep, setActiveStep] = useState(0);
   const [appointmentType, setAppointmentType] = useState('in-person');
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [selectedHospital, setSelectedHospital] = useState('');
   const [selectedDoctor, setSelectedDoctor] = useState('');
   const [reason, setReason] = useState('');
-  const [hospitals, setHospitals] = useState([]);
-  const [doctors, setDoctors] = useState([]);
   const [loading, setLoading] = useState(false);
   const [showAiAssistant, setShowAiAssistant] = useState(false);
   const [healthTips, setHealthTips] = useState(defaultHealthTips);
   const [notificationSoundEnabled, setNotificationSoundEnabled] = useState(true);
   const [voiceNotificationEnabled, setVoiceNotificationEnabled] = useState(true);
+  const [hospitals, setHospitals] = useState([]);
+  const [doctors, setDoctors] = useState([]);
+  const [insuranceInfo, setInsuranceInfo] = useState({
+    provider: '',
+    policyNumber: '',
+    additionalInfo: ''
+  });
+  const [bookingError, setBookingError] = useState(null);
 
   // Get notifications from Redux store
   const { notifications, unreadCount, loading: notificationsLoading } = useSelector((state) => state.notifications);
@@ -191,10 +210,6 @@ const NoHospitalDashboard = ({ user }) => {
           headers: { Authorization: `Bearer ${token}` }
         };
 
-        // Fetch hospitals
-        const hospitalsResponse = await axios.get('/api/hospitals', config);
-        setHospitals(hospitalsResponse.data);
-
         // Fetch personalized health tips
         const tipsResponse = await axios.get('/api/ai-assistant/health-tips', config);
         if (tipsResponse.data && tipsResponse.data.length > 0) {
@@ -221,27 +236,7 @@ const NoHospitalDashboard = ({ user }) => {
     };
   }, [dispatch, token]); // Add token to dependency array
 
-  // Fetch doctors when hospital is selected
-  useEffect(() => {
-    const fetchDoctors = async () => {
-      if (!selectedHospital) return;
-
-      try {
-        console.log('NoHospitalDashboard: Fetching doctors with token:', !!token);
-
-        const config = {
-          headers: token ? { Authorization: `Bearer ${token}` } : {}
-        };
-
-        const response = await axios.get(`/api/hospitals/${selectedHospital}/doctors`, config);
-        setDoctors(response.data);
-      } catch (error) {
-        console.error('Error fetching doctors:', error);
-      }
-    };
-
-    fetchDoctors();
-  }, [selectedHospital, token]);
+  // We no longer need to fetch doctors here as the HospitalDoctorSelection component will handle it
 
   // Handle new notifications and play voice notifications
   useEffect(() => {
@@ -325,39 +320,109 @@ const NoHospitalDashboard = ({ user }) => {
     setAppointmentType(event.target.value);
   };
 
-  const handleHospitalChange = (event) => {
-    setSelectedHospital(event.target.value);
-    setSelectedDoctor(''); // Reset doctor when hospital changes
-  };
-
-  const handleDoctorChange = (event) => {
-    setSelectedDoctor(event.target.value);
-  };
-
   const handleSubmitAppointment = async () => {
     setLoading(true);
+    setBookingError(null);
+
     try {
       console.log('NoHospitalDashboard: Submitting appointment with token:', !!token);
+      console.log('User information:', user);
+
+      // Check if token is valid
+      if (!token) {
+        console.error('No authentication token available');
+        setBookingError('You must be logged in to book an appointment. Please log in and try again.');
+        setLoading(false);
+        return;
+      }
 
       const config = {
-        headers: token ? { Authorization: `Bearer ${token}` } : {}
+        headers: { Authorization: `Bearer ${token}` }
       };
 
+      // Get hospital and doctor data for the notification
+      const selectedHospitalObj = hospitals.find(h => h.id === selectedHospital);
+      const selectedDoctorObj = doctors.find(d => d.id === selectedDoctor);
+
+      const selectedHospitalName = selectedHospitalObj?.name || 'Selected Hospital';
+      const selectedDoctorName = selectedDoctorObj?.name || 'Selected Doctor';
+
+      // Format time from Date object
+      const hours = selectedDate.getHours().toString().padStart(2, '0');
+      const minutes = selectedDate.getMinutes().toString().padStart(2, '0');
+      const formattedTime = `${hours}:${minutes}`;
+
+      // Make sure we have a valid user ID
+      if (!user || (!user.id && !user._id)) {
+        console.error('No valid user ID found:', user);
+        setBookingError('User information is missing. Please log in again and try booking your appointment.');
+        setLoading(false);
+        return;
+      }
+
+      // Use either id or _id, whichever is available
+      const userId = user.id || user._id;
+      console.log('Creating appointment with user ID:', userId);
+
       const appointmentData = {
-        patient: user.id,
+        patient: userId, // Include patient ID explicitly
         doctor: selectedDoctor,
         hospital: selectedHospital,
         date: selectedDate,
-        type: appointmentType === 'in-person' ? 'General Checkup' : 'Online Consultation',
+        time: formattedTime,
+        type: appointmentType === 'in-person' ? 'In-Person Visit' : 'Online Consultation',
         reason: reason,
         isOnline: appointmentType === 'online',
+        // Add insurance information
+        insuranceInfo: {
+          provider: insuranceInfo.provider || 'Self-Pay',
+          policyNumber: insuranceInfo.policyNumber || 'N/A',
+          additionalInfo: insuranceInfo.additionalInfo || '',
+          isSelfPay: insuranceInfo.provider === 'Self-Pay'
+        }
       };
 
-      await axios.post('/api/appointments', appointmentData, config);
-      // Show success message or redirect
-      setActiveStep(3); // Move to confirmation step
+      // Submit the appointment - the patient ID will be taken from the authenticated user
+      const response = await axios.post('/api/appointments', appointmentData, config);
+      console.log('Appointment created successfully:', response.data);
+
+      // Play notification sound
+      if (notificationSoundEnabled) {
+        const audio = new Audio('/sounds/notification.mp3');
+        audio.play().catch(error => {
+          console.error('Error playing notification sound:', error);
+        });
+      }
+
+      // Refresh notifications to show the new appointment notification
+      dispatch(fetchUserNotifications({ limit: 5 }));
+      dispatch(fetchUnreadCount());
+
+      // Move to confirmation step
+      setActiveStep(3);
     } catch (error) {
       console.error('Error booking appointment:', error);
+
+      // Set appropriate error message
+      if (error.response?.status === 400) {
+        if (error.response.data?.message?.includes('insurance')) {
+          setBookingError('Please provide valid insurance information or select the "Self-Pay" option at the top of the insurance section.');
+        } else {
+          setBookingError(error.response.data?.message || 'Missing required information. Please check all fields.');
+        }
+      } else if (error.response?.status === 401) {
+        setBookingError('Your session has expired. Please log in again.');
+      } else if (error.response?.status === 403) {
+        setBookingError('You do not have permission to book this appointment.');
+      } else if (error.response?.status === 404) {
+        setBookingError('The selected doctor or hospital could not be found.');
+      } else if (error.response?.status === 409) {
+        setBookingError('This time slot is no longer available. Please select another time.');
+      } else if (error.response?.status === 500) {
+        setBookingError('There was a server error. Our team has been notified. Please try again later.');
+      } else {
+        setBookingError('Error booking appointment. Please check your insurance information or select the "Self-Pay" option if you don\'t have insurance.');
+      }
     } finally {
       setLoading(false);
     }
@@ -710,119 +775,45 @@ const NoHospitalDashboard = ({ user }) => {
           {activeStep === 1 && (
             <Card component={motion.div} variants={itemVariants}>
               <CardContent>
-                <Typography variant="h6" gutterBottom>
-                  Choose Hospital & Doctor
-                </Typography>
-                <Grid container spacing={3} sx={{ mt: 1 }}>
-                  <Grid item xs={12} md={6}>
-                    <FormControl fullWidth>
-                      <InputLabel>Select Hospital</InputLabel>
-                      <Select
-                        value={selectedHospital}
-                        onChange={handleHospitalChange}
-                        label="Select Hospital"
-                      >
-                        {hospitals.map((hospital) => (
-                          <MenuItem key={hospital.id} value={hospital.id}>
-                            {hospital.name}
-                          </MenuItem>
-                        ))}
-                      </Select>
-                    </FormControl>
-                  </Grid>
-                  <Grid item xs={12} md={6}>
-                    <FormControl fullWidth disabled={!selectedHospital}>
-                      <InputLabel>Select Doctor</InputLabel>
-                      <Select
-                        value={selectedDoctor}
-                        onChange={handleDoctorChange}
-                        label="Select Doctor"
-                      >
-                        {doctors.map((doctor) => (
-                          <MenuItem key={doctor.id} value={doctor.id}>
-                            {doctor.name} - {doctor.specialization}
-                          </MenuItem>
-                        ))}
-                      </Select>
-                    </FormControl>
-                  </Grid>
-                  {selectedHospital && (
-                    <Grid item xs={12}>
-                      <Box sx={{ mt: 2 }}>
-                        <Typography variant="subtitle1" gutterBottom>
-                          Hospital Information
-                        </Typography>
-                        {hospitals.filter(h => h.id === selectedHospital).map((hospital) => (
-                          <Paper
-                            key={hospital.id}
-                            sx={{
-                              p: { xs: 2, sm: 3 },
-                              borderRadius: 2,
-                              display: 'flex',
-                              flexDirection: { xs: 'column', sm: 'row' },
-                              alignItems: { xs: 'flex-start', sm: 'center' },
-                              bgcolor: alpha(theme.palette.primary.main, 0.05),
-                            }}
-                          >
-                            <Avatar
-                              sx={{
-                                bgcolor: theme.palette.primary.main,
-                                width: { xs: 48, sm: 56 },
-                                height: { xs: 48, sm: 56 },
-                                mr: { xs: 0, sm: 2 },
-                                mb: { xs: 2, sm: 0 },
-                                alignSelf: { xs: 'center', sm: 'flex-start' }
-                              }}
-                            >
-                              <LocalHospital />
-                            </Avatar>
-                            <Box sx={{ width: '100%' }}>
-                              <Typography
-                                variant="h6"
-                                sx={{
-                                  textAlign: { xs: 'center', sm: 'left' },
-                                  fontSize: { xs: '1.1rem', sm: '1.25rem' }
-                                }}
-                              >
-                                {hospital.name}
-                              </Typography>
-                              <Box
-                                sx={{
-                                  display: 'flex',
-                                  alignItems: 'center',
-                                  mt: 0.5,
-                                  justifyContent: { xs: 'center', sm: 'flex-start' }
-                                }}
-                              >
-                                <LocationOn fontSize="small" color="action" sx={{ mr: 0.5 }} />
-                                <Typography variant="body2" color="text.secondary">
-                                  {hospital.location}
-                                </Typography>
-                              </Box>
-                              <Box
-                                sx={{
-                                  display: 'flex',
-                                  alignItems: 'center',
-                                  mt: 0.5,
-                                  justifyContent: { xs: 'center', sm: 'flex-start' }
-                                }}
-                              >
-                                {[1, 2, 3, 4, 5].map((star) => (
-                                  <Box key={star} component="span" sx={{ color: '#FFB400' }}>
-                                    {star <= 4 ? <Star fontSize="small" /> : <StarBorder fontSize="small" />}
-                                  </Box>
-                                ))}
-                                <Typography variant="body2" color="text.secondary" sx={{ ml: 1 }}>
-                                  (120 reviews)
-                                </Typography>
-                              </Box>
-                            </Box>
-                          </Paper>
-                        ))}
-                      </Box>
-                    </Grid>
-                  )}
-                </Grid>
+                {/* Use the HospitalDoctorSelection component */}
+                <Box sx={{ mt: 1 }}>
+                  <HospitalDoctorSelection
+                    hospital={selectedHospital}
+                    doctor={selectedDoctor}
+                    onHospitalChange={(value, hospitalData) => {
+                      setSelectedHospital(value);
+                      setSelectedDoctor(''); // Reset doctor when hospital changes
+
+                      // Store the hospital data
+                      if (hospitalData) {
+                        setHospitals(prevHospitals => {
+                          // Check if this hospital is already in the array
+                          const exists = prevHospitals.some(h => h.id === hospitalData.id);
+                          if (exists) {
+                            return prevHospitals;
+                          }
+                          return [...prevHospitals, hospitalData];
+                        });
+                      }
+                    }}
+                    onDoctorChange={(value, doctorData) => {
+                      setSelectedDoctor(value);
+
+                      // Store the doctor data
+                      if (doctorData) {
+                        setDoctors(prevDoctors => {
+                          // Check if this doctor is already in the array
+                          const exists = prevDoctors.some(d => d.id === doctorData.id);
+                          if (exists) {
+                            return prevDoctors;
+                          }
+                          return [...prevDoctors, doctorData];
+                        });
+                      }
+                    }}
+                  />
+                </Box>
+
                 <Box
                   sx={{
                     display: 'flex',
@@ -893,6 +884,15 @@ const NoHospitalDashboard = ({ user }) => {
                       placeholder="Please describe your symptoms or reason for the appointment"
                     />
                   </Grid>
+
+                  {/* Insurance Information */}
+                  <Grid item xs={12} sx={{ mt: 2 }}>
+                    <InsuranceInformation
+                      insuranceInfo={insuranceInfo}
+                      onInsuranceChange={setInsuranceInfo}
+                      error={bookingError}
+                    />
+                  </Grid>
                 </Grid>
                 <Box
                   sx={{
@@ -916,14 +916,18 @@ const NoHospitalDashboard = ({ user }) => {
                     variant="contained"
                     onClick={handleSubmitAppointment}
                     disabled={!selectedDate || !reason}
-                    endIcon={<ArrowForward />}
+                    endIcon={loading ? null : <ArrowForward />}
                     fullWidth={isMobile}
                     sx={{
                       order: { xs: 1, sm: 2 },
                       py: { xs: 1.5, sm: 1 }
                     }}
                   >
-                    Book Appointment
+                    {loading ? (
+                      <CircularProgress size={24} color="inherit" />
+                    ) : (
+                      'Book Appointment'
+                    )}
                   </Button>
                 </Box>
               </CardContent>
@@ -957,16 +961,130 @@ const NoHospitalDashboard = ({ user }) => {
                 <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
                   Your appointment has been scheduled. You will receive a confirmation email shortly.
                 </Typography>
-                <Button
-                  variant="contained"
-                  onClick={() => window.location.reload()}
+
+                {/* Appointment Details */}
+                <Paper
+                  elevation={0}
                   sx={{
-                    minWidth: { xs: '100%', sm: 200 },
-                    py: { xs: 1.5, sm: 1 }
+                    p: 3,
+                    mb: 3,
+                    maxWidth: 500,
+                    mx: 'auto',
+                    bgcolor: alpha(theme.palette.success.main, 0.05),
+                    border: `1px solid ${alpha(theme.palette.success.main, 0.2)}`,
+                    borderRadius: 2
                   }}
                 >
-                  Return to Dashboard
-                </Button>
+                  <Typography variant="subtitle1" fontWeight={600} gutterBottom>
+                    Appointment Details
+                  </Typography>
+
+                  <Grid container spacing={2} sx={{ mt: 1 }}>
+                    <Grid item xs={12} sm={6}>
+                      <Typography variant="body2" color="text.secondary">
+                        Hospital:
+                      </Typography>
+                      <Typography variant="body1" fontWeight={500}>
+                        {hospitals.find(h => h.id === selectedHospital)?.name || 'Selected Hospital'}
+                      </Typography>
+                    </Grid>
+
+                    <Grid item xs={12} sm={6}>
+                      <Typography variant="body2" color="text.secondary">
+                        Doctor:
+                      </Typography>
+                      <Typography variant="body1" fontWeight={500}>
+                        {doctors.find(d => d.id === selectedDoctor)?.name || 'Selected Doctor'}
+                      </Typography>
+                    </Grid>
+
+                    <Grid item xs={12} sm={6}>
+                      <Typography variant="body2" color="text.secondary">
+                        Date & Time:
+                      </Typography>
+                      <Typography variant="body1" fontWeight={500}>
+                        {selectedDate ? new Date(selectedDate).toLocaleString() : 'Not specified'}
+                      </Typography>
+                    </Grid>
+
+                    <Grid item xs={12} sm={6}>
+                      <Typography variant="body2" color="text.secondary">
+                        Appointment Type:
+                      </Typography>
+                      <Typography variant="body1" fontWeight={500}>
+                        {appointmentType === 'online' ? 'Online Consultation' : 'In-Person Visit'}
+                      </Typography>
+                    </Grid>
+
+                    <Grid item xs={12}>
+                      <Typography variant="body2" color="text.secondary">
+                        Reason for Visit:
+                      </Typography>
+                      <Typography variant="body1" fontWeight={500}>
+                        {reason || 'Not specified'}
+                      </Typography>
+                    </Grid>
+
+                    <Grid item xs={12}>
+                      <Divider sx={{ my: 1 }} />
+                      <Typography variant="subtitle2" color="primary" gutterBottom>
+                        Insurance Information
+                      </Typography>
+                      <Grid container spacing={2}>
+                        <Grid item xs={12} sm={6}>
+                          <Typography variant="body2" color="text.secondary">
+                            Provider:
+                          </Typography>
+                          <Typography variant="body1" fontWeight={500}>
+                            {insuranceInfo.provider || 'Self-Pay'}
+                          </Typography>
+                        </Grid>
+                        <Grid item xs={12} sm={6}>
+                          <Typography variant="body2" color="text.secondary">
+                            Policy Number:
+                          </Typography>
+                          <Typography variant="body1" fontWeight={500}>
+                            {insuranceInfo.policyNumber || 'N/A'}
+                          </Typography>
+                        </Grid>
+                        {insuranceInfo.additionalInfo && (
+                          <Grid item xs={12}>
+                            <Typography variant="body2" color="text.secondary">
+                              Additional Information:
+                            </Typography>
+                            <Typography variant="body1" fontWeight={500}>
+                              {insuranceInfo.additionalInfo}
+                            </Typography>
+                          </Grid>
+                        )}
+                      </Grid>
+                    </Grid>
+                  </Grid>
+                </Paper>
+
+                <Box sx={{ display: 'flex', justifyContent: 'center', gap: 2, flexWrap: 'wrap' }}>
+                  <Button
+                    variant="outlined"
+                    onClick={() => navigate('/appointments')}
+                    sx={{
+                      minWidth: { xs: '100%', sm: 'auto' },
+                      py: { xs: 1.5, sm: 1 }
+                    }}
+                  >
+                    View All Appointments
+                  </Button>
+
+                  <Button
+                    variant="contained"
+                    onClick={() => window.location.reload()}
+                    sx={{
+                      minWidth: { xs: '100%', sm: 'auto' },
+                      py: { xs: 1.5, sm: 1 }
+                    }}
+                  >
+                    Return to Dashboard
+                  </Button>
+                </Box>
               </CardContent>
             </Card>
           )}

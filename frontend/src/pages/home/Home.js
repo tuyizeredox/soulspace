@@ -867,6 +867,60 @@ const Home = () => {
         </Container>
       </Box>
 
+      {/* Partner Hospitals Section */}
+      <Container maxWidth="lg" sx={{ my: { xs: 8, md: 12 } }}>
+        <ScrollReveal>
+          <Typography
+            variant="h2"
+            component="h2"
+            textAlign="center"
+            gutterBottom
+            sx={{
+              fontWeight: 700,
+              color: theme.palette.text.primary,
+              mb: 2
+            }}
+          >
+            Our Partner Hospitals
+          </Typography>
+          <Typography
+            variant="h5"
+            textAlign="center"
+            color="text.secondary"
+            sx={{ mb: 4, maxWidth: 800, mx: 'auto' }}
+          >
+            We work with leading healthcare institutions to provide the best care
+          </Typography>
+          <Box sx={{ display: 'flex', justifyContent: 'center', mb: 6 }}>
+            <Button
+              variant="contained"
+              size="large"
+              startIcon={<LocalHospital />}
+              endIcon={<ArrowForward />}
+              onClick={() => navigate('/hospitals')}
+              sx={{
+                py: 1.5,
+                px: 4,
+                fontSize: '1.1rem',
+                fontWeight: 600,
+                borderRadius: 3,
+                background: 'linear-gradient(90deg, #4f46e5 0%, #06b6d4 100%)',
+                boxShadow: '0 10px 25px rgba(79, 70, 229, 0.4)',
+                textTransform: 'none',
+                '&:hover': {
+                  transform: 'translateY(-4px)',
+                  boxShadow: '0 15px 30px rgba(79, 70, 229, 0.5)',
+                  background: 'linear-gradient(90deg, #4338ca 0%, #0891b2 100%)',
+                },
+                transition: 'all 0.3s ease'
+              }}
+            >
+              View All Partner Hospitals
+            </Button>
+          </Box>
+        </ScrollReveal>
+      </Container>
+
       {/* Features Section */}
       <Container maxWidth="lg" sx={{ my: { xs: 8, md: 12 } }}>
         <ScrollReveal>

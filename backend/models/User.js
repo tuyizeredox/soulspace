@@ -7,7 +7,7 @@ const userSchema = new mongoose.Schema({
     avatar: { type: String, default: null }, // Profile picture URL
     role: {
         type: String,
-        enum: ['super_admin', 'hospital_admin', 'doctor', 'patient', 'pharmacist', 'insurance_provider', 'emergency_responder'],
+        enum: ['super_admin', 'hospital_admin', 'doctor', 'patient', 'nurse', 'pharmacist', 'insurance_provider', 'emergency_responder'],
         default: 'patient'
     },
     permissions: { type: [String], default: [] },

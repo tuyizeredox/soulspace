@@ -25,7 +25,8 @@ const AppointmentDetails = ({ appointment }) => {
   const handleAddNotes = async () => {
     setLoading(true);
     try {
-      await axios.post(`/api/appointments/${appointment.id}/notes`, { notes });
+      const appointmentId = appointment.id || appointment._id;
+      await axios.post(`/api/appointments/${appointmentId}/notes`, { notes });
       setOpenNotes(false);
     } catch (error) {
       console.error('Error adding notes:', error);
@@ -81,7 +82,9 @@ const AppointmentDetails = ({ appointment }) => {
                     Patient
                   </Typography>
                   <Typography variant="body1">
-                    {appointment.patient?.firstName} {appointment.patient?.lastName}
+                    {appointment.patient?.name ||
+                     (appointment.patient?.firstName && `${appointment.patient.firstName} ${appointment.patient.lastName}`) ||
+                     'Unknown Patient'}
                   </Typography>
                 </Grid>
 
@@ -90,7 +93,9 @@ const AppointmentDetails = ({ appointment }) => {
                     Doctor
                   </Typography>
                   <Typography variant="body1">
-                    Dr. {appointment.doctor?.firstName} {appointment.doctor?.lastName}
+                    {appointment.doctor?.name ||
+                     (appointment.doctor?.firstName && `Dr. ${appointment.doctor.firstName} ${appointment.doctor.lastName}`) ||
+                     'Unknown Doctor'}
                   </Typography>
                 </Grid>
 
@@ -113,7 +118,129 @@ const AppointmentDetails = ({ appointment }) => {
                     <Typography variant="subtitle2" color="text.secondary">
                       Notes
                     </Typography>
-                    <Typography variant="body1">{appointment.notes}</Typography>
+                    <Typography variant="body1">
+                      {typeof appointment.notes === 'string' && appointment.notes.startsWith('{')
+                        ? (() => {
+                            try {
+                              const parsedNotes = JSON.parse(appointment.notes);
+                              return (
+                                <Box>
+                                  {/* Appointment Type */}
+                                  {parsedNotes.isOnline !== undefined && (
+                                    <Typography variant="body2" sx={{ mb: 1 }}>
+                                      <strong>Appointment Type:</strong> {parsedNotes.isOnline ? 'Online' : 'In-Person'}
+                                    </Typography>
+                                  )}
+
+                                  {/* Insurance Information - Enhanced Display */}
+                                  {parsedNotes.insuranceInfo && (
+                                    <Box sx={{ mb: 2, p: 1.5, bgcolor: 'background.paper', borderRadius: 1, border: '1px solid', borderColor: 'divider' }}>
+                                      <Typography variant="subtitle2" color="primary" gutterBottom>
+                                        Insurance Information
+                                      </Typography>
+
+                                      <Grid container spacing={1}>
+                                        <Grid item xs={12}>
+                                          <Chip
+                                            label={parsedNotes.insuranceInfo.provider === 'Self-Pay' ? 'Self-Pay Patient' : 'Insured Patient'}
+                                            color={parsedNotes.insuranceInfo.provider === 'Self-Pay' ? 'warning' : 'success'}
+                                            size="small"
+                                            sx={{ mb: 1 }}
+                                          />
+                                        </Grid>
+
+                                        {parsedNotes.insuranceInfo.provider !== 'Self-Pay' && (
+                                          <>
+                                            <Grid item xs={12} sm={6}>
+                                              <Typography variant="body2">
+                                                <strong>Provider:</strong> {parsedNotes.insuranceInfo.provider}
+                                              </Typography>
+                                            </Grid>
+                                            <Grid item xs={12} sm={6}>
+                                              <Typography variant="body2">
+                                                <strong>Policy Number:</strong> {parsedNotes.insuranceInfo.policyNumber || 'Not provided'}
+                                              </Typography>
+                                            </Grid>
+                                            {parsedNotes.insuranceInfo.additionalInfo && (
+                                              <Grid item xs={12}>
+                                                <Typography variant="body2">
+                                                  <strong>Additional Info:</strong> {parsedNotes.insuranceInfo.additionalInfo}
+                                                </Typography>
+                                              </Grid>
+                                            )}
+                                          </>
+                                        )}
+
+                                        {parsedNotes.insuranceInfo.provider === 'Self-Pay' && (
+                                          <Grid item xs={12}>
+                                            <Typography variant="body2">
+                                              <strong>Payment Status:</strong> <Chip size="small" label="Pending" color="warning" />
+                                            </Typography>
+                                          </Grid>
+                                        )}
+                                      </Grid>
+                                    </Box>
+                                  )}
+
+                                  {/* Wearable Device - Enhanced Display */}
+                                  {parsedNotes.wearableDevice && (
+                                    <Box sx={{ mb: 2, p: 1.5, bgcolor: 'background.paper', borderRadius: 1, border: '1px solid', borderColor: 'divider' }}>
+                                      <Typography variant="subtitle2" color="primary" gutterBottom>
+                                        Wearable Device
+                                      </Typography>
+
+                                      <Grid container spacing={1}>
+                                        <Grid item xs={12}>
+                                          <Typography variant="body2">
+                                            <strong>Device:</strong> {parsedNotes.wearableDevice.name || 'Not specified'}
+                                          </Typography>
+                                        </Grid>
+                                        <Grid item xs={12}>
+                                          <Typography variant="body2">
+                                            <strong>Status:</strong> {' '}
+                                            <Chip
+                                              size="small"
+                                              label={parsedNotes.wearableDevice.alreadyOwned ? 'Already Owned' : 'Requested from Hospital'}
+                                              color={parsedNotes.wearableDevice.alreadyOwned ? 'success' : 'info'}
+                                            />
+                                          </Typography>
+                                        </Grid>
+                                        {parsedNotes.wearableDevice.model && (
+                                          <Grid item xs={12}>
+                                            <Typography variant="body2">
+                                              <strong>Model:</strong> {parsedNotes.wearableDevice.model}
+                                            </Typography>
+                                          </Grid>
+                                        )}
+                                      </Grid>
+                                    </Box>
+                                  )}
+
+                                  {/* Pharmacy Information */}
+                                  {parsedNotes.pharmacy && (
+                                    <Box sx={{ mb: 1, p: 1.5, bgcolor: 'background.paper', borderRadius: 1, border: '1px solid', borderColor: 'divider' }}>
+                                      <Typography variant="subtitle2" color="primary" gutterBottom>
+                                        Pharmacy
+                                      </Typography>
+                                      <Typography variant="body2">
+                                        <strong>Name:</strong> {parsedNotes.pharmacy.name || 'Not specified'}
+                                      </Typography>
+                                      {parsedNotes.pharmacy.address && (
+                                        <Typography variant="body2">
+                                          <strong>Address:</strong> {parsedNotes.pharmacy.address}
+                                        </Typography>
+                                      )}
+                                    </Box>
+                                  )}
+                                </Box>
+                              );
+                            } catch (e) {
+                              return appointment.notes;
+                            }
+                          })()
+                        : appointment.notes
+                      }
+                    </Typography>
                   </Grid>
                 )}
 

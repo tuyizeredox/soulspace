@@ -61,7 +61,16 @@ const HospitalAdminSidebar = ({ mobileOpen, onDrawerToggle }) => {
 
   const theme = useTheme();
   const [stats, setStats] = useState({
+    totalDoctors: 0,
+    totalPatients: 0,
     pendingAppointments: 0,
+    activeTreatments: 0,
+    totalNurses: 0,
+    totalPharmacists: 0,
+    totalStaff: 0,
+    confirmedAppointments: 0,
+    totalAppointments: 0,
+    totalMedicalStaff: 0,
     unreadMessages: 0,
     newPatients: 0,
     staffRequests: 0
@@ -133,12 +142,30 @@ const HospitalAdminSidebar = ({ mobileOpen, onDrawerToggle }) => {
         const response = await axios.get(`/api/hospitals/${user.hospitalId}/stats`, config);
 
         if (response.data) {
-          setStats({
+          // Get real data from the API response
+          const realStats = {
+            totalDoctors: response.data.totalDoctors || 0,
+            totalPatients: response.data.totalPatients || 0,
             pendingAppointments: response.data.pendingAppointments || 0,
-            unreadMessages: Math.floor(Math.random() * 10), // Mock data for now
-            newPatients: Math.floor(Math.random() * 5), // Mock data for now
-            staffRequests: Math.floor(Math.random() * 3) // Mock data for now
-          });
+            activeTreatments: response.data.activeTreatments || 0,
+            totalNurses: response.data.totalNurses || 0,
+            totalPharmacists: response.data.totalPharmacists || 0,
+            totalStaff: response.data.totalStaff || 0,
+            confirmedAppointments: response.data.confirmedAppointments || 0,
+            totalAppointments: response.data.totalAppointments || 0,
+            totalMedicalStaff: response.data.totalMedicalStaff || 0,
+            // For messages, we'll still use mock data until we implement real message tracking
+            unreadMessages: Math.floor(Math.random() * 10),
+            // For new patients, we'll use a percentage of total patients for now
+            newPatients: Math.floor((response.data.totalPatients || 0) * 0.05),
+            // For staff requests, we'll use a small number for now
+            staffRequests: Math.floor(Math.random() * 3)
+          };
+
+          setStats(realStats);
+
+          // Log the stats for debugging
+          console.log('Hospital Stats:', realStats);
         }
       } catch (error) {
         console.error('Error fetching sidebar stats:', error);
@@ -179,15 +206,15 @@ const HospitalAdminSidebar = ({ mobileOpen, onDrawerToggle }) => {
       badge: stats.pendingAppointments > 0 ? { count: stats.pendingAppointments, color: 'warning' } : null
     },
     {
-      text: 'Patient Assignments',
-      icon: <AssignmentIcon />,
-      path: '/hospital/patient-assignments',
-      badge: null
-    },
-    {
       text: 'Pharmacists',
       icon: <LocalPharmacyIcon />,
       path: '/hospital/pharmacists',
+      badge: null
+    },
+    {
+      text: 'Nurses',
+      icon: <MedicalServicesIcon />,
+      path: '/hospital/nurses',
       badge: null
     },
     {
@@ -291,19 +318,6 @@ const HospitalAdminSidebar = ({ mobileOpen, onDrawerToggle }) => {
             <EventAvailableIcon fontSize="small" />
           </IconButton>
         </Tooltip>
-        <Tooltip title="Assign Doctor">
-          <IconButton
-            size="small"
-            onClick={() => navigate('/hospital/patient-assignments')}
-            sx={{
-              bgcolor: alpha(theme.palette.info.main, 0.1),
-              color: theme.palette.info.main,
-              '&:hover': { bgcolor: alpha(theme.palette.info.main, 0.2) }
-            }}
-          >
-            <MedicalServicesIcon fontSize="small" />
-          </IconButton>
-        </Tooltip>
         <Tooltip title="Chat">
           <IconButton
             size="small"
@@ -315,6 +329,19 @@ const HospitalAdminSidebar = ({ mobileOpen, onDrawerToggle }) => {
             }}
           >
             <ChatIcon fontSize="small" />
+          </IconButton>
+        </Tooltip>
+        <Tooltip title="Manage Staff">
+          <IconButton
+            size="small"
+            onClick={() => navigate('/hospital/staff')}
+            sx={{
+              bgcolor: alpha(theme.palette.info.main, 0.1),
+              color: theme.palette.info.main,
+              '&:hover': { bgcolor: alpha(theme.palette.info.main, 0.2) }
+            }}
+          >
+            <SupervisorAccountIcon fontSize="small" />
           </IconButton>
         </Tooltip>
       </Box>
@@ -329,9 +356,36 @@ const HospitalAdminSidebar = ({ mobileOpen, onDrawerToggle }) => {
       </Typography>
       <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <Typography variant="body2" color="text.secondary">Medical Staff</Typography>
+          <Chip
+            label={`${stats.totalMedicalStaff || 0} total`}
+            size="small"
+            color="primary"
+            sx={{ height: 20, '& .MuiChip-label': { px: 1, py: 0.5, fontSize: '0.65rem' } }}
+          />
+        </Box>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <Typography variant="body2" color="text.secondary">Doctors</Typography>
+          <Chip
+            label={`${stats.totalDoctors || 0} total`}
+            size="small"
+            color="primary"
+            sx={{ height: 20, '& .MuiChip-label': { px: 1, py: 0.5, fontSize: '0.65rem' } }}
+          />
+        </Box>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <Typography variant="body2" color="text.secondary">Nurses</Typography>
+          <Chip
+            label={`${stats.totalNurses || 0} total`}
+            size="small"
+            color="info"
+            sx={{ height: 20, '& .MuiChip-label': { px: 1, py: 0.5, fontSize: '0.65rem' } }}
+          />
+        </Box>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <Typography variant="body2" color="text.secondary">Patients</Typography>
           <Chip
-            label={stats.newPatients > 0 ? `+${stats.newPatients} new` : "No new"}
+            label={stats.newPatients > 0 ? `${stats.totalPatients || 0} (${stats.newPatients} new)` : `${stats.totalPatients || 0} total`}
             size="small"
             color={stats.newPatients > 0 ? "info" : "default"}
             sx={{ height: 20, '& .MuiChip-label': { px: 1, py: 0.5, fontSize: '0.65rem' } }}
@@ -343,6 +397,15 @@ const HospitalAdminSidebar = ({ mobileOpen, onDrawerToggle }) => {
             label={`${stats.pendingAppointments} pending`}
             size="small"
             color={stats.pendingAppointments > 0 ? "warning" : "default"}
+            sx={{ height: 20, '& .MuiChip-label': { px: 1, py: 0.5, fontSize: '0.65rem' } }}
+          />
+        </Box>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <Typography variant="body2" color="text.secondary">Treatments</Typography>
+          <Chip
+            label={`${stats.activeTreatments || 0} active`}
+            size="small"
+            color="success"
             sx={{ height: 20, '& .MuiChip-label': { px: 1, py: 0.5, fontSize: '0.65rem' } }}
           />
         </Box>

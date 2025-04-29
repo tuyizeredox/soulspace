@@ -111,13 +111,22 @@ exports.login = async (req, res) => {
     }
 
     console.log('Password matched, generating token');
+    // Include hospitalId in the token if the user is a hospital_admin
+    const tokenPayload = {
+      id: user._id,
+      role: user.role,
+      name: user.name,
+      email: user.email
+    };
+
+    // Add hospitalId to token payload if it exists
+    if (user.hospitalId) {
+      console.log(`Including hospitalId in token: ${user.hospitalId}`);
+      tokenPayload.hospitalId = user.hospitalId;
+    }
+
     const token = jwt.sign(
-      {
-        id: user._id,
-        role: user.role,
-        name: user.name,
-        email: user.email
-      },
+      tokenPayload,
       process.env.JWT_SECRET,
       { expiresIn: '7d' }
     );

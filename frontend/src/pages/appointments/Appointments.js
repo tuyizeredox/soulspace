@@ -20,6 +20,7 @@ import { DataGrid } from '@mui/x-data-grid';
 import AddIcon from '@mui/icons-material/Add';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import EditIcon from '@mui/icons-material/Edit';
+import RefreshIcon from '@mui/icons-material/Refresh';
 import { format } from 'date-fns';
 import axios from 'axios';
 import AppointmentForm from './AppointmentForm';
@@ -47,19 +48,89 @@ const Appointments = () => {
   const [openForm, setOpenForm] = useState(false);
   const [openDetails, setOpenDetails] = useState(false);
   const [tabValue, setTabValue] = useState(0);
-  const { user } = useSelector((state) => state.auth);
+  // Get user from both auth systems
+  const { user: authUser } = useSelector((state) => state.auth);
+  const { user: userAuthUser } = useSelector((state) => state.userAuth);
+
+  // Use either auth system, preferring the new one
+  const user = userAuthUser || authUser;
+
+  console.log('Appointments component - User from auth:', authUser);
+  console.log('Appointments component - User from userAuth:', userAuthUser);
+  console.log('Appointments component - Using user:', user);
 
   useEffect(() => {
-    fetchAppointments();
-  }, []);
+    if (user) {
+      fetchAppointments();
+    }
+  }, [user]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const fetchAppointments = async () => {
     setLoading(true);
     try {
-      const response = await axios.get('/api/appointments');
-      setAppointments(response.data);
+      if (!user) {
+        console.error('No user available to fetch appointments');
+        setLoading(false);
+        return;
+      }
+
+      // Get token from both auth systems
+      const authToken = localStorage.getItem('token');
+      const userAuthToken = localStorage.getItem('userToken');
+      const token = userAuthToken || authToken;
+
+      console.log('Fetching appointments for user role:', user?.role);
+      console.log('User ID:', user?.id);
+      console.log('Using token:', !!token);
+
+      // Set up headers with token
+      const config = {
+        headers: { Authorization: `Bearer ${token}` }
+      };
+
+      let response;
+
+      if (user.role === 'patient') {
+        // Use patient-specific endpoint
+        // Use either id or _id, whichever is available
+        const userId = user.id || user._id;
+        console.log('Using patient endpoint for user ID:', userId);
+        const url = `/api/appointments/patient?patientId=${userId}`;
+        console.log('Request URL:', url);
+        response = await axios.get(url, config);
+        console.log('Patient appointments response:', response.data);
+      } else if (user.role === 'hospital_admin') {
+        // Use hospital admin endpoint
+        console.log('Using hospital admin endpoint');
+        response = await axios.get('/api/appointments/hospital', config);
+      } else if (user.role === 'doctor') {
+        // Use doctor endpoint or filter by doctor ID
+        // Use either id or _id, whichever is available
+        const doctorId = user.id || user._id;
+        console.log('Using doctor endpoint for doctor ID:', doctorId);
+        response = await axios.get(`/api/appointments?doctor=${doctorId}`, config);
+      } else {
+        // Default endpoint
+        console.log('Using default endpoint');
+        response = await axios.get('/api/appointments', config);
+      }
+
+      console.log('Raw appointments data:', response.data);
+      console.log('Number of appointments:', response.data.length);
+
+      // Transform data if needed
+      const formattedAppointments = response.data.map(appointment => ({
+        ...appointment,
+        id: appointment._id || appointment.id, // Ensure id field exists for DataGrid
+        patientName: appointment.patient?.name || 'Unknown Patient',
+        doctorName: appointment.doctor?.name || 'Unknown Doctor'
+      }));
+
+      console.log('Formatted appointments:', formattedAppointments);
+      setAppointments(formattedAppointments);
     } catch (error) {
       console.error('Error fetching appointments:', error);
+      console.error('Error details:', error.response?.data || error.message);
     } finally {
       setLoading(false);
     }
@@ -106,6 +177,59 @@ const Appointments = () => {
       headerName: 'Type',
       width: 150,
     },
+    // Only show insurance and wearable device columns for hospital admin
+    ...(user && user.role === 'hospital_admin' ? [
+      {
+        field: 'insurance',
+        headerName: 'Insurance',
+        width: 150,
+        renderCell: (params) => {
+          try {
+            if (params.row.notes && typeof params.row.notes === 'string' && params.row.notes.startsWith('{')) {
+              const parsedNotes = JSON.parse(params.row.notes);
+              if (parsedNotes.insuranceInfo) {
+                const isSelfPay = parsedNotes.insuranceInfo.provider === 'Self-Pay';
+                return (
+                  <Chip
+                    size="small"
+                    label={isSelfPay ? 'Self-Pay' : parsedNotes.insuranceInfo.provider}
+                    color={isSelfPay ? 'warning' : 'success'}
+                  />
+                );
+              }
+            }
+            return <Chip size="small" label="Unknown" color="default" />;
+          } catch (e) {
+            return <Chip size="small" label="Error" color="error" />;
+          }
+        },
+      },
+      {
+        field: 'wearableDevice',
+        headerName: 'Wearable Device',
+        width: 150,
+        renderCell: (params) => {
+          try {
+            if (params.row.notes && typeof params.row.notes === 'string' && params.row.notes.startsWith('{')) {
+              const parsedNotes = JSON.parse(params.row.notes);
+              if (parsedNotes.wearableDevice) {
+                const isOwned = parsedNotes.wearableDevice.alreadyOwned;
+                return (
+                  <Chip
+                    size="small"
+                    label={isOwned ? 'Already Owned' : 'Requested'}
+                    color={isOwned ? 'success' : 'info'}
+                  />
+                );
+              }
+            }
+            return <Chip size="small" label="None" color="default" />;
+          } catch (e) {
+            return <Chip size="small" label="Error" color="error" />;
+          }
+        },
+      }
+    ] : []),
     {
       field: 'actions',
       headerName: 'Actions',
@@ -118,7 +242,7 @@ const Appointments = () => {
           >
             <VisibilityIcon />
           </IconButton>
-          {(user.role === 'hospital_admin' || user.role === 'doctor') && (
+          {user && (user.role === 'hospital_admin' || user.role === 'doctor') && (
             <IconButton
               color="secondary"
               onClick={() => handleEditAppointment(params.row)}
@@ -186,17 +310,27 @@ const Appointments = () => {
               Appointments Management
             </Typography>
           </Grid>
-          {(user.role === 'hospital_admin' || user.role === 'patient') && (
-            <Grid item>
+          <Grid item>
+            <Box sx={{ display: 'flex', gap: 2 }}>
               <Button
-                variant="contained"
-                startIcon={<AddIcon />}
-                onClick={handleAddAppointment}
+                variant="outlined"
+                startIcon={<RefreshIcon />}
+                onClick={fetchAppointments}
               >
-                Schedule Appointment
+                Refresh
               </Button>
-            </Grid>
-          )}
+
+              {user && (user.role === 'hospital_admin' || user.role === 'patient') && (
+                <Button
+                  variant="contained"
+                  startIcon={<AddIcon />}
+                  onClick={handleAddAppointment}
+                >
+                  Schedule Appointment
+                </Button>
+              )}
+            </Box>
+          </Grid>
         </Grid>
 
         <Card>

@@ -31,13 +31,16 @@ import {
   HealthAndSafety
 } from '@mui/icons-material';
 import axios from 'axios';
+import InsuranceInformation from './InsuranceInformation';
 
 const AdditionalOptions = ({
   appointmentType,
   wearableDevice,
   pharmacy,
+  insuranceInfo,
   onWearableChange,
-  onPharmacyChange
+  onPharmacyChange,
+  onInsuranceChange
 }) => {
   const theme = useTheme();
   const [pharmacies, setPharmacies] = useState([]);
@@ -392,50 +395,11 @@ const AdditionalOptions = ({
               </Typography>
             </Box>
 
-            <Typography variant="body2" color="text.secondary" paragraph>
-              Provide your insurance details if applicable. This is optional and you can proceed without insurance.
-            </Typography>
-
-            <Grid container spacing={2}>
-              <Grid item xs={12} md={6}>
-                <TextField
-                  fullWidth
-                  label="Insurance Provider"
-                  placeholder="e.g., Blue Cross, Aetna, etc."
-                />
-              </Grid>
-              <Grid item xs={12} md={6}>
-                <TextField
-                  fullWidth
-                  label="Policy Number"
-                  placeholder="Your insurance policy number"
-                />
-              </Grid>
-              <Grid item xs={12}>
-                <TextField
-                  fullWidth
-                  label="Additional Insurance Information"
-                  multiline
-                  rows={2}
-                  placeholder="Any additional details about your coverage"
-                />
-              </Grid>
-            </Grid>
-
-            <Box sx={{ mt: 2, p: 2, bgcolor: 'rgba(0, 0, 0, 0.05)', borderRadius: 2, border: '1px dashed rgba(0, 0, 0, 0.2)' }}>
-              <Box sx={{ display: 'flex', alignItems: 'flex-start' }}>
-                <Info fontSize="small" color="warning" sx={{ mr: 1, mt: 0.5 }} />
-                <Box>
-                  <Typography variant="subtitle2" color="text.primary" gutterBottom>
-                    Important Insurance Information
-                  </Typography>
-                  <Typography variant="body2" color="text.secondary">
-                    Insurance information is required to proceed with booking. If you don't have insurance,
-                    please contact our support team for assistance with alternative payment options.
-                  </Typography>
-                </Box>
-              </Box>
-            </Box>
+            <InsuranceInformation
+              insuranceInfo={insuranceInfo}
+              onInsuranceChange={onInsuranceChange}
+              required={true}
+            />
           </Paper>
         </Grid>
       </Grid>

@@ -82,6 +82,7 @@ const Navigation = () => {
     ? getHospitalAdminMenuItems()
     : [
         { text: 'Dashboard', icon: <Dashboard />, path: '/dashboard' },
+        { text: 'Hospitals', icon: <LocalHospital />, path: '/hospitals' },
         { text: 'Patients', icon: <People />, path: '/patients' },
         { text: 'Appointments', icon: <CalendarMonth />, path: '/appointments' },
         { text: 'Monitoring', icon: <MonitorHeart />, path: '/monitoring' },
