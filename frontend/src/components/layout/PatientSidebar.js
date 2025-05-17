@@ -7,7 +7,7 @@ import {
   fetchNearbyHospitals,
   fetchNotifications
 } from '../../services/healthDataService';
-import { getAvatarUrl, getInitials, getRoleColor as getUtilRoleColor, getRoleLabel as getUtilRoleLabel } from '../../utils/avatarUtils';
+import { getAvatarUrl, getInitials, getRoleColor as getUtilRoleColor } from '../../utils/avatarUtils';
 import {
   Box,
   List,
@@ -27,6 +27,7 @@ import {
   alpha,
   Paper,
   Drawer,
+  Button,
 } from '@mui/material';
 import {
   Dashboard as DashboardIcon,
@@ -53,57 +54,17 @@ import {
   Psychology,
   Star,
   School,
-  MenuBook,
-  SelfImprovement,
   Spa,
-  HealthAndSafety,
   Forum,
-  Groups,
-  EmojiEvents,
-  Lightbulb,
-  MedicalServices,
-  Science,
-  Medication,
-  LocalPharmacy,
-  ShoppingCart,
-  Devices,
-  Assessment,
-  BarChart,
-  Biotech,
-  Healing,
-  Vaccines,
-  Bloodtype,
-  MonitorWeight,
-  SetMeal,
-  Fastfood,
-  LocalDining,
-  NightsStay,
-  Air,
-  Thermostat,
-  Accessibility,
-  AccessibilityNew,
-  Elderly,
-  ChildCare,
-  PregnantWoman,
-  Coronavirus,
-  MedicalInformation,
   ReceiptLong,
-  Payments,
-  CreditCard,
-  AccountBalance,
-  Discount,
-  LocalOffer,
-  Redeem,
-  CardGiftcard,
-  Celebration,
-  EmojiEmotions,
-  SentimentSatisfiedAlt,
-  SentimentVerySatisfied,
+  ShoppingCart,
+
 } from '@mui/icons-material';
 import { motion } from 'framer-motion';
 
 // Component starts here
 
+// Define the PatientSidebar component
 const PatientSidebar = ({ user, mobileOpen, handleDrawerToggle }) => {
   const theme = useTheme();
   const navigate = useNavigate();
@@ -125,7 +86,6 @@ const PatientSidebar = ({ user, mobileOpen, handleDrawerToggle }) => {
   });
 
   const [recommendations, setRecommendations] = useState([]);
-  const [nearbyHospitals, setNearbyHospitals] = useState([]);
   const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -184,8 +144,7 @@ const PatientSidebar = ({ user, mobileOpen, handleDrawerToggle }) => {
         })));
 
         // Fetch nearby hospitals (token is handled by the service)
-        const hospitalsData = await fetchNearbyHospitals();
-        setNearbyHospitals(hospitalsData);
+        await fetchNearbyHospitals(); // Just fetch but don't store
 
         // Fetch notifications (token is handled by the service)
         const notificationsData = await fetchNotifications();
@@ -487,15 +446,24 @@ const PatientSidebar = ({ user, mobileOpen, handleDrawerToggle }) => {
         <Typography variant="h6" sx={{ fontWeight: 600, textAlign: 'center' }}>
           {user?.name || 'Guest User'}
         </Typography>
-        <Typography variant="body2" color="text.secondary" sx={{ mb: 1, textAlign: 'center' }}>
-          {user?.role === 'patient' ? 'Patient' : user?.role || 'User'}
-        </Typography>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+          <Chip
+            label="Unassigned Patient"
+            size="small"
+            color="primary"
+            sx={{
+              fontWeight: 500,
+              borderRadius: '12px',
+              '& .MuiChip-label': { px: 1 }
+            }}
+          />
+        </Box>
 
         <Box sx={{ display: 'flex', gap: 1, mt: 1 }}>
           <Tooltip title="Messages">
             <IconButton
               size="small"
-              onClick={() => navigate('/messages')}
+              onClick={() => navigate('/patient/messages')}
               sx={{
                 color: 'text.secondary',
                 '&:hover': {
@@ -512,7 +480,7 @@ const PatientSidebar = ({ user, mobileOpen, handleDrawerToggle }) => {
           <Tooltip title="Notifications">
             <IconButton
               size="small"
-              onClick={() => navigate('/notifications')}
+              onClick={() => navigate('/patient/notifications')}
               sx={{
                 color: 'text.secondary',
                 '&:hover': {
@@ -529,7 +497,7 @@ const PatientSidebar = ({ user, mobileOpen, handleDrawerToggle }) => {
           <Tooltip title="Profile">
             <IconButton
               size="small"
-              onClick={() => navigate('/profile')}
+              onClick={() => navigate('/patient/profile')}
               sx={{
                 color: 'text.secondary',
                 '&:hover': {
@@ -542,6 +510,57 @@ const PatientSidebar = ({ user, mobileOpen, handleDrawerToggle }) => {
             </IconButton>
           </Tooltip>
         </Box>
+      </Box>
+
+      {/* Find Hospital Section - Only for patients without hospital */}
+      <Box
+        sx={{
+          px: 2,
+          py: 2,
+          bgcolor: alpha(theme.palette.primary.main, 0.05),
+          borderBottom: `1px solid ${theme.palette.divider}`,
+          position: 'relative',
+          '&::before': {
+            content: '""',
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            width: '4px',
+            height: '100%',
+            backgroundColor: theme.palette.primary.main,
+            borderRadius: '0 4px 4px 0'
+          }
+        }}
+      >
+        <Typography variant="subtitle2" color="text.secondary" gutterBottom sx={{ fontWeight: 600 }}>
+          Find Your Hospital
+        </Typography>
+
+        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+          You're not assigned to a hospital yet. Find and book an appointment with a hospital to get started.
+        </Typography>
+
+        <Button
+          variant="contained"
+          color="primary"
+          fullWidth
+          startIcon={<LocalHospital />}
+          onClick={() => navigate('/patient/hospitals')}
+          sx={{ borderRadius: 2, textTransform: 'none', mb: 1 }}
+        >
+          Find Hospitals
+        </Button>
+
+        <Button
+          variant="outlined"
+          color="primary"
+          fullWidth
+          startIcon={<CalendarMonth />}
+          onClick={() => navigate('/patient/appointments')}
+          sx={{ borderRadius: 2, textTransform: 'none' }}
+        >
+          Book Appointment
+        </Button>
       </Box>
 
       {/* Health Stats Summary */}
@@ -668,8 +687,8 @@ const PatientSidebar = ({ user, mobileOpen, handleDrawerToggle }) => {
       <Box sx={{ flexGrow: 1, overflow: 'auto', px: 2, py: 1 }}>
         <List sx={{ px: 0 }} component="nav">
           <ListItemButton
-            selected={isActive('/dashboard')}
-            onClick={() => navigate('/dashboard')}
+            selected={isActive('/patient/dashboard')}
+            onClick={() => navigate('/patient/dashboard')}
             sx={{
               borderRadius: 2,
               mb: 0.5,
@@ -833,7 +852,7 @@ const PatientSidebar = ({ user, mobileOpen, handleDrawerToggle }) => {
           <Tooltip title="Settings">
             <IconButton
               size="small"
-              onClick={() => navigate('/settings')}
+              onClick={() => navigate('/patient/settings')}
               sx={{
                 mr: 1,
                 color: 'text.secondary',
@@ -849,7 +868,7 @@ const PatientSidebar = ({ user, mobileOpen, handleDrawerToggle }) => {
           <Tooltip title="Help">
             <IconButton
               size="small"
-              onClick={() => navigate('/help')}
+              onClick={() => navigate('/patient/help')}
               sx={{
                 color: 'text.secondary',
                 '&:hover': {

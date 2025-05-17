@@ -71,6 +71,7 @@ import { Bar } from 'react-chartjs-2';
 import axios from '../../utils/axios';
 import NoHospitalDashboard from '../../components/dashboard/NoHospitalDashboard';
 import AiHealthAssistant from '../../components/dashboard/AiHealthAssistant';
+import PatientDashboardRouter from '../../components/routing/PatientDashboardRouter';
 
 ChartJS.register(
   CategoryScale,
@@ -1594,12 +1595,30 @@ const Dashboard = () => {
 
     switch (user.role) {
       case 'hospital_admin':
-        // Instead of redirecting, render the hospital admin dashboard directly
-        return renderAdminDashboard();
+        // Redirect to the dedicated hospital admin dashboard
+        setTimeout(() => {
+          navigate('/hospital/dashboard');
+        }, 100);
+
+        return (
+          <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '50vh' }}>
+            <Typography variant="h6" color="text.secondary">Redirecting to Hospital Admin Dashboard...</Typography>
+          </Box>
+        );
       case 'doctor':
-        return renderDoctorDashboard();
+        // Redirect to the dedicated doctor dashboard
+        setTimeout(() => {
+          navigate('/doctor/dashboard');
+        }, 100);
+
+        return (
+          <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '50vh' }}>
+            <Typography variant="h6" color="text.secondary">Redirecting to Doctor Dashboard...</Typography>
+          </Box>
+        );
       case 'patient':
-        return renderPatientDashboard();
+        // Use the PatientDashboardRouter to determine which dashboard to show
+        return <PatientDashboardRouter />;
       default:
         return <Typography>Welcome to SoulSpace Health</Typography>;
     }

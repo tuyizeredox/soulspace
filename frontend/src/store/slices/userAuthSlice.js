@@ -37,6 +37,14 @@ export const loginUser = createAsyncThunk(
       localStorage.setItem('userToken', response.data.token);
       localStorage.setItem('userData', JSON.stringify(response.data.user));
 
+      // Also store in common token location for cross-compatibility
+      localStorage.setItem('token', response.data.token);
+
+      // Store role-specific data
+      if (response.data.user.role === 'doctor') {
+        localStorage.setItem('doctorName', response.data.user.name);
+      }
+
       console.log('Login successful, user role:', response.data.user.role);
 
       return {
@@ -103,6 +111,14 @@ export const registerUser = createAsyncThunk(
       // Store token and user in localStorage
       localStorage.setItem('userToken', response.data.token);
       localStorage.setItem('userData', JSON.stringify(response.data.user));
+
+      // Also store in common token location for cross-compatibility
+      localStorage.setItem('token', response.data.token);
+
+      // Store role-specific data
+      if (response.data.user.role === 'doctor') {
+        localStorage.setItem('doctorName', response.data.user.name);
+      }
 
       console.log('Registration successful, user role:', response.data.user.role);
 
@@ -177,6 +193,14 @@ export const getCurrentUser = createAsyncThunk(
       // Store updated user data
       localStorage.setItem('userData', JSON.stringify(response.data.user));
 
+      // Also store token in common location
+      localStorage.setItem('token', token);
+
+      // Store role-specific data
+      if (response.data.user.role === 'doctor') {
+        localStorage.setItem('doctorName', response.data.user.name);
+      }
+
       console.log('User data fetched successfully:', response.data.user.name);
 
       return {
@@ -191,6 +215,8 @@ export const getCurrentUser = createAsyncThunk(
         console.log('Authentication error, clearing tokens');
         localStorage.removeItem('userToken');
         localStorage.removeItem('userData');
+        localStorage.removeItem('token');
+        localStorage.removeItem('doctorName');
         delete axios.defaults.headers.common['Authorization'];
       } else {
         console.log('Network or server error, keeping tokens');
@@ -213,6 +239,10 @@ export const logoutUser = createAsyncThunk(
     // Remove auth data from localStorage
     localStorage.removeItem('userToken');
     localStorage.removeItem('userData');
+
+    // Also remove common token and role-specific data
+    localStorage.removeItem('token');
+    localStorage.removeItem('doctorName');
 
     // Remove auth header
     delete axios.defaults.headers.common['Authorization'];

@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="800px" height="800px" viewBox="0 0 800 800" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+  <defs>
+    <pattern id="health-pattern" x="0" y="0" width="100" height="100" patternUnits="userSpaceOnUse">
+      <!-- Heartbeat line -->
+      <path d="M0,50 L20,50 L30,20 L40,80 L50,50 L80,50" stroke="currentColor" stroke-width="2" fill="none" />
+      
+      <!-- Medical cross -->
+      <rect x="85" y="40" width="20" height="20" rx="2" fill="currentColor" opacity="0.5" />
+      <rect x="90" y="35" width="10" height="30" rx="2" fill="currentColor" opacity="0.5" />
+      
+      <!-- Pill shape -->
+      <ellipse cx="15" cy="15" rx="10" ry="5" transform="rotate(45, 15, 15)" fill="currentColor" opacity="0.3" />
+      
+      <!-- Stethoscope shape -->
+      <circle cx="85" cy="85" r="5" fill="currentColor" opacity="0.3" />
+      <path d="M85,85 C85,75 75,75 75,85 L75,90 C75,95 70,95 70,90" stroke="currentColor" stroke-width="2" fill="none" opacity="0.3" />
+    </pattern>
+  </defs>
+  
+  <rect width="100%" height="100%" fill="url(#health-pattern)" />
+</svg>

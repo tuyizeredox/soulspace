@@ -308,36 +308,111 @@ exports.sendMessage = async (req, res) => {
 exports.getMessages = async (req, res) => {
   try {
     const { chatId } = req.params;
+    const userId = req.user.id;
 
-    // Find the chat and check if user is a participant
-    const chat = await Chat.findById(chatId);
-    if (!chat) {
-      return res.status(404).json({ message: 'Chat not found' });
+    console.log(`Fetching messages for chat ${chatId} by user ${userId}`);
+
+    // Handle invalid chat IDs
+    if (!mongoose.Types.ObjectId.isValid(chatId)) {
+      console.log(`Invalid chat ID format: ${chatId}`);
+      return res.status(400).json({
+        message: 'Invalid chat ID format',
+        details: 'The provided chat ID is not in a valid format.'
+      });
     }
 
-    if (!chat.participants.some(p => p.toString() === req.user.id.toString()) && req.user.role !== 'super_admin') {
-      return res.status(403).json({ message: 'You are not a participant in this chat' });
+    // Reject mock chat IDs
+    if (chatId.startsWith('mock-')) {
+      console.log(`Mock chat ID detected: ${chatId}, returning error to force real data usage`);
+      return res.status(404).json({
+        message: 'Chat not found',
+        details: 'Mock chats are disabled. Please use real chat IDs.'
+      });
     }
 
-    // Reset unread count for the user
-    await Chat.findByIdAndUpdate(
-      chatId,
-      { $set: { [`unreadCounts.${req.user.id}`]: 0 } }
-    );
+    // Use a more efficient approach - get the chat with a single query
+    // and include a check for participant status
+    const fullChat = await Chat.findOne({
+      _id: chatId,
+      $or: [
+        // User is a participant or is a super_admin
+        { participants: userId },
+        { 'participants.toString()': userId.toString() }
+      ]
+    })
+    .populate('participants', 'name email role avatar')
+    .populate({
+      path: 'messages.sender',
+      select: 'name email role avatar'
+    })
+    .populate('groupAdmin', 'name email')
+    .lean(); // Use lean() for better performance
 
-    // Get the chat with populated messages
-    const fullChat = await Chat.findById(chatId)
-      .populate('participants', 'name email role avatar')
-      .populate({
-        path: 'messages.sender',
-        select: 'name email role avatar'
-      })
-      .populate('groupAdmin', 'name email');
+    if (!fullChat && req.user.role === 'super_admin') {
+      // Super admin can access any chat
+      const adminChat = await Chat.findById(chatId)
+        .populate('participants', 'name email role avatar')
+        .populate({
+          path: 'messages.sender',
+          select: 'name email role avatar'
+        })
+        .populate('groupAdmin', 'name email')
+        .lean();
+
+      if (!adminChat) {
+        return res.status(404).json({ message: 'Chat not found' });
+      }
+
+      // Reset unread count for super admin (in a separate non-blocking operation)
+      Chat.updateOne(
+        { _id: chatId },
+        { $set: { [`unreadCounts.${userId}`]: 0 } }
+      ).catch(err => console.error('Error updating unread count for super admin:', err));
+
+      return res.status(200).json(adminChat);
+    }
+
+    if (!fullChat) {
+      // Check if the chat exists at all
+      const chatExists = await Chat.exists({ _id: chatId });
+
+      if (!chatExists) {
+        return res.status(404).json({ message: 'Chat not found' });
+      } else {
+        // Chat exists but user is not a participant
+        return res.status(403).json({ message: 'You are not a participant in this chat' });
+      }
+    }
+
+    // Reset unread count for the user (in a separate non-blocking operation)
+    Chat.updateOne(
+      { _id: chatId },
+      { $set: { [`unreadCounts.${userId}`]: 0 } }
+    ).catch(err => console.error('Error updating unread count:', err));
+
+    // Mark messages as read for this user
+    console.log(`Marking messages as read for chat ${chatId} by user ${userId}`);
+
+    // Add read status to each message
+    if (fullChat.messages && fullChat.messages.length > 0) {
+      fullChat.messages = fullChat.messages.map(message => {
+        // Add a read property to each message
+        // Messages are considered read if they're being viewed now
+        return {
+          ...message,
+          read: true
+        };
+      });
+    }
 
     res.status(200).json(fullChat);
   } catch (error) {
     console.error('Error fetching messages:', error);
-    res.status(500).json({ message: 'Server error', error: error.message });
+    res.status(500).json({
+      message: 'Server error while fetching messages',
+      error: error.message,
+      stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
+    });
   }
 };
 
@@ -642,31 +717,205 @@ exports.createSuperAdminGroup = async (req, res) => {
   }
 };
 
-// Mark all messages as read
-exports.markAsRead = async (req, res) => {
+// Find chat by user ID
+exports.findChatByUserId = async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const currentUserId = req.user.id;
+
+    if (!userId) {
+      return res.status(400).json({ message: 'User ID parameter is required' });
+    }
+
+    console.log(`Finding chat between users: ${currentUserId} and ${userId}`);
+
+    // Remove special case for "force-doctor-id" to ensure we always get real data
+    if (userId === 'force-doctor-id') {
+      console.log('Special case: force-doctor-id detected, but returning 404 to force real data usage');
+      return res.status(404).json({
+        message: 'No chat found between these users',
+        details: 'Mock data is disabled. Please use real doctor IDs.'
+      });
+    }
+
+    // Check if the userId is a valid ObjectId
+    if (!mongoose.Types.ObjectId.isValid(userId)) {
+      return res.status(400).json({
+        message: 'Invalid user ID format',
+        details: 'The provided user ID is not in a valid format.'
+      });
+    }
+
+    // Check if chat exists between these two users
+    const chat = await Chat.findOne({
+      isGroup: false,
+      participants: {
+        $all: [currentUserId, userId],
+        $size: 2
+      }
+    })
+      .populate('participants', 'name email role avatar')
+      .populate('lastMessage.sender', 'name');
+
+    // If chat exists, return it
+    if (chat) {
+      return res.status(200).json(chat);
+    }
+
+    // If no chat exists, return 404
+    return res.status(404).json({ message: 'No chat found between these users' });
+  } catch (error) {
+    console.error('Error finding chat by user ID:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+};
+
+// Get unread messages count for a chat
+exports.getUnreadMessagesCount = async (req, res) => {
   try {
     const { chatId } = req.params;
+    const userId = req.user.id;
 
-    // Find the chat and check if user is a participant
+    if (!chatId) {
+      return res.status(400).json({ message: 'Chat ID parameter is required' });
+    }
+
+    // Handle invalid chat IDs
+    if (!mongoose.Types.ObjectId.isValid(chatId)) {
+      console.log(`Invalid chat ID format: ${chatId}`);
+      return res.status(400).json({
+        message: 'Invalid chat ID format',
+        details: 'The provided chat ID is not in a valid format.'
+      });
+    }
+
+    // Reject mock chat IDs
+    if (chatId.startsWith('mock-')) {
+      console.log(`Mock chat ID detected: ${chatId}, returning error to force real data usage`);
+      return res.status(404).json({
+        message: 'Chat not found',
+        details: 'Mock chats are disabled. Please use real chat IDs.'
+      });
+    }
+
+    // Find the chat
     const chat = await Chat.findById(chatId);
+
     if (!chat) {
       return res.status(404).json({ message: 'Chat not found' });
     }
 
-    if (!chat.participants.some(p => p.toString() === req.user.id.toString()) && req.user.role !== 'super_admin') {
+    // Check if user is a participant
+    if (!chat.participants.some(p => p.toString() === userId)) {
       return res.status(403).json({ message: 'You are not a participant in this chat' });
     }
 
-    // Reset unread count for the user
-    const updatedChat = await Chat.findByIdAndUpdate(
-      chatId,
-      { $set: { [`unreadCounts.${req.user.id}`]: 0 } },
-      { new: true }
+    // Get unread count for this user
+    const unreadCount = chat.unreadCounts.get(userId.toString()) || 0;
+
+    return res.status(200).json({ count: unreadCount });
+  } catch (error) {
+    console.error('Error getting unread messages count:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+};
+
+// Mark all messages as read
+exports.markAsRead = async (req, res) => {
+  try {
+    const { chatId } = req.params;
+    const userId = req.user.id;
+
+    console.log(`Marking messages as read for chat ${chatId} by user ${userId}`);
+
+    // Handle invalid chat IDs
+    if (!mongoose.Types.ObjectId.isValid(chatId)) {
+      console.log(`Invalid chat ID format: ${chatId}`);
+      return res.status(400).json({
+        message: 'Invalid chat ID format',
+        details: 'The provided chat ID is not in a valid format.'
+      });
+    }
+
+    // Reject mock chat IDs
+    if (chatId.startsWith('mock-')) {
+      console.log(`Mock chat ID detected: ${chatId}, returning error to force real data usage`);
+      return res.status(404).json({
+        message: 'Chat not found',
+        details: 'Mock chats are disabled. Please use real chat IDs.'
+      });
+    }
+
+    // Check if MongoDB connection is ready
+    if (mongoose.connection.readyState !== 1) {
+      console.warn('MongoDB connection is not ready. Current state:', mongoose.connection.readyState);
+
+      // Wait for connection to be established (max 5 seconds)
+      let attempts = 0;
+      while (mongoose.connection.readyState !== 1 && attempts < 10) {
+        await new Promise(resolve => setTimeout(resolve, 500)); // Wait 500ms
+        attempts++;
+        console.log(`Waiting for MongoDB connection... Attempt ${attempts}/10`);
+      }
+
+      // If still not connected, return error
+      if (mongoose.connection.readyState !== 1) {
+        console.error('MongoDB connection could not be established');
+        return res.status(503).json({
+          message: 'Database connection unavailable. Please try again later.'
+        });
+      }
+    }
+
+    // Use a more efficient approach - update directly without fetching first
+    // This reduces the chance of timeouts
+    const result = await Chat.updateOne(
+      {
+        _id: chatId,
+        // Only update if the user is a participant (or is a super_admin)
+        $or: [
+          { participants: userId },
+          { 'participants.toString()': userId.toString() }
+        ]
+      },
+      { $set: { [`unreadCounts.${userId}`]: 0 } }
     );
 
-    res.status(200).json({ success: true, unreadCounts: updatedChat.unreadCounts });
+    console.log('Update result:', result);
+
+    if (result.matchedCount === 0) {
+      // No chat found or user is not a participant
+      console.log(`No matching chat found or user ${userId} is not a participant in chat ${chatId}`);
+
+      // Check if the chat exists at all
+      const chatExists = await Chat.exists({ _id: chatId });
+
+      if (!chatExists) {
+        return res.status(404).json({ message: 'Chat not found' });
+      } else {
+        // Chat exists but user is not a participant
+        return res.status(403).json({ message: 'You are not a participant in this chat' });
+      }
+    }
+
+    // Successfully updated
+    console.log(`Successfully marked messages as read for chat ${chatId} by user ${userId}`);
+
+    // Return success without fetching the updated chat (more efficient)
+    res.status(200).json({
+      success: true,
+      message: 'Messages marked as read',
+      chatId,
+      userId
+    });
   } catch (error) {
     console.error('Error marking messages as read:', error);
-    res.status(500).json({ message: 'Server error', error: error.message });
+
+    // Send a more detailed error response
+    res.status(500).json({
+      message: 'Server error while marking messages as read',
+      error: error.message,
+      stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
+    });
   }
 };

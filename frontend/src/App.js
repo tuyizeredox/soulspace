@@ -1,12 +1,13 @@
 import React, { useEffect } from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate, useParams, useNavigate } from 'react-router-dom';
 import { useSelector, useDispatch } from 'react-redux';
-import { Box } from '@mui/material';
+import { Box, Snackbar, Alert } from '@mui/material';
 import { ThemeProviderWrapper } from './theme/ThemeContext';
 import { checkAuthStatus } from './store/slices/authSlice';
 import { setAuthState } from './store/slices/userAuthSlice';
 import axios from './utils/axiosConfig';
 import useResizeObserverErrorHandler from './hooks/useResizeObserverErrorHandler';
+import ErrorBoundary from './components/common/ErrorBoundary';
 import TestApi from './components/TestApi';
 import LoginTest from './components/auth/LoginTest';
 import Layout from './components/layout/Layout';
@@ -34,8 +35,8 @@ import Profile from './pages/profile/Profile';
 import Settings from './pages/settings/Settings';
 import NotificationsPage from './pages/notifications/NotificationsPage';
 import About from './pages/about/About';
-import Blog from './pages/blog/Blog';
 import Contact from './pages/contact/Contact';
+import Services from './pages/services/Services';
 import HelpCenter from './pages/help/HelpCenter';
 import CommunityForum from './pages/community/CommunityForum';
 import CommunityPost from './pages/community/CommunityPost';
@@ -74,12 +75,31 @@ import HospitalDoctors from './pages/hospital/Doctors';
 import HospitalPharmacists from './pages/hospital/Pharmacists';
 import HospitalNurses from './pages/hospital/Nurses';
 import HospitalAppointments from './pages/hospital/Appointments';
-import PatientAssignments from './pages/hospital/PatientAssignments';
+
 import HospitalChatPage from './pages/hospital/HospitalChatPage';
 import Staff from './pages/hospital/Staff';
 import StaffDetail from './pages/hospital/StaffDetail';
 import HospitalAnalytics from './pages/hospital/HospitalAnalytics';
 import HospitalDirectory from './pages/hospitals/HospitalDirectory';
+
+// Doctor and Patient Dashboard Routes
+import NewDoctorDashboard from './pages/doctor/NewDoctorDashboard';
+import DoctorPatients from './pages/doctor/DoctorPatients';
+import DoctorChatPage from './pages/doctor/DoctorChatPage';
+import PatientCallPage from './pages/patient/PatientCallPage';
+import PatientDoctorsPage from './pages/patient/PatientDoctorsPage';
+import OnlineAppointment from './components/appointments/OnlineAppointment';
+import PatientDashboardRouter from './components/routing/PatientDashboardRouter';
+import PatientChatPage from './pages/patient/PatientChatPage';
+
+// Patient Pages
+import AIAssistantPage from './pages/patient/AIAssistantPage';
+import LabResultsPage from './pages/patient/LabResultsPage';
+import SettingsPage from './pages/patient/SettingsPage';
+import HelpCenterPage from './pages/patient/HelpCenterPage';
+
+// Shop Routes
+import { WearableDevicesPage, ShoppingCartPage } from './pages/shop';
 
 const App = () => {
   const dispatch = useDispatch();
@@ -149,6 +169,23 @@ const App = () => {
     }
   }, [dispatch, token]);
 
+  // Redirect with params component
+  const RedirectWithParams = ({ toPath }) => {
+    const params = useParams();
+    const navigate = useNavigate();
+
+    useEffect(() => {
+      // Replace placeholders in the path with actual params
+      const targetPath = Object.keys(params).reduce((path, param) => {
+        return path.replace(`:${param}`, params[param]);
+      }, toPath);
+
+      navigate(targetPath, { replace: true });
+    }, [navigate, params, toPath]);
+
+    return null;
+  };
+
   // Create a simple wrapper for PostProvider to handle potential errors
   const SafePostProvider = ({ children }) => {
     try {
@@ -159,11 +196,67 @@ const App = () => {
     }
   };
 
+  // State for offline mode notification
+  const [showOfflineNotification, setShowOfflineNotification] = React.useState(false);
+
+  // Check if we're using mock data
+  React.useEffect(() => {
+    const checkMockStatus = () => {
+      if (axios.isMockEnabled) {
+        // Show notification that we're in offline mode
+        setShowOfflineNotification(true);
+
+        // Hide after 5 seconds
+        setTimeout(() => {
+          setShowOfflineNotification(false);
+        }, 5000);
+      }
+    };
+
+    // Check initially
+    checkMockStatus();
+
+    // Also check when network status changes
+    window.addEventListener('online', () => {
+      // When we come back online, check if we're still using mock data
+      setTimeout(checkMockStatus, 1000);
+    });
+
+    window.addEventListener('offline', () => {
+      // When we go offline, show the notification
+      setShowOfflineNotification(true);
+    });
+
+    return () => {
+      window.removeEventListener('online', checkMockStatus);
+      window.removeEventListener('offline', () => {
+        setShowOfflineNotification(true);
+      });
+    };
+  }, []);
+
   return (
     <ThemeProviderWrapper>
-      <Router>
-        <SafePostProvider>
-          <Routes>
+      <ErrorBoundary>
+        <Router>
+          <SafePostProvider>
+            {/* Offline mode notification */}
+            <Snackbar
+              open={showOfflineNotification}
+              autoHideDuration={5000}
+              onClose={() => setShowOfflineNotification(false)}
+              anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
+            >
+              <Alert
+                severity="warning"
+                variant="filled"
+                onClose={() => setShowOfflineNotification(false)}
+              >
+                Some network requests are failing. Using offline mode for some features.
+              </Alert>
+            </Snackbar>
+
+            <Routes>
           {/* Public Routes */}
           <Route path="/" element={
             isAuthenticated ? (
@@ -216,6 +309,33 @@ const App = () => {
               </Box>
             </Box>
           } />
+
+          {/* Public Information Pages */}
+          <Route path="/about" element={
+            <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
+              <HomeNavbar />
+              <Box sx={{ flex: 1 }}>
+                <About />
+              </Box>
+            </Box>
+          } />
+          <Route path="/services" element={
+            <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
+              <HomeNavbar />
+              <Box sx={{ flex: 1 }}>
+                <Services />
+              </Box>
+            </Box>
+          } />
+          <Route path="/contact" element={
+            <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
+              <HomeNavbar />
+              <Box sx={{ flex: 1 }}>
+                <Contact />
+              </Box>
+            </Box>
+          } />
+          {/* Blog page removed */}
 
           {/* Super Admin Routes - Using Layout component */}
           <Route
@@ -520,11 +640,139 @@ const App = () => {
             }
           />
 
+          {/* Doctor Routes */}
+          <Route
+            path="/doctor/*"
+            element={
+              <PrivateRoute roles={['doctor']}>
+                <Layout>
+                  <Routes>
+                    <Route path="dashboard" element={<NewDoctorDashboard />} />
+                    <Route path="patients" element={<DoctorPatients />} />
+                    <Route path="patient/:patientId/records" element={<HealthMonitoring />} />
+                    <Route path="appointments" element={<Appointments />} />
+                    <Route path="appointments/new" element={<BookAppointment />} />
+                    <Route path="online-appointments" element={<VirtualConsultations />} />
+                    <Route path="online-appointment/:appointmentId" element={
+                      <AuthProvider>
+                        <OnlineAppointment userRole="doctor" />
+                      </AuthProvider>
+                    } />
+                    <Route path="messages" element={
+                      <Navigate to="/doctor/patients/chat" replace />
+                    } />
+                    <Route path="message/:patientId" element={
+                      <RedirectWithParams toPath="/doctor/patients/chat/:patientId" />
+                    } />
+                    <Route path="patients/chat/:patientId" element={
+                      <AuthProvider>
+                        <ChatProvider>
+                          <DoctorChatPage />
+                        </ChatProvider>
+                      </AuthProvider>
+                    } />
+                    <Route path="patients/chat" element={
+                      <AuthProvider>
+                        <ChatProvider>
+                          <DoctorChatPage />
+                        </ChatProvider>
+                      </AuthProvider>
+                    } />
+                    <Route path="prescriptions" element={<Prescriptions />} />
+                    <Route path="schedule" element={<Appointments />} />
+                  </Routes>
+                </Layout>
+              </PrivateRoute>
+            }
+          />
+
+          {/* Patient Routes */}
+          <Route
+            path="/patient/*"
+            element={
+              <PrivateRoute roles={['patient']}>
+                <Layout>
+                  <Routes>
+                    <Route path="dashboard" element={
+                      <PatientDashboardRouter />
+                    } />
+                    <Route path="appointments" element={<Appointments />} />
+                    <Route path="online-appointments" element={<VirtualConsultations />} />
+                    <Route path="online-appointment/:appointmentId" element={
+                      <AuthProvider>
+                        <OnlineAppointment userRole="patient" />
+                      </AuthProvider>
+                    } />
+                    <Route path="call/:doctorId" element={
+                      <AuthProvider>
+                        <PatientCallPage />
+                      </AuthProvider>
+                    } />
+                    <Route path="message/:doctorId" element={
+                      <RedirectWithParams toPath="/patient/chat/:doctorId" />
+                    } />
+                    <Route path="messages" element={
+                      <Navigate to="/patient/chat" replace />
+                    } />
+                    <Route path="simple-chat/:doctorId" element={
+                      <Navigate to="/patient/chat/:doctorId" replace />
+                    } />
+                    <Route path="simple-chat" element={
+                      <Navigate to="/patient/chat" replace />
+                    } />
+                    <Route path="chat/:doctorId" element={
+                      <AuthProvider>
+                        <PatientChatPage />
+                      </AuthProvider>
+                    } />
+                    <Route path="chat" element={
+                      <AuthProvider>
+                        <PatientChatPage />
+                      </AuthProvider>
+                    } />
+                    <Route path="doctors" element={
+                      <AuthProvider>
+                        <ChatProvider>
+                          <PatientDoctorsPage />
+                        </ChatProvider>
+                      </AuthProvider>
+                    } />
+                    <Route path="health-records" element={<HealthMonitoring />} />
+                    <Route path="prescriptions" element={<Prescriptions />} />
+                    <Route path="profile" element={<Profile />} />
+                    <Route path="medical-records" element={<HealthMonitoring />} />
+                    <Route path="hospitals" element={<HospitalDirectory />} />
+                    <Route path="lab-results" element={<LabResultsPage />} />
+                    <Route path="ai-assistant" element={<AIAssistantPage />} />
+                    <Route path="settings" element={<SettingsPage />} />
+                    <Route path="help" element={<HelpCenterPage />} />
+                  </Routes>
+                </Layout>
+              </PrivateRoute>
+            }
+          />
+
+          {/* Shop Routes */}
+          <Route
+            path="/shop/*"
+            element={
+              <PrivateRoute>
+                <Layout>
+                  <Routes>
+                    <Route path="wearables" element={<WearableDevicesPage />} />
+                    <Route path="cart" element={<ShoppingCartPage />} />
+                  </Routes>
+                </Layout>
+              </PrivateRoute>
+            }
+          />
+
           {/* Catch all route - redirect to home */}
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
         </SafePostProvider>
       </Router>
+      </ErrorBoundary>
     </ThemeProviderWrapper>
   );
 };

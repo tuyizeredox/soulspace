@@ -1,5 +1,5 @@
 const express = require('express');
-const { register, login, getCurrentUser } = require('../controllers/authController');
+const { register, login, getCurrentUser, refreshToken } = require('../controllers/authController');
 const auth = require('../middleware/auth');
 const router = express.Router();
 
@@ -13,6 +13,7 @@ router.get('/test', (req, res) => {
 router.post('/register', register);
 router.post('/login', login);
 router.post('/signin', login); // Adding an alternative route for login
+router.post('/refresh-token', refreshToken); // Add refresh token endpoint
 
 // Protected routes - require authentication
 router.get('/me', auth, getCurrentUser);

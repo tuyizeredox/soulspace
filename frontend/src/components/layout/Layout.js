@@ -7,6 +7,7 @@ import { Box, useMediaQuery, useTheme, CircularProgress, alpha } from '@mui/mate
 import Navbar from './Navbar';
 import Sidebar from './Sidebar';
 import PatientSidebar from './PatientSidebar';
+import PatientWithHospitalSidebar from './PatientWithHospitalSidebar';
 import HospitalAdminSidebar from './HospitalAdminSidebar';
 
 const Layout = ({ children }) => {
@@ -23,7 +24,12 @@ const Layout = ({ children }) => {
   const isAuthenticated = newAuth || oldAuth;
   const user = newUser || oldUser;
   const token = newToken || oldToken;
-  const [patientHasHospital, setPatientHasHospital] = useState(true);
+  const [patientHasHospital, setPatientHasHospital] = useState(false);
+  const [assignedDoctor, setAssignedDoctor] = useState(null);
+  const [hospital, setHospital] = useState(null);
+
+  // Force flag for development/testing - set to true to always show hospital sidebar
+  const forceHospitalSidebar = true;
 
   const handleDrawerToggle = () => {
     setMobileOpen(!mobileOpen);
@@ -31,15 +37,80 @@ const Layout = ({ children }) => {
 
   // Check if patient has a hospital assignment
   useEffect(() => {
-    if (user?.role === 'patient') {
-      // In a real implementation, this would be an API call to check hospital assignment
-      // For now, we'll simulate this with a random value for demonstration
-      setPatientHasHospital(false); // Set to false to show the enhanced sidebar
-      console.log('Layout: Patient detected, using PatientSidebar');
-    } else {
-      console.log('Layout: Non-patient role detected:', user?.role);
-    }
-  }, [user]);
+    const fetchPatientAssignment = async () => {
+      if (user?.role === 'patient' && token) {
+        try {
+          console.log('Layout: Fetching patient assignment data');
+
+          // Set up axios with the token
+          const axios = require('axios').default;
+          axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+
+          // Fetch patient assignment data
+          const response = await axios.get('/api/patient-assignments/my-assignment');
+
+          // Log the full response for debugging
+          console.log('Layout: Raw patient assignment response:', JSON.stringify(response.data));
+
+          // The API doesn't return an 'assigned' property, it returns the full assignment object
+          // If we got a response with primaryDoctor and hospital, the patient has an assignment
+          if (response.data && response.data.primaryDoctor && response.data.hospital) {
+            console.log('Layout: Patient has hospital assignment', response.data);
+            setPatientHasHospital(true);
+            setAssignedDoctor(response.data.primaryDoctor);
+            setHospital(response.data.hospital);
+
+            // Log the hospital data for debugging
+            console.log('Layout: Hospital data set:', response.data.hospital);
+            console.log('Layout: Doctor data set:', response.data.primaryDoctor);
+          } else {
+            console.log('Layout: Patient has no hospital assignment or incomplete data');
+            console.log('Layout: Has primaryDoctor?', !!response.data?.primaryDoctor);
+            console.log('Layout: Has hospital?', !!response.data?.hospital);
+            setPatientHasHospital(false);
+            setAssignedDoctor(null);
+            setHospital(null);
+          }
+        } catch (error) {
+          console.error('Layout: Error fetching patient assignment:', error);
+
+          // For development/testing, you can use mock data
+          if (process.env.NODE_ENV === 'development') {
+            // Uncomment to test with mock data
+            // const useMockData = true;
+            const useMockData = false;
+
+            if (useMockData) {
+              console.log('Layout: Using mock data for development');
+              setPatientHasHospital(true);
+              setAssignedDoctor({
+                _id: 'mock-doctor-id',
+                name: 'Dr. Jane Smith',
+                profile: {
+                  specialization: 'Cardiologist'
+                },
+                avatar: null
+              });
+              setHospital({
+                _id: 'mock-hospital-id',
+                name: 'City General Hospital',
+                address: '123 Medical Center Blvd, City, State'
+              });
+              return;
+            }
+          }
+
+          setPatientHasHospital(false);
+          setAssignedDoctor(null);
+          setHospital(null);
+        }
+      } else {
+        console.log('Layout: Non-patient role detected:', user?.role);
+      }
+    };
+
+    fetchPatientAssignment();
+  }, [user, token]);
 
   // Check authentication status on mount and when auth state changes
   useEffect(() => {
@@ -157,7 +228,26 @@ const Layout = ({ children }) => {
   return (
     <Box sx={{ display: 'flex' }}>
       <Navbar onDrawerToggle={handleDrawerToggle} />
-      {user?.role === 'patient' && !patientHasHospital ? (
+      {user?.role === 'patient' && (patientHasHospital || forceHospitalSidebar) ? (
+        <PatientWithHospitalSidebar
+          user={user}
+          mobileOpen={mobileOpen}
+          handleDrawerToggle={handleDrawerToggle}
+          assignedDoctor={assignedDoctor || (forceHospitalSidebar ? {
+            _id: 'force-doctor-id',
+            name: 'Dr. John Doe',
+            profile: {
+              specialization: 'General Practitioner'
+            },
+            avatar: null
+          } : null)}
+          hospital={hospital || (forceHospitalSidebar ? {
+            _id: 'force-hospital-id',
+            name: 'SoulSpace Medical Center',
+            address: '456 Health Avenue, Medical District'
+          } : null)}
+        />
+      ) : user?.role === 'patient' ? (
         <PatientSidebar
           user={user}
           mobileOpen={mobileOpen}

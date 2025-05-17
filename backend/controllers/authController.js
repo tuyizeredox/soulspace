@@ -179,3 +179,129 @@ exports.getCurrentUser = async (req, res) => {
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 };
+
+/**
+ * Refresh token endpoint
+ * This endpoint allows clients to refresh their authentication token
+ */
+exports.refreshToken = async (req, res) => {
+  console.log('Refresh token endpoint hit');
+
+  try {
+    // Get the current token from the Authorization header
+    const authHeader = req.headers.authorization;
+
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      console.log('No token provided in refresh request');
+      return res.status(401).json({ message: 'No token provided' });
+    }
+
+    const oldToken = authHeader.split(' ')[1];
+
+    try {
+      // Verify the old token
+      const decoded = jwt.verify(oldToken, process.env.JWT_SECRET);
+
+      // Find the user
+      const user = await User.findById(decoded.id).select('-password');
+
+      if (!user) {
+        console.log('User not found during token refresh');
+        return res.status(404).json({ message: 'User not found' });
+      }
+
+      // Create a new token payload
+      const tokenPayload = {
+        id: user._id,
+        role: user.role,
+        name: user.name,
+        email: user.email
+      };
+
+      // Add hospitalId to token payload if it exists
+      if (user.hospitalId) {
+        tokenPayload.hospitalId = user.hospitalId;
+      }
+
+      // Generate a new token
+      const newToken = jwt.sign(
+        tokenPayload,
+        process.env.JWT_SECRET,
+        { expiresIn: '7d' }
+      );
+
+      console.log(`Token refreshed successfully for user: ${user._id}`);
+
+      // Return the new token
+      return res.json({
+        token: newToken,
+        user: {
+          id: user._id,
+          name: user.name,
+          email: user.email,
+          role: user.role,
+          profile: user.profile
+        }
+      });
+    } catch (tokenError) {
+      // If token verification fails but it's just expired (not malformed)
+      if (tokenError.name === 'TokenExpiredError') {
+        try {
+          // Try to decode the token without verification to get the user ID
+          const decodedExpired = jwt.decode(oldToken);
+
+          if (decodedExpired && decodedExpired.id) {
+            // Find the user
+            const user = await User.findById(decodedExpired.id).select('-password');
+
+            if (!user) {
+              return res.status(404).json({ message: 'User not found' });
+            }
+
+            // Create a new token payload
+            const tokenPayload = {
+              id: user._id,
+              role: user.role,
+              name: user.name,
+              email: user.email
+            };
+
+            // Add hospitalId to token payload if it exists
+            if (user.hospitalId) {
+              tokenPayload.hospitalId = user.hospitalId;
+            }
+
+            // Generate a new token
+            const newToken = jwt.sign(
+              tokenPayload,
+              process.env.JWT_SECRET,
+              { expiresIn: '7d' }
+            );
+
+            console.log(`Token refreshed from expired token for user: ${user._id}`);
+
+            // Return the new token
+            return res.json({
+              token: newToken,
+              user: {
+                id: user._id,
+                name: user.name,
+                email: user.email,
+                role: user.role,
+                profile: user.profile
+              }
+            });
+          }
+        } catch (error) {
+          console.error('Error refreshing from expired token:', error);
+        }
+      }
+
+      console.error('Token verification error:', tokenError.message);
+      return res.status(401).json({ message: 'Invalid token' });
+    }
+  } catch (error) {
+    console.error('Refresh token error:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+};

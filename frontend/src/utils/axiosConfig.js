@@ -1,5 +1,40 @@
 import axios from 'axios';
-import { getBestToken, clearAuthData } from './authUtils';
+import { setupMockInterceptor } from './mockApiService';
+import { setupRequestBlocker } from './requestBlocker';
+
+// Helper functions to avoid circular dependencies
+const getTokenFromStorage = () => {
+  // Check all possible token storage locations
+  const commonToken = localStorage.getItem('token');
+  const userToken = localStorage.getItem('userToken');
+  const doctorToken = localStorage.getItem('doctorToken');
+  const persistentToken = localStorage.getItem('persistentToken');
+
+  // Use the first available token, with priority
+  const bestToken = commonToken || userToken || doctorToken || persistentToken || null;
+
+  // If we found a token, save it to all locations for redundancy
+  if (bestToken) {
+    localStorage.setItem('token', bestToken);
+    localStorage.setItem('userToken', bestToken);
+    localStorage.setItem('doctorToken', bestToken);
+    localStorage.setItem('persistentToken', bestToken);
+  }
+
+  return bestToken;
+};
+
+const clearTokensFromStorage = () => {
+  localStorage.removeItem('token');
+  localStorage.removeItem('userToken');
+  localStorage.removeItem('doctorToken');
+  localStorage.removeItem('persistentToken');
+  localStorage.removeItem('reduxToken');
+  localStorage.removeItem('user');
+  localStorage.removeItem('userData');
+  localStorage.removeItem('doctorId');
+  localStorage.removeItem('doctorName');
+};
 
 // Configure axios defaults
 // When running in development with the proxy setting in package.json,
@@ -17,10 +52,16 @@ if (isProduction || process.env.REACT_APP_API_URL) {
 axios.defaults.headers.post['Content-Type'] = 'application/json';
 
 // Set auth header from localStorage if available
-const token = getBestToken();
+const token = getTokenFromStorage();
 if (token) {
   axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-  console.log('Initial auth token set from localStorage');
+  console.log('Initial auth token set from localStorage:', token.substring(0, 10) + '...');
+
+  // Store token in all locations for redundancy
+  localStorage.setItem('token', token);
+  localStorage.setItem('userToken', token);
+  localStorage.setItem('doctorToken', token);
+  localStorage.setItem('persistentToken', token);
 }
 
 // Add a request interceptor to include the token in all requests
@@ -32,20 +73,40 @@ axios.interceptors.request.use(
       data: config.data
     });
 
-    // Check if Authorization header is already set
-    if (config.headers.Authorization) {
-      console.log('Authorization header already set:', config.headers.Authorization.substring(0, 20) + '...');
-      return config;
-    }
-
-    // Get the best available token using our utility function
-    const token = getBestToken();
+    // Always get the best available token for each request
+    // This ensures we're using the most up-to-date token
+    const token = getTokenFromStorage();
 
     if (token) {
+      // Always set the token, even if it's already set
+      // This ensures we're using the most recent token
       config.headers.Authorization = `Bearer ${token}`;
-      console.log('Added token to request:', config.url);
+
+      // Only log for non-polling requests to reduce console noise
+      if (!config.url.includes('/api/notifications') && !config.url.includes('/api/chats')) {
+        console.log(`Request to ${config.url} with token: ${token.substring(0, 10)}...`);
+      }
     } else {
       console.warn('No token found for request:', config.url);
+
+      // For certain endpoints that require authentication, redirect to login
+      const authRequiredEndpoints = [
+        '/api/doctors',
+        '/api/patients',
+        '/api/appointments',
+        '/api/hospital'
+      ];
+
+      // Check if this is an auth-required endpoint
+      const isAuthRequired = authRequiredEndpoints.some(endpoint =>
+        config.url.includes(endpoint)
+      );
+
+      if (isAuthRequired) {
+        console.warn('Auth required for this endpoint but no token found');
+        // We can't redirect here directly, but we can set a flag
+        localStorage.setItem('auth_redirect_needed', 'true');
+      }
     }
 
     return config;
@@ -101,20 +162,58 @@ axios.interceptors.response.use(
                          window.location.pathname === '/signin' ||
                          window.location.pathname === '/register';
 
-      // Only clear tokens and redirect if we're not already on a login page
-      if (!isLoginPage) {
-        console.log('Clearing auth tokens and redirecting to login');
+      // Check if this is a polling request (notifications, chats, patient-doctor-chat)
+      const isPollingRequest = error.config.url.includes('/api/notifications') ||
+                              error.config.url.includes('/api/chats') ||
+                              error.config.url.includes('/api/patient-doctor-chat') ||
+                              error.config.url.includes('/refresh-token');
 
-        // Clear all auth data using our utility function
-        clearAuthData();
+      // Check if this is a patient chat page
+      const isPatientChatPage = window.location.pathname.includes('/patient/chat') ||
+                               window.location.pathname.includes('/patient-chat');
+
+      // Only clear tokens and redirect if:
+      // 1. We're not already on a login page
+      // 2. This is not a polling request (to avoid constant redirects)
+      // 3. We're not on a patient chat page
+      if (!isLoginPage && !isPollingRequest && !isPatientChatPage) {
+        console.log('Auth error on non-polling request, clearing tokens and redirecting to login');
+
+        // Clear all auth data using our local function
+        clearTokensFromStorage();
 
         // Remove auth header from axios defaults
         delete axios.defaults.headers.common['Authorization'];
 
+        // Set a flag to indicate auth error
+        localStorage.setItem('auth_error', 'true');
+        localStorage.setItem('auth_error_time', Date.now().toString());
+
         // Redirect to login page with a small delay to allow for any pending operations
         setTimeout(() => {
-          window.location.href = '/login';
+          window.location.href = '/login?expired=true';
         }, 100);
+      } else if (isPollingRequest || isPatientChatPage) {
+        console.log('Auth error on polling request or patient chat page, not redirecting');
+
+        // Check if we've already had an auth error recently
+        const lastAuthError = localStorage.getItem('auth_error_time');
+        const now = Date.now();
+
+        // If it's been more than 5 minutes since the last auth error, try to refresh the token
+        if (!lastAuthError || (now - parseInt(lastAuthError)) > 5 * 60 * 1000) {
+          console.log('Attempting to refresh token after polling auth error');
+
+          // Try to get a fresh token
+          const freshToken = getTokenFromStorage();
+
+          if (freshToken) {
+            console.log('Found token after auth error, updating axios headers');
+            axios.defaults.headers.common['Authorization'] = `Bearer ${freshToken}`;
+          } else {
+            console.warn('No valid token found after auth error');
+          }
+        }
       } else {
         console.log('Already on login page, not redirecting');
       }
@@ -123,5 +222,14 @@ axios.interceptors.response.use(
     return Promise.reject(error);
   }
 );
+
+// Set up request blocker to prevent problematic API calls
+setupRequestBlocker(axios);
+
+// Set up mock API interceptor to handle failed requests
+setupMockInterceptor(axios);
+
+// Add a flag to indicate if we're using mock data
+axios.isMockEnabled = true;
 
 export default axios;

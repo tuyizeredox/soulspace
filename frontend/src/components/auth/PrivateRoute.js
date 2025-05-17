@@ -67,17 +67,49 @@ const PrivateRoute = ({ children, roles = [] }) => {
       console.log('PrivateRoute: Auth check needed?', shouldVerify,
         'Time since last check:', Math.round(timeSinceLastCheck/1000) + 's');
 
-      if (token && shouldVerify && !authCheckLoading) {
+      // Always ensure we have a token in localStorage
+      const localStorageToken = localStorage.getItem('token') ||
+                               localStorage.getItem('userToken') ||
+                               localStorage.getItem('doctorToken') ||
+                               localStorage.getItem('persistentToken');
+
+      // If we have a token in Redux but not in localStorage, save it
+      if (token && !localStorageToken) {
+        console.log('Saving token to localStorage');
+        localStorage.setItem('token', token);
+        localStorage.setItem('userToken', token);
+        localStorage.setItem('doctorToken', token);
+        localStorage.setItem('persistentToken', token);
+      }
+
+      // If we have a token in localStorage but not in Redux, use it
+      if (!token && localStorageToken) {
+        console.log('Using token from localStorage');
+        // This will trigger a re-render with the token from localStorage
+        if (newAuth) {
+          dispatch({
+            type: 'userAuth/setAuthState',
+            payload: { token: localStorageToken }
+          });
+        } else {
+          dispatch({
+            type: 'auth/setToken',
+            payload: localStorageToken
+          });
+        }
+      }
+
+      if ((token || localStorageToken) && shouldVerify && !authCheckLoading) {
         try {
           console.log('PrivateRoute: Verifying authentication');
           lastVerificationTime.current = now;
 
           // Prefer the new auth system
-          if (newToken) {
+          if (newToken || (newAuth && localStorageToken)) {
             await dispatch(getCurrentUser()).unwrap();
             authVerified.current = true;
             console.log('Auth verification successful with new token');
-          } else if (oldToken) {
+          } else if (oldToken || (!newAuth && localStorageToken)) {
             await dispatch(checkAuthStatus()).unwrap();
             authVerified.current = true;
             console.log('Auth verification successful with old token');
@@ -91,9 +123,40 @@ const PrivateRoute = ({ children, roles = [] }) => {
           if (isAuthenticated && user) {
             console.log('Using cached authentication data due to network error');
             authVerified.current = true;
+          } else if (localStorageToken) {
+            // If we have a token in localStorage but verification failed,
+            // try to use the cached user data
+            const cachedUser = JSON.parse(localStorage.getItem('user') || localStorage.getItem('userData') || '{}');
+            if (cachedUser && cachedUser.role) {
+              console.log('Using cached user data from localStorage');
+              if (newAuth) {
+                dispatch({
+                  type: 'userAuth/setAuthState',
+                  payload: {
+                    isAuthenticated: true,
+                    user: cachedUser,
+                    token: localStorageToken
+                  }
+                });
+              } else {
+                dispatch({
+                  type: 'auth/setUser',
+                  payload: cachedUser
+                });
+                dispatch({
+                  type: 'auth/setToken',
+                  payload: localStorageToken
+                });
+                dispatch({
+                  type: 'auth/setAuthenticated',
+                  payload: true
+                });
+              }
+              authVerified.current = true;
+            }
           }
         }
-      } else if (token) {
+      } else if (token || localStorageToken) {
         // If we have a token but don't need to verify, consider auth verified
         authVerified.current = true;
       }
@@ -103,7 +166,7 @@ const PrivateRoute = ({ children, roles = [] }) => {
     };
 
     verifyAuth();
-  }, [dispatch, token, isAuthenticated, user, newToken, oldToken, lastAuthCheck, authCheckLoading]);
+  }, [dispatch, token, isAuthenticated, user, newToken, oldToken, lastAuthCheck, authCheckLoading, newAuth]);
 
   // Show loading state while checking authentication, but only on initial load
   // This prevents the loading spinner from showing on every re-render

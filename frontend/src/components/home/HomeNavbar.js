@@ -89,7 +89,6 @@ const HomeNavbar = () => {
     { text: 'Home', path: '/' },
     { text: 'About', path: '/about' },
     { text: 'Services', path: '/services' },
-    { text: 'Blog', path: '/blog' },
     { text: 'Contact', path: '/contact' },
   ];
 

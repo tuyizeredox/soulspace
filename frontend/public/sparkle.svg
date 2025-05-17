@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="100px" height="100px" viewBox="0 0 100 100" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+    <title>Sparkle</title>
+    <defs>
+        <linearGradient x1="0%" y1="0%" x2="100%" y2="100%" id="linearGradient">
+            <stop stop-color="#FFFFFF" offset="0%"></stop>
+            <stop stop-color="#A5F3FC" offset="100%"></stop>
+        </linearGradient>
+    </defs>
+    <g stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
+        <g fill="url(#linearGradient)">
+            <polygon points="50 0 57.5 35 92.5 35 65 55 75 90 50 70 25 90 35 55 7.5 35 42.5 35"></polygon>
+            <circle cx="50" cy="50" r="10"></circle>
+        </g>
+    </g>
+</svg>

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   Box,
   Container,
@@ -15,6 +15,7 @@ import {
   Avatar,
   Chip,
   IconButton,
+  useMediaQuery,
 } from '@mui/material';
 import HomeChatBot from '../../components/home/HomeChatBot';
 import {
@@ -44,20 +45,19 @@ import {
   WbSunny,
   Favorite,
   TipsAndUpdates,
-  DeviceHub,
-  Watch,
-  SmartToy,
   HealthAndSafety,
   LocalHospital,
   DirectionsRun,
-  MonitorWeight,
-  Spa,
+  EventAvailable,
+  TouchApp,
+  Bolt,
+  Devices,
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { useSelector } from 'react-redux';
-import { motion } from 'framer-motion';
+import { motion, useAnimation, useMotionValue, useTransform, AnimatePresence } from 'framer-motion';
 import FloatingMedical from '../../components/3d/FloatingMedical';
-import ParticleBackground from '../../components/animations/ParticleBackground';
+import GamifiedBackground from '../../components/animations/GamifiedBackground';
 
 
 const FeatureCard = ({ icon, title, description, index }) => {
@@ -87,8 +87,10 @@ const FeatureCard = ({ icon, title, description, index }) => {
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true, margin: "-50px" }}
       transition={{ duration: 0.5, delay: index * 0.1 }}
+      whileHover={{ y: -12, transition: { duration: 0.2 } }}
     >
       <Card
         sx={{
@@ -99,18 +101,24 @@ const FeatureCard = ({ icon, title, description, index }) => {
           transition: 'all 0.3s ease',
           border: `1px solid ${alpha(iconColor, 0.2)}`,
           boxShadow: `0 10px 30px ${alpha(iconColor, 0.1)}`,
-          background: gradient,
+          background: theme.palette.mode === 'dark'
+            ? `linear-gradient(135deg, ${alpha(iconColor, 0.2)} 0%, ${alpha(theme.palette.background.paper, 0.9)} 100%)`
+            : gradient,
+          backdropFilter: 'blur(10px)',
           overflow: 'hidden',
           position: 'relative',
           '&:hover': {
-            transform: 'translateY(-12px)',
             boxShadow: `0 15px 35px ${alpha(iconColor, 0.2)}`,
             '& .feature-icon': {
               transform: 'scale(1.1) rotate(5deg)',
+              boxShadow: `0 10px 25px ${alpha(iconColor, 0.4)}`,
             },
             '& .feature-title': {
               color: iconColor,
             },
+            '&::after': {
+              opacity: 1,
+            }
           },
           '&::before': {
             content: '""',
@@ -123,6 +131,17 @@ const FeatureCard = ({ icon, title, description, index }) => {
             borderRadius: '50%',
             transform: 'translate(30%, -30%)',
           },
+          '&::after': {
+            content: '""',
+            position: 'absolute',
+            bottom: 0,
+            left: 0,
+            width: '100%',
+            height: '3px',
+            background: `linear-gradient(90deg, transparent, ${iconColor}, transparent)`,
+            opacity: 0.3,
+            transition: 'opacity 0.3s ease',
+          }
         }}
       >
         <CardContent sx={{ p: 3, zIndex: 1, position: 'relative' }}>
@@ -132,18 +151,19 @@ const FeatureCard = ({ icon, title, description, index }) => {
               display: 'inline-flex',
               alignItems: 'center',
               justifyContent: 'center',
-              p: 1.5,
-              borderRadius: '16px',
+              p: 2,
+              borderRadius: '20px',
               background: alpha(iconColor, 0.1),
-              mb: 2,
-              transition: 'transform 0.3s ease',
+              mb: 2.5,
+              transition: 'all 0.3s ease',
+              boxShadow: `0 5px 15px ${alpha(iconColor, 0.2)}`,
             }}
           >
             {React.cloneElement(icon, {
               sx: {
                 fontSize: 40,
                 color: iconColor,
-                filter: 'drop-shadow(0 0 1px rgba(0,0,0,0.2))',
+                filter: `drop-shadow(0 2px 5px ${alpha(iconColor, 0.5)})`,
               }
             })}
           </Box>
@@ -156,6 +176,18 @@ const FeatureCard = ({ icon, title, description, index }) => {
               fontWeight: 700,
               transition: 'color 0.3s ease',
               mb: 1.5,
+              position: 'relative',
+              display: 'inline-block',
+              '&::after': {
+                content: '""',
+                position: 'absolute',
+                bottom: -5,
+                left: 0,
+                width: '40px',
+                height: '2px',
+                background: iconColor,
+                borderRadius: '2px',
+              }
             }}
           >
             {title}
@@ -381,11 +413,111 @@ const wearableData = {
   },
 };
 
+// Interactive 3D Card component for hero section
+const Interactive3DCard = ({ children }) => {
+  const cardRef = useRef(null);
+  const x = useMotionValue(0);
+  const y = useMotionValue(0);
+
+  const rotateX = useTransform(y, [-300, 300], [10, -10]);
+  const rotateY = useTransform(x, [-300, 300], [-10, 10]);
+
+  const handleMouseMove = (e) => {
+    if (!cardRef.current) return;
+    const rect = cardRef.current.getBoundingClientRect();
+    const centerX = rect.left + rect.width / 2;
+    const centerY = rect.top + rect.height / 2;
+
+    x.set(e.clientX - centerX);
+    y.set(e.clientY - centerY);
+  };
+
+  const handleMouseLeave = () => {
+    x.set(0);
+    y.set(0);
+  };
+
+  return (
+    <motion.div
+      ref={cardRef}
+      onMouseMove={handleMouseMove}
+      onMouseLeave={handleMouseLeave}
+      style={{
+        rotateX,
+        rotateY,
+        transformStyle: "preserve-3d",
+        perspective: 1000,
+      }}
+      transition={{ type: "spring", stiffness: 300, damping: 30 }}
+    >
+      {children}
+    </motion.div>
+  );
+};
+
+// Animated gradient text component
+const AnimatedGradientText = ({ text, delay = 0, gradient = "linear-gradient(90deg, #4f46e5, #06b6d4)" }) => {
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.8, delay }}
+    >
+      <Typography
+        variant="h2"
+        component="span"
+        sx={{
+          display: "block",
+          fontWeight: 800,
+          background: gradient,
+          backgroundClip: "text",
+          WebkitBackgroundClip: "text",
+          WebkitTextFillColor: "transparent",
+          textShadow: "0 10px 30px rgba(0,0,0,0.1)",
+        }}
+      >
+        {text}
+      </Typography>
+    </motion.div>
+  );
+};
+
+// Floating icon component with animation
+const FloatingIcon = ({ icon, size, top, left, right, delay = 0 }) => {
+  return (
+    <motion.div
+      style={{
+        position: "absolute",
+        top,
+        left,
+        right,
+        fontSize: size,
+        opacity: 0.4,
+        filter: "drop-shadow(0 0 10px rgba(255,255,255,0.7))",
+      }}
+      animate={{
+        y: [0, -15, 0],
+        x: [0, 5, 0],
+        rotate: [0, 5, 0, -5, 0],
+        opacity: [0.4, 0.7, 0.4],
+      }}
+      transition={{
+        duration: 5,
+        repeat: Infinity,
+        delay,
+        ease: "easeInOut"
+      }}
+    >
+      {icon}
+    </motion.div>
+  );
+};
+
 const Home = () => {
   const navigate = useNavigate();
   const theme = useTheme();
   const isAuthenticated = useSelector((state) => state.auth.isAuthenticated);
-  // Removed unused variable: isMobile
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
 
   const features = [
     {
@@ -478,7 +610,7 @@ const Home = () => {
       position: 'relative',
       overflow: 'hidden'
     }}>
-      <ParticleBackground />
+      <GamifiedBackground />
 
       {/* AI Chatbot */}
       <HomeChatBot />
@@ -522,14 +654,14 @@ const Home = () => {
             '0%': { backgroundPosition: '0 0' },
             '100%': { backgroundPosition: '100px 100px' },
           },
-          minHeight: { xs: 'auto', md: '100vh' },
-          py: { xs: 12, md: 0 },
+          minHeight: { xs: 'calc(100vh - 64px)', md: '100vh' },
+          py: { xs: 8, sm: 10, md: 0 },
           display: 'flex',
           alignItems: 'center',
           overflow: 'hidden',
         }}
       >
-        <ParticleBackground />
+        <GamifiedBackground />
 
         {/* Floating Elements */}
         <Box sx={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 1, pointerEvents: 'none' }}>
@@ -618,18 +750,24 @@ const Home = () => {
                   component="h1"
                   gutterBottom
                   sx={{
-                    fontSize: { xs: '2.5rem', md: '4.5rem' },
+                    fontSize: { xs: '2.2rem', sm: '2.8rem', md: '3.5rem', lg: '4.5rem' },
                     fontWeight: 800,
                     textShadow: '2px 2px 4px rgba(0,0,0,0.3)',
-                    mb: 4,
+                    mb: { xs: 2, sm: 3, md: 4 },
                     letterSpacing: '-0.02em',
                     lineHeight: 1.1
                   }}
                 >
-                  Revolutionize Your
                   <motion.span
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.5 }}
+                  >
+                    Revolutionize Your
+                  </motion.span>
+                  <motion.span
+                    initial={{ opacity: 0, scale: 0.9 }}
+                    animate={{ opacity: 1, scale: 1 }}
                     transition={{ duration: 0.8, delay: 0.5 }}
                     style={{
                       display: 'block',
@@ -637,42 +775,105 @@ const Home = () => {
                       backgroundClip: 'text',
                       WebkitBackgroundClip: 'text',
                       WebkitTextFillColor: 'transparent',
-                      marginTop: '0.2em'
+                      marginTop: '0.2em',
+                      position: 'relative'
                     }}
                   >
                     Healthcare Experience
+                    <Box
+                      component="span"
+                      sx={{
+                        position: 'absolute',
+                        width: '60px',
+                        height: '60px',
+                        right: { xs: '-10px', sm: '-20px', md: '-30px' },
+                        top: { xs: '-15px', sm: '-20px', md: '-25px' },
+                        background: 'url("/sparkle.svg")',
+                        backgroundSize: 'contain',
+                        backgroundRepeat: 'no-repeat',
+                        display: { xs: 'none', sm: 'block' },
+                        animation: 'sparkle 2s ease-in-out infinite',
+                        '@keyframes sparkle': {
+                          '0%': { transform: 'scale(1) rotate(0deg)', opacity: 0.7 },
+                          '50%': { transform: 'scale(1.2) rotate(15deg)', opacity: 1 },
+                          '100%': { transform: 'scale(1) rotate(0deg)', opacity: 0.7 },
+                        }
+                      }}
+                    />
                   </motion.span>
                 </Typography>
 
                 {/* Quick Stats */}
-                <Box sx={{ mb: 4 }}>
-                  <Grid container spacing={2}>
+                <Box sx={{ mb: { xs: 3, md: 4 } }}>
+                  <Grid container spacing={{ xs: 1, sm: 2 }}>
                     {[
-                      { icon: <Speed />, label: 'Faster Workflow', value: '300%' },
-                      { icon: <Groups />, label: 'Happy Patients', value: '50K+' },
-                      { icon: <Security />, label: 'Data Security', value: '99.9%' }
+                      { icon: <Speed />, label: 'Faster Workflow', value: '300%', color: '#4f46e5' },
+                      { icon: <Groups />, label: 'Happy Patients', value: '50K+', color: '#06b6d4' },
+                      { icon: <Security />, label: 'Data Security', value: '99.9%', color: '#a5f3fc' }
                     ].map((stat, index) => (
                       <Grid item xs={4} key={index}>
                         <motion.div
                           initial={{ opacity: 0, y: 20 }}
                           animate={{ opacity: 1, y: 0 }}
                           transition={{ duration: 0.5, delay: 0.8 + (index * 0.2) }}
+                          whileHover={{
+                            y: -5,
+                            transition: { duration: 0.2 }
+                          }}
                         >
                           <Paper
                             sx={{
-                              p: 1.5,
+                              p: { xs: 1, sm: 1.5 },
                               textAlign: 'center',
                               background: alpha(theme.palette.background.paper, 0.1),
                               backdropFilter: 'blur(10px)',
                               borderRadius: 2,
                               border: `1px solid ${alpha(theme.palette.common.white, 0.2)}`,
+                              position: 'relative',
+                              overflow: 'hidden',
+                              '&::after': {
+                                content: '""',
+                                position: 'absolute',
+                                bottom: 0,
+                                left: 0,
+                                width: '100%',
+                                height: '2px',
+                                background: `linear-gradient(90deg, transparent, ${stat.color}, transparent)`,
+                                animation: `pulse-${index} 2s infinite`,
+                              },
+                              [`@keyframes pulse-${index}`]: {
+                                '0%': { opacity: 0.5, transform: 'scaleX(0.5)' },
+                                '50%': { opacity: 1, transform: 'scaleX(1)' },
+                                '100%': { opacity: 0.5, transform: 'scaleX(0.5)' },
+                              }
                             }}
                           >
-                            {React.cloneElement(stat.icon, { sx: { fontSize: 24, mb: 1, color: 'white' } })}
-                            <Typography variant="h6" sx={{ fontSize: '1rem', fontWeight: 700 }}>
+                            {React.cloneElement(stat.icon, {
+                              sx: {
+                                fontSize: { xs: 20, sm: 24 },
+                                mb: { xs: 0.5, sm: 1 },
+                                color: 'white',
+                                filter: `drop-shadow(0 0 3px ${stat.color})`
+                              }
+                            })}
+                            <Typography
+                              variant="h6"
+                              sx={{
+                                fontSize: { xs: '0.9rem', sm: '1rem' },
+                                fontWeight: 700,
+                                textShadow: `0 0 10px ${stat.color}`
+                              }}
+                            >
                               {stat.value}
                             </Typography>
-                            <Typography variant="caption" sx={{ opacity: 0.8 }}>
+                            <Typography
+                              variant="caption"
+                              sx={{
+                                opacity: 0.8,
+                                fontSize: { xs: '0.7rem', sm: '0.75rem' },
+                                display: 'block'
+                              }}
+                            >
                               {stat.label}
                             </Typography>
                           </Paper>
@@ -685,70 +886,272 @@ const Home = () => {
                 <Typography
                   variant="h5"
                   sx={{
-                    mb: 4,
+                    mb: { xs: 3, md: 4 },
                     opacity: 0.9,
                     maxWidth: '600px',
                     lineHeight: 1.8,
-                    fontSize: { xs: '1.1rem', md: '1.3rem' },
-                    textShadow: '1px 1px 2px rgba(0,0,0,0.2)'
+                    fontSize: { xs: '0.95rem', sm: '1.1rem', md: '1.3rem' },
+                    textShadow: '1px 1px 2px rgba(0,0,0,0.2)',
+                    position: 'relative',
+                    '&::before': {
+                      content: '""',
+                      position: 'absolute',
+                      left: '-10px',
+                      top: '0',
+                      bottom: '0',
+                      width: '3px',
+                      background: 'linear-gradient(to bottom, #4f46e5, #06b6d4)',
+                      borderRadius: '4px',
+                      display: { xs: 'none', md: 'block' }
+                    }
                   }}
                 >
-                  Experience the future of medical management with our comprehensive solution. Streamline your workflow, enhance patient care, and boost efficiency.
+                  <motion.span
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ duration: 0.5, delay: 1 }}
+                  >
+                    Experience the future of medical management with our comprehensive solution. Streamline your workflow, enhance patient care, and boost efficiency with AI-powered insights.
+                  </motion.span>
                 </Typography>
 
                 {/* Trust Badges */}
-                <Box sx={{ mb: 4 }}>
+                <Box sx={{ mb: { xs: 3, md: 4 } }}>
                   <motion.div
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.5, delay: 1.2 }}
                   >
-                    <Stack direction="row" spacing={3} alignItems="center">
-                      <Typography variant="body2" sx={{ opacity: 0.8 }}>
+                    <Stack
+                      direction={{ xs: 'column', sm: 'row' }}
+                      spacing={{ xs: 1, sm: 3 }}
+                      alignItems={{ xs: 'flex-start', sm: 'center' }}
+                      sx={{
+                        p: { xs: 1.5, sm: 2 },
+                        borderRadius: 2,
+                        background: alpha(theme.palette.background.paper, 0.05),
+                        backdropFilter: 'blur(8px)',
+                        border: `1px dashed ${alpha(theme.palette.common.white, 0.2)}`,
+                      }}
+                    >
+                      <Typography
+                        variant="body2"
+                        sx={{
+                          opacity: 0.9,
+                          fontWeight: 600,
+                          fontSize: { xs: '0.8rem', sm: '0.9rem' },
+                          textShadow: '0 0 5px rgba(255,255,255,0.3)'
+                        }}
+                      >
                         Trusted by:
                       </Typography>
-                      {['HIPAA', 'ISO 27001', 'GDPR'].map((cert, index) => (
-                        <Chip
-                          key={index}
-                          label={cert}
-                          size="small"
-                          icon={<Security sx={{ fontSize: 16 }} />}
-                          sx={{
-                            bgcolor: alpha(theme.palette.background.paper, 0.1),
-                            backdropFilter: 'blur(10px)',
-                            border: `1px solid ${alpha(theme.palette.common.white, 0.2)}`,
-                            color: 'white',
-                          }}
-                        />
-                      ))}
+                      <Stack
+                        direction="row"
+                        spacing={{ xs: 1, sm: 2 }}
+                        flexWrap="wrap"
+                        sx={{
+                          '& .MuiChip-root': {
+                            my: { xs: 0.5, sm: 0 }
+                          }
+                        }}
+                      >
+                        {[
+                          { label: 'HIPAA', color: '#4f46e5' },
+                          { label: 'ISO 27001', color: '#06b6d4' },
+                          { label: 'GDPR', color: '#a5f3fc' }
+                        ].map((cert, index) => (
+                          <Chip
+                            key={index}
+                            label={cert.label}
+                            size="small"
+                            icon={<Security sx={{ fontSize: 16 }} />}
+                            sx={{
+                              bgcolor: alpha(cert.color, 0.2),
+                              backdropFilter: 'blur(10px)',
+                              border: `1px solid ${alpha(cert.color, 0.4)}`,
+                              color: 'white',
+                              fontWeight: 600,
+                              '& .MuiChip-icon': {
+                                color: cert.color
+                              },
+                              transition: 'all 0.3s ease',
+                              '&:hover': {
+                                bgcolor: alpha(cert.color, 0.3),
+                                transform: 'translateY(-2px)'
+                              }
+                            }}
+                          />
+                        ))}
+                      </Stack>
                     </Stack>
                   </motion.div>
                 </Box>
 
-                <Stack
-                  direction={{ xs: 'column', sm: 'row' }}
-                  spacing={3}
-                  sx={{
-                    mt: { xs: 4, md: 6 },
-                    width: '100%'
-                  }}
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.5, delay: 1.4 }}
                 >
-                  {!isAuthenticated && (
-                    <>
+                  <Stack
+                    direction={{ xs: 'column', sm: 'row' }}
+                    spacing={{ xs: 2, sm: 3 }}
+                    sx={{
+                      mt: { xs: 3, sm: 4, md: 6 },
+                      width: '100%'
+                    }}
+                  >
+                    {!isAuthenticated && (
+                      <>
+                        <Button
+                          variant="contained"
+                          size="large"
+                          onClick={() => navigate('/register')}
+                          endIcon={
+                            <Box sx={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              width: { xs: 24, sm: 28 },
+                              height: { xs: 24, sm: 28 },
+                              borderRadius: '50%',
+                              bgcolor: 'rgba(255,255,255,0.2)',
+                              ml: 1
+                            }}>
+                              <ArrowForward sx={{ fontSize: { xs: 16, sm: 18 } }} />
+                            </Box>
+                          }
+                          sx={{
+                            py: { xs: 1.8, sm: 2.2 },
+                            px: { xs: 3, sm: 5 },
+                            fontSize: { xs: '1rem', sm: '1.2rem' },
+                            fontWeight: 700,
+                            borderRadius: 3,
+                            background: 'linear-gradient(90deg, #4f46e5 0%, #06b6d4 100%)',
+                            boxShadow: '0 10px 25px rgba(79, 70, 229, 0.4)',
+                            textTransform: 'none',
+                            position: 'relative',
+                            overflow: 'hidden',
+                            '&::after': {
+                              content: '""',
+                              position: 'absolute',
+                              top: 0,
+                              left: '-100%',
+                              width: '100%',
+                              height: '100%',
+                              background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent)',
+                              animation: 'shine 3s infinite',
+                            },
+                            '@keyframes shine': {
+                              '0%': { left: '-100%' },
+                              '20%': { left: '100%' },
+                              '100%': { left: '100%' },
+                            },
+                            '&:hover': {
+                              transform: 'translateY(-4px)',
+                              boxShadow: '0 15px 30px rgba(79, 70, 229, 0.5)',
+                              background: 'linear-gradient(90deg, #4338ca 0%, #0891b2 100%)',
+                            },
+                            transition: 'all 0.3s ease'
+                          }}
+                        >
+                          Get Started Free
+                        </Button>
+                        <Button
+                          variant="outlined"
+                          size="large"
+                          sx={{
+                            color: 'white',
+                            borderColor: '#a5f3fc',
+                            borderWidth: 2,
+                            py: { xs: 1.8, sm: 2.2 },
+                            px: { xs: 3, sm: 5 },
+                            fontSize: { xs: '1rem', sm: '1.2rem' },
+                            fontWeight: 700,
+                            borderRadius: 3,
+                            textTransform: 'none',
+                            backdropFilter: 'blur(4px)',
+                            position: 'relative',
+                            '&::before': {
+                              content: '""',
+                              position: 'absolute',
+                              top: -2,
+                              left: -2,
+                              right: -2,
+                              bottom: -2,
+                              borderRadius: '16px',
+                              background: 'linear-gradient(90deg, #4f46e5, #06b6d4, #4f46e5)',
+                              backgroundSize: '200% 200%',
+                              animation: 'gradient-border 3s linear infinite',
+                              zIndex: -1,
+                              opacity: 0.5,
+                            },
+                            '@keyframes gradient-border': {
+                              '0%': { backgroundPosition: '0% 50%' },
+                              '50%': { backgroundPosition: '100% 50%' },
+                              '100%': { backgroundPosition: '0% 50%' },
+                            },
+                            '&:hover': {
+                              borderColor: '#a5f3fc',
+                              backgroundColor: 'rgba(165, 243, 252, 0.1)',
+                              transform: 'translateY(-4px)',
+                              boxShadow: '0 10px 20px rgba(165, 243, 252, 0.2)',
+                              '&::before': {
+                                opacity: 0.8,
+                              }
+                            },
+                            transition: 'all 0.3s ease'
+                          }}
+                          onClick={() => navigate('/login')}
+                        >
+                          Login
+                        </Button>
+                      </>
+                    )}
+                    {isAuthenticated && (
                       <Button
                         variant="contained"
                         size="large"
-                        onClick={() => navigate('/register')}
-                        endIcon={<ArrowForward />}
+                        onClick={() => navigate('/dashboard')}
+                        endIcon={
+                          <Box sx={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            width: { xs: 24, sm: 28 },
+                            height: { xs: 24, sm: 28 },
+                            borderRadius: '50%',
+                            bgcolor: 'rgba(255,255,255,0.2)',
+                            ml: 1
+                          }}>
+                            <ArrowForward sx={{ fontSize: { xs: 16, sm: 18 } }} />
+                          </Box>
+                        }
                         sx={{
-                          py: 2.2,
-                          px: 5,
-                          fontSize: '1.2rem',
+                          py: { xs: 1.8, sm: 2.2 },
+                          px: { xs: 3, sm: 5 },
+                          fontSize: { xs: '1rem', sm: '1.2rem' },
                           fontWeight: 700,
                           borderRadius: 3,
+                          textTransform: 'none',
                           background: 'linear-gradient(90deg, #4f46e5 0%, #06b6d4 100%)',
                           boxShadow: '0 10px 25px rgba(79, 70, 229, 0.4)',
-                          textTransform: 'none',
+                          position: 'relative',
+                          overflow: 'hidden',
+                          '&::after': {
+                            content: '""',
+                            position: 'absolute',
+                            top: 0,
+                            left: '-100%',
+                            width: '100%',
+                            height: '100%',
+                            background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent)',
+                            animation: 'shine 3s infinite',
+                          },
+                          '@keyframes shine': {
+                            '0%': { left: '-100%' },
+                            '20%': { left: '100%' },
+                            '100%': { left: '100%' },
+                          },
                           '&:hover': {
                             transform: 'translateY(-4px)',
                             boxShadow: '0 15px 30px rgba(79, 70, 229, 0.5)',
@@ -757,63 +1160,11 @@ const Home = () => {
                           transition: 'all 0.3s ease'
                         }}
                       >
-                        Get Started Free
+                        Go to Dashboard
                       </Button>
-                      <Button
-                        variant="outlined"
-                        size="large"
-                        sx={{
-                          color: 'white',
-                          borderColor: '#a5f3fc',
-                          borderWidth: 2,
-                          py: 2.2,
-                          px: 5,
-                          fontSize: '1.2rem',
-                          fontWeight: 700,
-                          borderRadius: 3,
-                          textTransform: 'none',
-                          backdropFilter: 'blur(4px)',
-                          '&:hover': {
-                            borderColor: '#a5f3fc',
-                            backgroundColor: 'rgba(165, 243, 252, 0.1)',
-                            transform: 'translateY(-4px)',
-                            boxShadow: '0 10px 20px rgba(165, 243, 252, 0.2)',
-                          },
-                          transition: 'all 0.3s ease'
-                        }}
-                        onClick={() => navigate('/login')}
-                      >
-                        Login
-                      </Button>
-                    </>
-                  )}
-                  {isAuthenticated && (
-                    <Button
-                      variant="contained"
-                      size="large"
-                      onClick={() => navigate('/dashboard')}
-                      endIcon={<ArrowForward />}
-                      sx={{
-                        py: 2.2,
-                        px: 5,
-                        fontSize: '1.2rem',
-                        fontWeight: 700,
-                        borderRadius: 3,
-                        textTransform: 'none',
-                        background: 'linear-gradient(90deg, #4f46e5 0%, #06b6d4 100%)',
-                        boxShadow: '0 10px 25px rgba(79, 70, 229, 0.4)',
-                        '&:hover': {
-                          transform: 'translateY(-4px)',
-                          boxShadow: '0 15px 30px rgba(79, 70, 229, 0.5)',
-                          background: 'linear-gradient(90deg, #4338ca 0%, #0891b2 100%)',
-                        },
-                        transition: 'all 0.3s ease'
-                      }}
-                    >
-                      Go to Dashboard
-                    </Button>
-                  )}
-                </Stack>
+                    )}
+                  </Stack>
+                </motion.div>
               </motion.div>
             </Grid>
             <Grid
@@ -867,85 +1218,715 @@ const Home = () => {
         </Container>
       </Box>
 
-      {/* Partner Hospitals Section */}
-      <Container maxWidth="lg" sx={{ my: { xs: 8, md: 12 } }}>
-        <ScrollReveal>
-          <Typography
-            variant="h2"
-            component="h2"
-            textAlign="center"
-            gutterBottom
-            sx={{
-              fontWeight: 700,
-              color: theme.palette.text.primary,
-              mb: 2
-            }}
+      {/* Mission, Objectives, and Goals Section */}
+      <Box sx={{
+        py: { xs: 8, md: 12 },
+        background: theme.palette.mode === 'dark'
+          ? `linear-gradient(135deg, ${alpha(theme.palette.primary.dark, 0.7)} 0%, ${alpha(theme.palette.secondary.dark, 0.7)} 100%)`
+          : `linear-gradient(135deg, ${alpha(theme.palette.primary.light, 0.1)} 0%, ${alpha(theme.palette.secondary.light, 0.1)} 100%)`,
+        position: 'relative',
+        overflow: 'hidden',
+        '&::before': {
+          content: '""',
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: 'url("/pattern-dots.png")',
+          opacity: 0.05,
+          zIndex: 0,
+        }
+      }}>
+        <Container maxWidth="lg">
+          <motion.div
+            initial={{ opacity: 0, y: 30 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, margin: "-100px" }}
+            transition={{ duration: 0.8 }}
           >
-            Our Partner Hospitals
-          </Typography>
-          <Typography
-            variant="h5"
-            textAlign="center"
-            color="text.secondary"
-            sx={{ mb: 4, maxWidth: 800, mx: 'auto' }}
-          >
-            We work with leading healthcare institutions to provide the best care
-          </Typography>
-          <Box sx={{ display: 'flex', justifyContent: 'center', mb: 6 }}>
-            <Button
-              variant="contained"
-              size="large"
-              startIcon={<LocalHospital />}
-              endIcon={<ArrowForward />}
-              onClick={() => navigate('/hospitals')}
+            <Typography
+              variant="h2"
+              component="h2"
+              textAlign="center"
+              gutterBottom
               sx={{
-                py: 1.5,
-                px: 4,
-                fontSize: '1.1rem',
-                fontWeight: 600,
-                borderRadius: 3,
-                background: 'linear-gradient(90deg, #4f46e5 0%, #06b6d4 100%)',
-                boxShadow: '0 10px 25px rgba(79, 70, 229, 0.4)',
-                textTransform: 'none',
-                '&:hover': {
-                  transform: 'translateY(-4px)',
-                  boxShadow: '0 15px 30px rgba(79, 70, 229, 0.5)',
-                  background: 'linear-gradient(90deg, #4338ca 0%, #0891b2 100%)',
-                },
-                transition: 'all 0.3s ease'
+                fontWeight: 800,
+                background: 'linear-gradient(90deg, #4f46e5, #06b6d4)',
+                WebkitBackgroundClip: 'text',
+                WebkitTextFillColor: 'transparent',
+                mb: 2,
+                position: 'relative',
+                zIndex: 1,
+                textShadow: '0 10px 30px rgba(0,0,0,0.1)',
+                '&::after': {
+                  content: '""',
+                  position: 'absolute',
+                  bottom: -10,
+                  left: '50%',
+                  transform: 'translateX(-50%)',
+                  width: 80,
+                  height: 4,
+                  borderRadius: 2,
+                  background: 'linear-gradient(90deg, #4f46e5, #06b6d4)',
+                }
               }}
             >
-              View All Partner Hospitals
-            </Button>
+              Our Mission
+            </Typography>
+            <Typography
+              variant="h5"
+              textAlign="center"
+              color="text.secondary"
+              sx={{ mb: 6, maxWidth: 800, mx: 'auto', position: 'relative', zIndex: 1 }}
+            >
+              Transforming healthcare through technology, compassion, and innovation
+            </Typography>
+          </motion.div>
+
+          <Grid container spacing={4}>
+            {/* Mission Card */}
+            <Grid item xs={12} md={4}>
+              <motion.div
+                initial={{ opacity: 0, y: 30, rotateY: 25 }}
+                whileInView={{ opacity: 1, y: 0, rotateY: 0 }}
+                transition={{ duration: 0.7, delay: 0.1 }}
+                viewport={{ once: true, margin: "-50px" }}
+                whileHover={{
+                  y: -10,
+                  boxShadow: '0 20px 40px rgba(0, 0, 0, 0.2)',
+                  transition: { duration: 0.3 }
+                }}
+              >
+                <Paper
+                  elevation={6}
+                  sx={{
+                    p: 4,
+                    height: '100%',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    position: 'relative',
+                    overflow: 'hidden',
+                    borderRadius: 4,
+                    transition: 'all 0.3s ease',
+                    background: theme.palette.mode === 'dark'
+                      ? `linear-gradient(135deg, ${alpha(theme.palette.primary.main, 0.2)} 0%, ${alpha(theme.palette.background.paper, 0.9)} 100%)`
+                      : `linear-gradient(135deg, ${alpha(theme.palette.primary.main, 0.05)} 0%, ${alpha(theme.palette.background.paper, 0.9)} 100%)`,
+                    backdropFilter: 'blur(10px)',
+                    boxShadow: `0 10px 30px ${alpha(theme.palette.primary.main, 0.2)}`,
+                    border: `1px solid ${alpha(theme.palette.primary.main, 0.2)}`,
+                    '&::before': {
+                      content: '""',
+                      position: 'absolute',
+                      top: 0,
+                      left: 0,
+                      width: '100%',
+                      height: '4px',
+                      background: `linear-gradient(90deg, ${theme.palette.primary.main}, transparent)`,
+                    }
+                  }}
+                >
+                  <Box sx={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    mb: 3,
+                    pb: 2,
+                    borderBottom: `1px solid ${alpha(theme.palette.primary.main, 0.1)}`,
+                  }}>
+                    <Avatar
+                      sx={{
+                        bgcolor: alpha(theme.palette.primary.main, 0.1),
+                        color: theme.palette.primary.main,
+                        width: 60,
+                        height: 60,
+                        mr: 2,
+                        boxShadow: `0 4px 14px ${alpha(theme.palette.primary.main, 0.4)}`,
+                        border: `2px solid ${alpha(theme.palette.primary.main, 0.3)}`,
+                        transition: 'all 0.3s ease',
+                        '&:hover': {
+                          transform: 'rotate(10deg)',
+                        }
+                      }}
+                    >
+                      <HealthAndSafety sx={{ fontSize: 32 }} />
+                    </Avatar>
+                    <Typography
+                      variant="h5"
+                      component="h3"
+                      sx={{
+                        fontWeight: 700,
+                        background: `linear-gradient(90deg, ${theme.palette.primary.main}, ${theme.palette.text.primary})`,
+                        WebkitBackgroundClip: 'text',
+                        WebkitTextFillColor: 'transparent',
+                      }}
+                    >
+                      Our Mission
+                    </Typography>
+                  </Box>
+                  <Typography variant="body1" sx={{ mb: 2, flexGrow: 1, lineHeight: 1.7 }}>
+                    To revolutionize healthcare management by creating an integrated ecosystem of innovative digital solutions and our proprietary SoulSpace wearable device (currently in development). Conceived in 2023 by Tuyizere Dieudonne (CEO) and Aristote (President) while in Senior 4, and now being developed as they complete Senior 6, our mission is to empower healthcare providers and improve patient outcomes by making quality healthcare more accessible, efficient, and personalized through cutting-edge technology.
+                  </Typography>
+                </Paper>
+              </motion.div>
+            </Grid>
+
+            {/* Objectives Card */}
+            <Grid item xs={12} md={4}>
+              <motion.div
+                initial={{ opacity: 0, y: 30, rotateY: -25 }}
+                whileInView={{ opacity: 1, y: 0, rotateY: 0 }}
+                transition={{ duration: 0.7, delay: 0.3 }}
+                viewport={{ once: true, margin: "-50px" }}
+                whileHover={{
+                  y: -10,
+                  boxShadow: '0 20px 40px rgba(0, 0, 0, 0.2)',
+                  transition: { duration: 0.3 }
+                }}
+              >
+                <Paper
+                  elevation={6}
+                  sx={{
+                    p: 4,
+                    height: '100%',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    position: 'relative',
+                    overflow: 'hidden',
+                    borderRadius: 4,
+                    transition: 'all 0.3s ease',
+                    background: theme.palette.mode === 'dark'
+                      ? `linear-gradient(135deg, ${alpha(theme.palette.info.main, 0.2)} 0%, ${alpha(theme.palette.background.paper, 0.9)} 100%)`
+                      : `linear-gradient(135deg, ${alpha(theme.palette.info.main, 0.05)} 0%, ${alpha(theme.palette.background.paper, 0.9)} 100%)`,
+                    backdropFilter: 'blur(10px)',
+                    boxShadow: `0 10px 30px ${alpha(theme.palette.info.main, 0.2)}`,
+                    border: `1px solid ${alpha(theme.palette.info.main, 0.2)}`,
+                    '&::before': {
+                      content: '""',
+                      position: 'absolute',
+                      top: 0,
+                      left: 0,
+                      width: '100%',
+                      height: '4px',
+                      background: `linear-gradient(90deg, ${theme.palette.info.main}, transparent)`,
+                    }
+                  }}
+                >
+                  <Box sx={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    mb: 3,
+                    pb: 2,
+                    borderBottom: `1px solid ${alpha(theme.palette.info.main, 0.1)}`,
+                  }}>
+                    <Avatar
+                      sx={{
+                        bgcolor: alpha(theme.palette.info.main, 0.1),
+                        color: theme.palette.info.main,
+                        width: 60,
+                        height: 60,
+                        mr: 2,
+                        boxShadow: `0 4px 14px ${alpha(theme.palette.info.main, 0.4)}`,
+                        border: `2px solid ${alpha(theme.palette.info.main, 0.3)}`,
+                        transition: 'all 0.3s ease',
+                        '&:hover': {
+                          transform: 'rotate(10deg)',
+                        }
+                      }}
+                    >
+                      <TipsAndUpdates sx={{ fontSize: 32 }} />
+                    </Avatar>
+                    <Typography
+                      variant="h5"
+                      component="h3"
+                      sx={{
+                        fontWeight: 700,
+                        background: `linear-gradient(90deg, ${theme.palette.info.main}, ${theme.palette.text.primary})`,
+                        WebkitBackgroundClip: 'text',
+                        WebkitTextFillColor: 'transparent',
+                      }}
+                    >
+                      Our Objectives
+                    </Typography>
+                  </Box>
+                  <Typography variant="body1" sx={{ mb: 2, flexGrow: 1 }}>
+                    <Box component="ul" sx={{
+                      paddingLeft: '20px',
+                      marginTop: '0',
+                      '& li': {
+                        mb: 1.5,
+                        position: 'relative',
+                        '&::marker': {
+                          color: theme.palette.info.main,
+                        }
+                      }
+                    }}>
+                      <motion.li
+                        initial={{ opacity: 0, x: -20 }}
+                        whileInView={{ opacity: 1, x: 0 }}
+                        transition={{ duration: 0.3, delay: 0.4 }}
+                        viewport={{ once: true }}
+                      >
+                        Develop our proprietary SoulSpace wearable device by 2027
+                      </motion.li>
+                      <motion.li
+                        initial={{ opacity: 0, x: -20 }}
+                        whileInView={{ opacity: 1, x: 0 }}
+                        transition={{ duration: 0.3, delay: 0.5 }}
+                        viewport={{ once: true }}
+                      >
+                        Streamline healthcare workflows and reduce administrative burden
+                      </motion.li>
+                      <motion.li
+                        initial={{ opacity: 0, x: -20 }}
+                        whileInView={{ opacity: 1, x: 0 }}
+                        transition={{ duration: 0.3, delay: 0.6 }}
+                        viewport={{ once: true }}
+                      >
+                        Enhance communication between patients and healthcare providers
+                      </motion.li>
+                      <motion.li
+                        initial={{ opacity: 0, x: -20 }}
+                        whileInView={{ opacity: 1, x: 0 }}
+                        transition={{ duration: 0.3, delay: 0.7 }}
+                        viewport={{ once: true }}
+                      >
+                        Create an integrated ecosystem for real-time health monitoring
+                      </motion.li>
+                      <motion.li
+                        initial={{ opacity: 0, x: -20 }}
+                        whileInView={{ opacity: 1, x: 0 }}
+                        transition={{ duration: 0.3, delay: 0.8 }}
+                        viewport={{ once: true }}
+                      >
+                        Ensure the highest standards of data security and patient privacy
+                      </motion.li>
+                      <motion.li
+                        initial={{ opacity: 0, x: -20 }}
+                        whileInView={{ opacity: 1, x: 0 }}
+                        transition={{ duration: 0.3, delay: 0.9 }}
+                        viewport={{ once: true }}
+                      >
+                        Leverage AI to deliver personalized healthcare insights
+                      </motion.li>
+                    </Box>
+                  </Typography>
+                </Paper>
+              </motion.div>
+            </Grid>
+
+            {/* Goals Card */}
+            <Grid item xs={12} md={4}>
+              <motion.div
+                initial={{ opacity: 0, y: 30, rotateY: 25 }}
+                whileInView={{ opacity: 1, y: 0, rotateY: 0 }}
+                transition={{ duration: 0.7, delay: 0.5 }}
+                viewport={{ once: true, margin: "-50px" }}
+                whileHover={{
+                  y: -10,
+                  boxShadow: '0 20px 40px rgba(0, 0, 0, 0.2)',
+                  transition: { duration: 0.3 }
+                }}
+              >
+                <Paper
+                  elevation={6}
+                  sx={{
+                    p: 4,
+                    height: '100%',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    position: 'relative',
+                    overflow: 'hidden',
+                    borderRadius: 4,
+                    transition: 'all 0.3s ease',
+                    background: theme.palette.mode === 'dark'
+                      ? `linear-gradient(135deg, ${alpha(theme.palette.success.main, 0.2)} 0%, ${alpha(theme.palette.background.paper, 0.9)} 100%)`
+                      : `linear-gradient(135deg, ${alpha(theme.palette.success.main, 0.05)} 0%, ${alpha(theme.palette.background.paper, 0.9)} 100%)`,
+                    backdropFilter: 'blur(10px)',
+                    boxShadow: `0 10px 30px ${alpha(theme.palette.success.main, 0.2)}`,
+                    border: `1px solid ${alpha(theme.palette.success.main, 0.2)}`,
+                    '&::before': {
+                      content: '""',
+                      position: 'absolute',
+                      top: 0,
+                      left: 0,
+                      width: '100%',
+                      height: '4px',
+                      background: `linear-gradient(90deg, ${theme.palette.success.main}, transparent)`,
+                    }
+                  }}
+                >
+                  <Box sx={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    mb: 3,
+                    pb: 2,
+                    borderBottom: `1px solid ${alpha(theme.palette.success.main, 0.1)}`,
+                  }}>
+                    <Avatar
+                      sx={{
+                        bgcolor: alpha(theme.palette.success.main, 0.1),
+                        color: theme.palette.success.main,
+                        width: 60,
+                        height: 60,
+                        mr: 2,
+                        boxShadow: `0 4px 14px ${alpha(theme.palette.success.main, 0.4)}`,
+                        border: `2px solid ${alpha(theme.palette.success.main, 0.3)}`,
+                        transition: 'all 0.3s ease',
+                        '&:hover': {
+                          transform: 'rotate(10deg)',
+                        }
+                      }}
+                    >
+                      <EmojiEvents sx={{ fontSize: 32 }} />
+                    </Avatar>
+                    <Typography
+                      variant="h5"
+                      component="h3"
+                      sx={{
+                        fontWeight: 700,
+                        background: `linear-gradient(90deg, ${theme.palette.success.main}, ${theme.palette.text.primary})`,
+                        WebkitBackgroundClip: 'text',
+                        WebkitTextFillColor: 'transparent',
+                      }}
+                    >
+                      Our Goals
+                    </Typography>
+                  </Box>
+                  <Typography variant="body1" sx={{ mb: 2, flexGrow: 1 }}>
+                    <Box component="ul" sx={{
+                      paddingLeft: '20px',
+                      marginTop: '0',
+                      '& li': {
+                        mb: 1.5,
+                        position: 'relative',
+                        '&::marker': {
+                          color: theme.palette.success.main,
+                        }
+                      }
+                    }}>
+                      <motion.li
+                        initial={{ opacity: 0, x: -20 }}
+                        whileInView={{ opacity: 1, x: 0 }}
+                        transition={{ duration: 0.3, delay: 0.6 }}
+                        viewport={{ once: true }}
+                      >
+                        Successfully launch our SoulSpace wearable device by Q1 2027
+                      </motion.li>
+                      <motion.li
+                        initial={{ opacity: 0, x: -20 }}
+                        whileInView={{ opacity: 1, x: 0 }}
+                        transition={{ duration: 0.3, delay: 0.7 }}
+                        viewport={{ once: true }}
+                      >
+                        Complete clinical trials for our wearable technology by end of 2026
+                      </motion.li>
+                      <motion.li
+                        initial={{ opacity: 0, x: -20 }}
+                        whileInView={{ opacity: 1, x: 0 }}
+                        transition={{ duration: 0.3, delay: 0.8 }}
+                        viewport={{ once: true }}
+                      >
+                        Establish partnerships with 50+ hospitals by 2026
+                      </motion.li>
+                      <motion.li
+                        initial={{ opacity: 0, x: -20 }}
+                        whileInView={{ opacity: 1, x: 0 }}
+                        transition={{ duration: 0.3, delay: 0.9 }}
+                        viewport={{ once: true }}
+                      >
+                        Develop AI algorithms that can predict health issues with 90%+ accuracy
+                      </motion.li>
+                      <motion.li
+                        initial={{ opacity: 0, x: -20 }}
+                        whileInView={{ opacity: 1, x: 0 }}
+                        transition={{ duration: 0.3, delay: 1.0 }}
+                        viewport={{ once: true }}
+                      >
+                        Create a seamless data ecosystem between patients, providers, and our platform
+                      </motion.li>
+                      <motion.li
+                        initial={{ opacity: 0, x: -20 }}
+                        whileInView={{ opacity: 1, x: 0 }}
+                        transition={{ duration: 0.3, delay: 1.1 }}
+                        viewport={{ once: true }}
+                      >
+                        Achieve the highest standards of data security certification
+                      </motion.li>
+                    </Box>
+                  </Typography>
+                </Paper>
+              </motion.div>
+            </Grid>
+          </Grid>
+        </Container>
+      </Box>
+
+      {/* Partner Hospitals Section */}
+      <Box
+        sx={{
+          py: { xs: 8, md: 12 },
+          background: theme.palette.mode === 'dark'
+            ? alpha(theme.palette.background.paper, 0.6)
+            : alpha(theme.palette.grey[50], 0.8),
+          position: 'relative',
+          overflow: 'hidden',
+          '&::before': {
+            content: '""',
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: 'url("/pattern-dots.png")',
+            opacity: 0.05,
+            zIndex: 0,
+          }
+        }}
+      >
+        <Container maxWidth="lg">
+          <motion.div
+            initial={{ opacity: 0, y: 30 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, margin: "-100px" }}
+            transition={{ duration: 0.8 }}
+          >
+            <Typography
+              variant="h2"
+              component="h2"
+              textAlign="center"
+              gutterBottom
+              sx={{
+                fontWeight: 800,
+                background: 'linear-gradient(90deg, #4f46e5, #06b6d4)',
+                WebkitBackgroundClip: 'text',
+                WebkitTextFillColor: 'transparent',
+                mb: 2,
+                position: 'relative',
+                zIndex: 1,
+                textShadow: '0 10px 30px rgba(0,0,0,0.1)',
+                '&::after': {
+                  content: '""',
+                  position: 'absolute',
+                  bottom: -10,
+                  left: '50%',
+                  transform: 'translateX(-50%)',
+                  width: 80,
+                  height: 4,
+                  borderRadius: 2,
+                  background: 'linear-gradient(90deg, #4f46e5, #06b6d4)',
+                }
+              }}
+            >
+              Our Partner Hospitals
+            </Typography>
+            <Typography
+              variant="h5"
+              textAlign="center"
+              color="text.secondary"
+              sx={{ mb: 6, maxWidth: 800, mx: 'auto', position: 'relative', zIndex: 1 }}
+            >
+              We work with leading healthcare institutions to provide the best care
+            </Typography>
+          </motion.div>
+
+          {/* Hospital Logos */}
+          <Box sx={{ mb: 6, position: 'relative', zIndex: 1 }}>
+            <Grid container spacing={3} justifyContent="center" alignItems="center">
+              {[
+                { name: 'king faisali hospital', logo: '/king-faisali.jpg' },
+                { name: 'nyarugenge district hospital', logo: '/nyarugenge.jpg' },
+              
+              ].map((hospital, index) => (
+                <Grid item xs={6} sm={3} key={index}>
+                  <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.5, delay: index * 0.1 }}
+                    viewport={{ once: true }}
+                    whileHover={{
+                      y: -5,
+                      boxShadow: '0 10px 25px rgba(0,0,0,0.1)',
+                      transition: { duration: 0.2 }
+                    }}
+                  >
+                    <Paper
+                      elevation={2}
+                      sx={{
+                        p: 3,
+                        textAlign: 'center',
+                        height: '100%',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        borderRadius: 4,
+                        background: theme.palette.mode === 'dark'
+                          ? alpha(theme.palette.background.paper, 0.8)
+                          : alpha(theme.palette.background.paper, 0.8),
+                        backdropFilter: 'blur(10px)',
+                        border: `1px solid ${alpha(theme.palette.primary.main, 0.1)}`,
+                        transition: 'all 0.3s ease',
+                      }}
+                    >
+                      <Box
+                        component="img"
+                        src={hospital.logo}
+                        alt={hospital.name}
+                        sx={{
+                          width: '100%',
+                          maxWidth: 120,
+                          height: 'auto',
+                          mb: 1,
+                          opacity: 0.8,
+                          filter: theme.palette.mode === 'dark' ? 'brightness(1.2)' : 'none',
+                          transition: 'all 0.3s ease',
+                          '&:hover': {
+                            opacity: 1,
+                            transform: 'scale(1.05)',
+                          }
+                        }}
+                      />
+                      <Typography
+                        variant="subtitle1"
+                        sx={{
+                          fontWeight: 600,
+                          color: theme.palette.text.primary,
+                          mt: 1
+                        }}
+                      >
+                        {hospital.name}
+                      </Typography>
+                    </Paper>
+                  </motion.div>
+                </Grid>
+              ))}
+            </Grid>
           </Box>
-        </ScrollReveal>
-      </Container>
+
+          <Box sx={{ display: 'flex', justifyContent: 'center', position: 'relative', zIndex: 1 }}>
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: 0.4 }}
+              viewport={{ once: true }}
+              whileHover={{
+                y: -5,
+                transition: { duration: 0.2 }
+              }}
+            >
+              <Button
+                variant="contained"
+                size="large"
+                startIcon={<LocalHospital />}
+                endIcon={<ArrowForward />}
+                onClick={() => navigate('/hospitals')}
+                sx={{
+                  py: 1.8,
+                  px: 4,
+                  fontSize: '1.1rem',
+                  fontWeight: 600,
+                  borderRadius: 3,
+                  background: 'linear-gradient(90deg, #4f46e5 0%, #06b6d4 100%)',
+                  boxShadow: '0 10px 25px rgba(79, 70, 229, 0.4)',
+                  textTransform: 'none',
+                  position: 'relative',
+                  overflow: 'hidden',
+                  '&::after': {
+                    content: '""',
+                    position: 'absolute',
+                    top: 0,
+                    left: '-100%',
+                    width: '100%',
+                    height: '100%',
+                    background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent)',
+                    animation: 'shine 3s infinite',
+                  },
+                  '@keyframes shine': {
+                    '0%': { left: '-100%' },
+                    '20%': { left: '100%' },
+                    '100%': { left: '100%' },
+                  },
+                  '&:hover': {
+                    transform: 'translateY(-4px)',
+                    boxShadow: '0 15px 30px rgba(79, 70, 229, 0.5)',
+                    background: 'linear-gradient(90deg, #4338ca 0%, #0891b2 100%)',
+                  },
+                  transition: 'all 0.3s ease'
+                }}
+              >
+                View All Partner Hospitals
+              </Button>
+            </motion.div>
+          </Box>
+        </Container>
+      </Box>
 
       {/* Features Section */}
-      <Container maxWidth="lg" sx={{ my: { xs: 8, md: 12 } }}>
-        <ScrollReveal>
-          <Typography
-            variant="h2"
-            component="h2"
-            textAlign="center"
-            gutterBottom
-            sx={{
-              fontWeight: 700,
-              color: theme.palette.text.primary,
-              mb: 2
-            }}
+      <Box
+        sx={{
+          py: { xs: 8, md: 12 },
+          background: theme.palette.mode === 'dark'
+            ? alpha(theme.palette.background.default, 0.6)
+            : alpha(theme.palette.grey[50], 0.8),
+          position: 'relative',
+          overflow: 'hidden',
+        }}
+      >
+        <Container maxWidth="lg">
+          <motion.div
+            initial={{ opacity: 0, y: 30 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, margin: "-100px" }}
+            transition={{ duration: 0.8 }}
           >
-            Features
-          </Typography>
-        </ScrollReveal>
-        <Grid container spacing={4}>
-          {features.map((feature, index) => (
-            <Grid item xs={12} sm={6} md={4} key={index}>
-              <FeatureCard {...feature} index={index} />
-            </Grid>
-          ))}
-        </Grid>
-      </Container>
+            <Typography
+              variant="h2"
+              component="h2"
+              textAlign="center"
+              gutterBottom
+              sx={{
+                fontWeight: 800,
+                background: 'linear-gradient(90deg, #4f46e5, #06b6d4)',
+                WebkitBackgroundClip: 'text',
+                WebkitTextFillColor: 'transparent',
+                mb: 2,
+                position: 'relative',
+                zIndex: 1,
+                textShadow: '0 10px 30px rgba(0,0,0,0.1)',
+                '&::after': {
+                  content: '""',
+                  position: 'absolute',
+                  bottom: -10,
+                  left: '50%',
+                  transform: 'translateX(-50%)',
+                  width: 80,
+                  height: 4,
+                  borderRadius: 2,
+                  background: 'linear-gradient(90deg, #4f46e5, #06b6d4)',
+                }
+              }}
+            >
+              Key Features
+            </Typography>
+            <Typography
+              variant="h5"
+              textAlign="center"
+              color="text.secondary"
+              sx={{ mb: 6, maxWidth: 800, mx: 'auto', position: 'relative', zIndex: 1 }}
+            >
+              Discover what makes SoulSpace the leading healthcare platform
+            </Typography>
+          </motion.div>
+
+          <Grid container spacing={4}>
+            {features.map((feature, index) => (
+              <Grid item xs={12} sm={6} md={4} key={index}>
+                <FeatureCard {...feature} index={index} />
+              </Grid>
+            ))}
+          </Grid>
+        </Container>
+      </Box>
 
       {/* How It Works Section */}
       <Box sx={{
@@ -1225,12 +2206,12 @@ const Home = () => {
         </Container>
       </Box>
 
-      {/* Health Tips Section */}
+      {/* Gamification Section */}
       <Box sx={{
         py: { xs: 8, md: 12 },
         background: theme.palette.mode === 'dark'
-          ? `linear-gradient(135deg, ${alpha(theme.palette.primary.dark, 0.7)} 0%, ${alpha(theme.palette.secondary.dark, 0.7)} 100%)`
-          : `linear-gradient(135deg, ${alpha(theme.palette.primary.light, 0.1)} 0%, ${alpha(theme.palette.secondary.light, 0.1)} 100%)`,
+          ? `linear-gradient(135deg, ${alpha('#7c3aed', 0.2)} 0%, ${alpha('#3b82f6', 0.2)} 100%)`
+          : `linear-gradient(135deg, ${alpha('#7c3aed', 0.05)} 0%, ${alpha('#3b82f6', 0.05)} 100%)`,
         position: 'relative',
         overflow: 'hidden',
         '&::before': {
@@ -1254,12 +2235,425 @@ const Home = () => {
               gutterBottom
               sx={{
                 fontWeight: 800,
-                background: 'linear-gradient(90deg, #4f46e5, #06b6d4)',
+                background: 'linear-gradient(90deg, #7c3aed, #3b82f6)',
                 WebkitBackgroundClip: 'text',
                 WebkitTextFillColor: 'transparent',
                 mb: 2,
                 position: 'relative',
                 zIndex: 1
+              }}
+            >
+              Your Health Journey
+            </Typography>
+            <Typography
+              variant="h5"
+              textAlign="center"
+              color="text.secondary"
+              sx={{ mb: 6, maxWidth: 800, mx: 'auto', position: 'relative', zIndex: 1 }}
+            >
+              Simple steps to better healthcare management
+            </Typography>
+          </ScrollReveal>
+
+          {/* Health Journey Steps - Simplified */}
+          <Box sx={{ position: 'relative', mb: 8 }}>
+            {/* Simple Path Line */}
+            <Box
+              sx={{
+                position: 'absolute',
+                top: '50%',
+                left: '5%',
+                right: '5%',
+                height: '4px',
+                bgcolor: alpha(theme.palette.primary.main, 0.1),
+                borderRadius: 2,
+                zIndex: 0,
+                display: { xs: 'none', md: 'block' },
+              }}
+            />
+
+            {/* Simple Journey Dots */}
+            {[0, 1, 2, 3].map((step) => (
+              <Box
+                key={`dot-${step}`}
+                sx={{
+                  position: 'absolute',
+                  top: '50%',
+                  left: `${15 + step * 23.3}%`,
+                  width: 12,
+                  height: 12,
+                  borderRadius: '50%',
+                  bgcolor: 'white',
+                  border: '2px solid #7c3aed',
+                  transform: 'translateY(-50%)',
+                  zIndex: 1,
+                  display: { xs: 'none', md: 'block' },
+                }}
+              />
+            ))}
+
+            <Grid container spacing={4} justifyContent="center">
+              {[
+                {
+                  icon: <PersonAdd />,
+                  title: 'Join',
+                  description: 'Create your account and set up your health profile',
+                  color: '#7c3aed',
+                  completed: true
+                },
+                {
+                  icon: <MonitorHeart />,
+                  title: 'Connect',
+                  description: 'Link your wearable devices for real-time health tracking',
+                  color: '#8b5cf6',
+                  completed: false
+                },
+                {
+                  icon: <LocalHospital />,
+                  title: 'Consult',
+                  description: 'Book your first appointment with a healthcare provider',
+                  color: '#6366f1',
+                  completed: false
+                },
+                {
+                  icon: <DirectionsRun />,
+                  title: 'Engage',
+                  description: 'Complete health activities and follow recommendations',
+                  color: '#3b82f6',
+                  completed: false
+                }
+              ].map((step, index) => (
+                <Grid item xs={12} sm={6} md={3} key={index}>
+                  <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.5, delay: index * 0.2 }}
+                    viewport={{ once: true }}
+                    whileHover={{
+                      y: -5,
+                      transition: { duration: 0.2 }
+                    }}
+                  >
+                    <Paper
+                      elevation={3}
+                      sx={{
+                        p: 3,
+                        borderRadius: 3,
+                        height: '100%',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'center',
+                        textAlign: 'center',
+                        position: 'relative',
+                        zIndex: 1,
+                        overflow: 'hidden',
+                        background: theme.palette.mode === 'dark'
+                          ? `linear-gradient(135deg, ${alpha(step.color, 0.15)} 0%, ${alpha(theme.palette.background.paper, 0.9)} 100%)`
+                          : `linear-gradient(135deg, ${alpha(step.color, 0.05)} 0%, ${alpha(theme.palette.background.paper, 0.9)} 100%)`,
+                        border: step.completed ? `2px solid ${step.color}` : `1px solid ${alpha(step.color, 0.2)}`,
+                      }}
+                    >
+                      {step.completed && (
+                        <Box
+                          sx={{
+                            position: 'absolute',
+                            top: 8,
+                            right: 8,
+                            color: step.color,
+                            fontWeight: 'bold',
+                          }}
+                        >
+                          ✓
+                        </Box>
+                      )}
+
+                      {/* Step Number */}
+                      <Box
+                        sx={{
+                          width: 32,
+                          height: 32,
+                          borderRadius: '50%',
+                          bgcolor: 'white',
+                          color: step.color,
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          fontWeight: 'bold',
+                          fontSize: '1rem',
+                          mb: 2,
+                          border: `2px solid ${step.color}`,
+                        }}
+                      >
+                        {index + 1}
+                      </Box>
+
+                      {/* Icon */}
+                      <Avatar
+                        sx={{
+                          width: 70,
+                          height: 70,
+                          bgcolor: alpha(step.color, 0.1),
+                          color: step.color,
+                          mb: 2,
+                          border: step.completed ? `2px solid ${step.color}` : 'none',
+                        }}
+                      >
+                        {React.cloneElement(step.icon, { sx: { fontSize: 35 } })}
+                      </Avatar>
+
+                      {/* Title */}
+                      <Typography
+                        variant="h5"
+                        gutterBottom
+                        sx={{
+                          fontWeight: 700,
+                          color: step.color,
+                          mt: 1,
+                        }}
+                      >
+                        {step.title}
+                      </Typography>
+
+                      {/* Description */}
+                      <Typography variant="body1" sx={{ color: 'text.secondary', flexGrow: 1 }}>
+                        {step.description}
+                      </Typography>
+                    </Paper>
+                  </motion.div>
+                </Grid>
+              ))}
+            </Grid>
+          </Box>
+
+          {/* Health Benefits Section */}
+          <Box sx={{ mt: 8 }}>
+            <Typography
+              variant="h3"
+              textAlign="center"
+              sx={{
+                mb: 2,
+                fontWeight: 800,
+                background: 'linear-gradient(90deg, #7c3aed, #3b82f6)',
+                WebkitBackgroundClip: 'text',
+                WebkitTextFillColor: 'transparent',
+              }}
+            >
+              Health Benefits
+            </Typography>
+
+            <Typography
+              variant="h5"
+              textAlign="center"
+              color="text.secondary"
+              sx={{ mb: 6, maxWidth: 800, mx: 'auto' }}
+            >
+              Discover how our platform helps improve your healthcare experience
+            </Typography>
+
+            <Grid container spacing={3}>
+              {[
+                {
+                  title: 'Real-time Monitoring',
+                  description: 'Track your vital signs and health metrics in real-time with our advanced monitoring system',
+                  icon: <MonitorHeart />,
+                  color: '#3b82f6'
+                },
+                {
+                  title: 'Better Sleep',
+                  description: 'Get insights and recommendations to improve your sleep quality and overall rest',
+                  icon: <Bedtime />,
+                  color: '#8b5cf6'
+                },
+                {
+                  title: 'Heart Health',
+                  description: 'Monitor your heart rate and receive alerts for any concerning patterns',
+                  icon: <Favorite />,
+                  color: '#ec4899'
+                },
+                {
+                  title: 'Appointment Management',
+                  description: 'Easily schedule, track, and manage all your healthcare appointments in one place',
+                  icon: <EventAvailable />,
+                  color: '#10b981'
+                },
+                {
+                  title: 'Health Assessments',
+                  description: 'Complete comprehensive health assessments to better understand your overall wellbeing',
+                  icon: <HealthAndSafety />,
+                  color: '#f59e0b'
+                },
+                {
+                  title: 'Medication Tracking',
+                  description: 'Never miss a dose with our medication reminder and tracking system',
+                  icon: <Medication />,
+                  color: '#ef4444'
+                }
+              ].map((benefit, index) => (
+                <Grid item xs={12} sm={6} md={4} key={index}>
+                  <motion.div
+                    initial={{ opacity: 0, scale: 0.9 }}
+                    whileInView={{ opacity: 1, scale: 1 }}
+                    transition={{ duration: 0.4, delay: index * 0.1 }}
+                    viewport={{ once: true }}
+                    whileHover={{
+                      y: -8,
+                      transition: { duration: 0.2 }
+                    }}
+                  >
+                    <Paper
+                      elevation={2}
+                      sx={{
+                        p: 3,
+                        borderRadius: 3,
+                        height: '100%',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        transition: 'all 0.3s ease',
+                        position: 'relative',
+                        overflow: 'hidden',
+                        border: `1px solid ${alpha(benefit.color, 0.2)}`,
+                      }}
+                    >
+                      <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                        <Avatar
+                          sx={{
+                            width: 60,
+                            height: 60,
+                            bgcolor: alpha(benefit.color, 0.1),
+                            color: benefit.color,
+                            mr: 2,
+                            transition: 'transform 0.3s ease',
+                          }}
+                        >
+                          {React.cloneElement(benefit.icon, { sx: { fontSize: 30 } })}
+                        </Avatar>
+                        <Typography variant="h6" sx={{ fontWeight: 700 }}>
+                          {benefit.title}
+                        </Typography>
+                      </Box>
+
+                      <Typography variant="body1" color="text.secondary" sx={{ flexGrow: 1 }}>
+                        {benefit.description}
+                      </Typography>
+
+                      <Box sx={{ mt: 2 }}>
+                        <Button
+                          variant="text"
+                          endIcon={<ArrowForward />}
+                          sx={{
+                            color: benefit.color,
+                            '&:hover': {
+                              bgcolor: alpha(benefit.color, 0.1)
+                            }
+                          }}
+                          onClick={() => navigate('/register')}
+                        >
+                          Learn more
+                        </Button>
+                      </Box>
+                    </Paper>
+                  </motion.div>
+                </Grid>
+              ))}
+            </Grid>
+          </Box>
+
+          {/* Call to Action */}
+          <Box
+            sx={{
+              mt: 8,
+              textAlign: 'center',
+              p: 4,
+              borderRadius: 4,
+              bgcolor: alpha(theme.palette.primary.main, 0.05),
+              border: `1px dashed ${alpha(theme.palette.primary.main, 0.3)}`,
+            }}
+          >
+            <Typography variant="h4" gutterBottom sx={{ fontWeight: 700 }}>
+              Start Your Health Journey Today
+            </Typography>
+            <Typography variant="h6" sx={{ mb: 4, color: 'text.secondary', maxWidth: 700, mx: 'auto' }}>
+              Join thousands of users who are improving their healthcare experience with SoulSpace
+            </Typography>
+            <Button
+              variant="contained"
+              size="large"
+              endIcon={<ArrowForward />}
+              onClick={() => navigate('/register')}
+              sx={{
+                py: 1.5,
+                px: 4,
+                borderRadius: 3,
+                background: 'linear-gradient(90deg, #7c3aed 0%, #3b82f6 100%)',
+                textTransform: 'none',
+                fontWeight: 600,
+                fontSize: '1.1rem',
+                boxShadow: '0 10px 20px rgba(124, 58, 237, 0.3)',
+                '&:hover': {
+                  boxShadow: '0 15px 30px rgba(124, 58, 237, 0.4)',
+                  transform: 'translateY(-3px)',
+                },
+                transition: 'all 0.3s ease',
+              }}
+            >
+              Join Now - It's Free
+            </Button>
+          </Box>
+        </Container>
+      </Box>
+
+      {/* Health Tips Section */}
+      <Box sx={{
+        py: { xs: 8, md: 12 },
+        background: theme.palette.mode === 'dark'
+          ? `linear-gradient(135deg, ${alpha(theme.palette.primary.dark, 0.7)} 0%, ${alpha(theme.palette.secondary.dark, 0.7)} 100%)`
+          : `linear-gradient(135deg, ${alpha(theme.palette.primary.light, 0.1)} 0%, ${alpha(theme.palette.secondary.light, 0.1)} 100%)`,
+        position: 'relative',
+        overflow: 'hidden',
+        '&::before': {
+          content: '""',
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: 'url("/pattern-dots.png")',
+          opacity: 0.05,
+          zIndex: 0,
+        }
+      }}>
+        <Container maxWidth="lg">
+          <motion.div
+            initial={{ opacity: 0, y: 30 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, margin: "-100px" }}
+            transition={{ duration: 0.8 }}
+          >
+            <Typography
+              variant="h2"
+              component="h2"
+              textAlign="center"
+              gutterBottom
+              sx={{
+                fontWeight: 800,
+                background: 'linear-gradient(90deg, #4f46e5, #06b6d4)',
+                WebkitBackgroundClip: 'text',
+                WebkitTextFillColor: 'transparent',
+                mb: 2,
+                position: 'relative',
+                zIndex: 1,
+                textShadow: '0 10px 30px rgba(0,0,0,0.1)',
+                '&::after': {
+                  content: '""',
+                  position: 'absolute',
+                  bottom: -10,
+                  left: '50%',
+                  transform: 'translateX(-50%)',
+                  width: 80,
+                  height: 4,
+                  borderRadius: 2,
+                  background: 'linear-gradient(90deg, #4f46e5, #06b6d4)',
+                }
               }}
             >
               Daily Health Tips
@@ -1272,7 +2666,7 @@ const Home = () => {
             >
               Simple practices for a healthier lifestyle
             </Typography>
-          </ScrollReveal>
+          </motion.div>
 
           <Grid container spacing={4}>
             {healthTipsData.map((tip, index) => {
@@ -1291,10 +2685,14 @@ const Home = () => {
               return (
                 <Grid item xs={12} sm={6} md={4} key={index}>
                   <motion.div
-                    initial={{ opacity: 0, y: 20 }}
+                    initial={{ opacity: 0, y: 30 }}
                     whileInView={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.5, delay: index * 0.1 }}
-                    viewport={{ once: true }}
+                    viewport={{ once: true, margin: "-50px" }}
+                    whileHover={{
+                      y: -10,
+                      transition: { duration: 0.2 }
+                    }}
                   >
                     <Paper
                       elevation={4}
@@ -1307,9 +2705,17 @@ const Home = () => {
                         overflow: 'hidden',
                         borderRadius: 4,
                         transition: 'all 0.3s ease',
+                        border: `1px solid ${alpha(tip.color, 0.3)}`,
+                        background: theme.palette.mode === 'dark'
+                          ? `linear-gradient(135deg, ${alpha(tip.color, 0.15)} 0%, ${alpha(theme.palette.background.paper, 0.9)} 100%)`
+                          : `linear-gradient(135deg, ${alpha(tip.color, 0.05)} 0%, ${alpha(theme.palette.background.paper, 0.9)} 100%)`,
+                        backdropFilter: 'blur(10px)',
+                        boxShadow: `0 10px 30px ${alpha(tip.color, 0.2)}`,
                         '&:hover': {
-                          transform: 'translateY(-8px)',
-                          boxShadow: '0 12px 30px rgba(0, 0, 0, 0.12)',
+                          boxShadow: `0 15px 40px ${alpha(tip.color, 0.3)}`,
+                          '& .tip-icon': {
+                            transform: 'scale(1.1) rotate(5deg)',
+                          }
                         },
                         '&::before': {
                           content: '""',
@@ -1318,39 +2724,103 @@ const Home = () => {
                           left: 0,
                           width: '100%',
                           height: '4px',
-                          background: tip.color,
+                          background: `linear-gradient(90deg, ${tip.color}, transparent)`,
                         }
                       }}
                     >
-                      <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                      <Box sx={{ display: 'flex', alignItems: 'center', mb: 3 }}>
                         <Avatar
+                          className="tip-icon"
                           sx={{
                             bgcolor: alpha(tip.color, 0.1),
                             color: tip.color,
-                            width: 56,
-                            height: 56,
+                            width: 60,
+                            height: 60,
                             mr: 2,
-                            boxShadow: `0 4px 14px ${alpha(tip.color, 0.4)}`
+                            boxShadow: `0 4px 14px ${alpha(tip.color, 0.4)}`,
+                            transition: 'transform 0.3s ease',
+                            border: `2px solid ${alpha(tip.color, 0.3)}`,
                           }}
                         >
-                          <IconComponent sx={{ fontSize: 30 }} />
+                          <IconComponent sx={{ fontSize: 32 }} />
                         </Avatar>
-                        <Typography variant="h5" component="h3" sx={{ fontWeight: 700 }}>
+                        <Typography
+                          variant="h5"
+                          component="h3"
+                          sx={{
+                            fontWeight: 700,
+                            background: `linear-gradient(90deg, ${tip.color}, ${theme.palette.text.primary})`,
+                            WebkitBackgroundClip: 'text',
+                            WebkitTextFillColor: 'transparent',
+                          }}
+                        >
                           {tip.title}
                         </Typography>
                       </Box>
-                      <Typography variant="body1" sx={{ mb: 2, flexGrow: 1 }}>
+
+                      <Typography variant="body1" sx={{ mb: 3, flexGrow: 1, lineHeight: 1.7 }}>
                         {tip.content}
                       </Typography>
+
+                      {/* Quick Tips */}
+                      <Box
+                        sx={{
+                          mb: 3,
+                          p: 2,
+                          borderRadius: 2,
+                          bgcolor: alpha(tip.color, 0.05),
+                          border: `1px dashed ${alpha(tip.color, 0.3)}`,
+                        }}
+                      >
+                        <Typography variant="subtitle1" sx={{ fontWeight: 600, mb: 1.5, color: tip.color }}>
+                          Quick Tips:
+                        </Typography>
+                        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+                          {[
+                            tip.iconName === 'WaterDrop' ? 'Drink 8 glasses daily' : null,
+                            tip.iconName === 'FitnessCenter' ? '30 min exercise daily' : null,
+                            tip.iconName === 'Restaurant' ? 'Eat colorful foods' : null,
+                            tip.iconName === 'Bedtime' ? '7-8 hours of sleep' : null,
+                            tip.iconName === 'SelfImprovement' ? '10 min meditation' : null,
+                            tip.iconName === 'Air' ? 'Fresh air breaks' : null
+                          ].filter(Boolean).map((quickTip, i) => (
+                            <Chip
+                              key={i}
+                              label={quickTip}
+                              size="small"
+                              sx={{
+                                bgcolor: alpha(tip.color, 0.1),
+                                color: tip.color,
+                                fontWeight: 500,
+                                border: `1px solid ${alpha(tip.color, 0.2)}`,
+                                boxShadow: `0 2px 5px ${alpha(tip.color, 0.1)}`,
+                                '&:hover': {
+                                  bgcolor: alpha(tip.color, 0.2),
+                                }
+                              }}
+                            />
+                          ))}
+                        </Box>
+                      </Box>
+
                       <Button
-                        variant="text"
+                        variant="outlined"
                         endIcon={<ArrowForward />}
                         sx={{
                           alignSelf: 'flex-start',
                           color: tip.color,
+                          borderColor: alpha(tip.color, 0.5),
+                          mt: 'auto',
+                          borderRadius: 2,
+                          px: 2,
+                          py: 1,
                           '&:hover': {
                             bgcolor: alpha(tip.color, 0.1),
-                          }
+                            borderColor: tip.color,
+                            transform: 'translateY(-3px)',
+                            boxShadow: `0 5px 10px ${alpha(tip.color, 0.2)}`,
+                          },
+                          transition: 'all 0.3s ease',
                         }}
                         onClick={() => navigate('/register')}
                       >
@@ -1693,7 +3163,7 @@ const Home = () => {
               borderRadius: 6,
               position: 'relative',
               overflow: 'hidden',
-              boxShadow: '0 20px 40px rgba(79, 70, 229, 0.3)',
+              boxShadow: '0 20px 40px rgba(79, 70, 229, 0.4)',
               '&::before': {
                 content: '""',
                 position: 'absolute',
@@ -1702,65 +3172,308 @@ const Home = () => {
                 right: 0,
                 bottom: 0,
                 background: 'url("/pattern-dots.png")',
+                backgroundSize: '20px',
                 opacity: 0.1,
                 zIndex: 0,
               }
             }}
           >
-            <Box sx={{ position: 'relative', zIndex: 1 }}>
-              <Typography
-                variant="h2"
-                gutterBottom
-                sx={{
-                  fontWeight: 800,
-                  textShadow: '2px 2px 4px rgba(0,0,0,0.2)',
-                  background: 'linear-gradient(90deg, #fff, #a5f3fc)',
-                  WebkitBackgroundClip: 'text',
-                  WebkitTextFillColor: 'transparent',
-                  mb: 3,
-                }}
-              >
-                Ready to Transform Your Healthcare?
-              </Typography>
-              <Typography
-                variant="h5"
-                sx={{
-                  mb: 5,
-                  opacity: 0.9,
-                  maxWidth: '700px',
-                  mx: 'auto',
-                  lineHeight: 1.6,
-                }}
-              >
-                Join thousands of healthcare professionals who are revolutionizing patient care with SoulSpace
-              </Typography>
-              {!isAuthenticated && (
-                <Button
-                  variant="contained"
-                  size="large"
-                  endIcon={<ArrowForward />}
-                  sx={{
-                    bgcolor: 'white',
-                    color: '#4f46e5',
-                    py: 2,
-                    px: 6,
-                    fontSize: '1.2rem',
-                    fontWeight: 700,
-                    borderRadius: 3,
-                    textTransform: 'none',
-                    boxShadow: '0 10px 20px rgba(255, 255, 255, 0.3)',
-                    '&:hover': {
-                      bgcolor: alpha(theme.palette.common.white, 0.9),
-                      transform: 'translateY(-4px)',
-                      boxShadow: '0 15px 30px rgba(255, 255, 255, 0.4)',
-                    },
-                    transition: 'all 0.3s ease'
+            {/* Floating Elements */}
+            <Box sx={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 1, pointerEvents: 'none' }}>
+              {/* Animated Icons */}
+              {[
+                { icon: '⚕️', size: '2.5rem', left: '5%', top: '15%' },
+                { icon: '🏥', size: '3rem', left: '90%', top: '20%' },
+                { icon: '❤️', size: '2rem', left: '80%', top: '70%' },
+                { icon: '🔬', size: '2.2rem', left: '10%', top: '75%' },
+              ].map((item, index) => (
+                <motion.div
+                  key={index}
+                  style={{
+                    position: 'absolute',
+                    left: item.left,
+                    top: item.top,
+                    fontSize: item.size,
+                    opacity: 0.4,
+                    filter: 'drop-shadow(0 0 10px rgba(255,255,255,0.7))',
                   }}
-                  onClick={() => navigate('/register')}
+                  animate={{
+                    y: [0, -15, 0],
+                    x: [0, 5, 0],
+                    rotate: [0, 5, 0, -5, 0],
+                    opacity: [0.4, 0.7, 0.4],
+                  }}
+                  transition={{
+                    duration: 4 + index,
+                    repeat: Infinity,
+                    delay: index * 0.5,
+                    ease: "easeInOut"
+                  }}
                 >
-                  Start Your Free Trial Today
-                </Button>
+                  {item.icon}
+                </motion.div>
+              ))}
+
+              {/* Glowing Orbs */}
+              {[...Array(5)].map((_, index) => (
+                <motion.div
+                  key={`orb-${index}`}
+                  style={{
+                    position: 'absolute',
+                    left: `${Math.random() * 90 + 5}%`,
+                    top: `${Math.random() * 90 + 5}%`,
+                    width: `${Math.random() * 20 + 10}px`,
+                    height: `${Math.random() * 20 + 10}px`,
+                    borderRadius: '50%',
+                    background: `radial-gradient(circle, rgba(255,255,255,0.8) 0%, rgba(255,255,255,0.1) 70%)`,
+                    boxShadow: '0 0 15px rgba(255,255,255,0.7)',
+                  }}
+                  animate={{
+                    x: [0, Math.random() * 40 - 20, 0],
+                    y: [0, Math.random() * 40 - 20, 0],
+                    opacity: [0.3, 0.6, 0.3],
+                    scale: [1, 1.2, 1],
+                  }}
+                  transition={{
+                    duration: Math.random() * 4 + 3,
+                    repeat: Infinity,
+                    delay: index * 0.2,
+                    ease: "easeInOut"
+                  }}
+                />
+              ))}
+            </Box>
+
+            <Box sx={{ position: 'relative', zIndex: 2 }}>
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.8 }}
+              >
+                <Typography
+                  variant="h2"
+                  component="h2"
+                  gutterBottom
+                  sx={{
+                    fontWeight: 800,
+                    fontSize: { xs: '2rem', sm: '2.5rem', md: '3rem' },
+                    mb: 3,
+                    textShadow: '0 2px 10px rgba(0,0,0,0.2)',
+                    position: 'relative',
+                    display: 'inline-block',
+                    background: 'linear-gradient(90deg, #fff, #a5f3fc)',
+                    WebkitBackgroundClip: 'text',
+                    WebkitTextFillColor: 'transparent',
+                  }}
+                >
+                  Ready to Transform Your Healthcare?
+                  <Box
+                    component="span"
+                    sx={{
+                      position: 'absolute',
+                      width: '60px',
+                      height: '60px',
+                      right: { xs: '-20px', sm: '-30px', md: '-40px' },
+                      top: { xs: '-15px', sm: '-20px', md: '-25px' },
+                      background: 'url("/sparkle.svg")',
+                      backgroundSize: 'contain',
+                      backgroundRepeat: 'no-repeat',
+                      display: { xs: 'none', sm: 'block' },
+                      animation: 'sparkle 2s ease-in-out infinite',
+                      '@keyframes sparkle': {
+                        '0%': { transform: 'scale(1) rotate(0deg)', opacity: 0.7 },
+                        '50%': { transform: 'scale(1.2) rotate(15deg)', opacity: 1 },
+                        '100%': { transform: 'scale(1) rotate(0deg)', opacity: 0.7 },
+                      }
+                    }}
+                  />
+                </Typography>
+              </motion.div>
+
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ duration: 0.8, delay: 0.3 }}
+              >
+                <Typography
+                  variant="h5"
+                  sx={{ mb: 5, maxWidth: 700, mx: 'auto', opacity: 0.9, fontWeight: 400 }}
+                >
+                  Join thousands of healthcare professionals who are revolutionizing patient care with SoulSpace
+                </Typography>
+              </motion.div>
+
+              {/* Benefits */}
+              <Box sx={{ mb: 5 }}>
+                <Grid container spacing={2} justifyContent="center">
+                  {[
+                    { icon: <MonitorHeart />, text: "Real-time health monitoring" },
+                    { icon: <Security />, text: "HIPAA compliant security" },
+                    { icon: <Speed />, text: "Fast implementation" },
+                    { icon: <Psychology />, text: "AI-powered insights" }
+                  ].map((benefit, index) => (
+                    <Grid item xs={6} sm={3} key={index}>
+                      <motion.div
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.5, delay: 0.5 + (index * 0.1) }}
+                      >
+                        <Paper
+                          elevation={0}
+                          sx={{
+                            p: 2,
+                            bgcolor: 'rgba(255, 255, 255, 0.1)',
+                            backdropFilter: 'blur(5px)',
+                            borderRadius: 3,
+                            display: 'flex',
+                            flexDirection: 'column',
+                            alignItems: 'center',
+                            transition: 'all 0.3s ease',
+                            '&:hover': {
+                              transform: 'translateY(-5px)',
+                              bgcolor: 'rgba(255, 255, 255, 0.15)',
+                            }
+                          }}
+                        >
+                          <Box
+                            sx={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              width: 40,
+                              height: 40,
+                              borderRadius: '50%',
+                              bgcolor: 'rgba(255, 255, 255, 0.2)',
+                              mb: 1
+                            }}
+                          >
+                            {React.cloneElement(benefit.icon, { sx: { fontSize: 24 } })}
+                          </Box>
+                          <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                            {benefit.text}
+                          </Typography>
+                        </Paper>
+                      </motion.div>
+                    </Grid>
+                  ))}
+                </Grid>
+              </Box>
+
+              {!isAuthenticated && (
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.9 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{
+                    type: "spring",
+                    stiffness: 260,
+                    damping: 20,
+                    delay: 0.8
+                  }}
+                  whileHover={{
+                    scale: 1.05,
+                    transition: { duration: 0.2 }
+                  }}
+                  whileTap={{ scale: 0.95 }}
+                >
+                  <Button
+                    variant="contained"
+                    size="large"
+                    endIcon={
+                      <Box sx={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        width: 28,
+                        height: 28,
+                        borderRadius: '50%',
+                        bgcolor: 'rgba(79, 70, 229, 0.2)',
+                        ml: 1
+                      }}>
+                        <ArrowForward sx={{ fontSize: 18 }} />
+                      </Box>
+                    }
+                    sx={{
+                      bgcolor: 'white',
+                      color: '#4f46e5',
+                      py: 2,
+                      px: 6,
+                      fontSize: '1.2rem',
+                      fontWeight: 700,
+                      borderRadius: 3,
+                      textTransform: 'none',
+                      boxShadow: '0 10px 20px rgba(255, 255, 255, 0.3)',
+                      position: 'relative',
+                      overflow: 'hidden',
+                      '&::after': {
+                        content: '""',
+                        position: 'absolute',
+                        top: 0,
+                        left: '-100%',
+                        width: '100%',
+                        height: '100%',
+                        background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent)',
+                        animation: 'shine 3s infinite',
+                      },
+                      '@keyframes shine': {
+                        '0%': { left: '-100%' },
+                        '20%': { left: '100%' },
+                        '100%': { left: '100%' },
+                      },
+                      transition: 'all 0.3s ease'
+                    }}
+                    onClick={() => navigate('/register')}
+                  >
+                    Start Your Free Trial Today
+                  </Button>
+                </motion.div>
               )}
+
+              {/* Countdown Timer */}
+              <Box sx={{ mt: 4, display: 'flex', justifyContent: 'center' }}>
+                <Paper
+                  elevation={0}
+                  sx={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    p: 1,
+                    px: 2,
+                    borderRadius: 5,
+                    bgcolor: 'rgba(255, 255, 255, 0.1)',
+                    backdropFilter: 'blur(5px)',
+                  }}
+                >
+                  <Typography variant="body2" sx={{ mr: 1, opacity: 0.9 }}>
+                    Limited time offer:
+                  </Typography>
+                  {['14', '23', '59', '42'].map((num, index) => (
+                    <React.Fragment key={index}>
+                      <Box
+                        sx={{
+                          bgcolor: 'rgba(255, 255, 255, 0.2)',
+                          borderRadius: 1,
+                          px: 1,
+                          py: 0.5,
+                          mx: 0.5,
+                          minWidth: 30,
+                          textAlign: 'center',
+                        }}
+                      >
+                        <Typography variant="body2" sx={{ fontWeight: 700 }}>
+                          {num}
+                        </Typography>
+                      </Box>
+                      {index < 3 && (
+                        <Typography variant="body2" sx={{ mx: 0.5, fontWeight: 700 }}>
+                          {index === 0 ? 'd' : index === 1 ? 'h' : 'm'}
+                        </Typography>
+                      )}
+                    </React.Fragment>
+                  ))}
+                  <Typography variant="body2" sx={{ ml: 0.5, fontWeight: 700 }}>
+                    s
+                  </Typography>
+                </Paper>
+              </Box>
             </Box>
           </Paper>
         </ScrollReveal>

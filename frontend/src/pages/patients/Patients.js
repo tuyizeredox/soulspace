@@ -23,7 +23,7 @@ import PatientDetails from './PatientDetails';
 
 const Patients = () => {
   const dispatch = useDispatch();
-  const { patients, loading, error } = useSelector((state) => state.patients);
+  const { patients, loading, error } = useSelector((state) => state.patient);
   const [openForm, setOpenForm] = useState(false);
   const [openDetails, setOpenDetails] = useState(false);
   const [selectedPatient, setSelectedPatient] = useState(null);

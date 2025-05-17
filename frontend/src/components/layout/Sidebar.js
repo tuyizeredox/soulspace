@@ -29,7 +29,6 @@ import MonitorHeartIcon from '@mui/icons-material/MonitorHeart';
 import MedicationIcon from '@mui/icons-material/Medication';
 import ReceiptIcon from '@mui/icons-material/Receipt';
 import ScienceIcon from '@mui/icons-material/Science';
-import DescriptionIcon from '@mui/icons-material/Description';
 import SmartToyIcon from '@mui/icons-material/SmartToy';
 import HelpIcon from '@mui/icons-material/Help';
 import FolderSharedIcon from '@mui/icons-material/FolderShared';
@@ -405,43 +404,37 @@ const Sidebar = ({ mobileOpen, onDrawerToggle }) => {
     {
       text: 'Dashboard',
       icon: <DashboardIcon />,
-      path: '/dashboard',
+      path: '/doctor/dashboard',
       badge: null
     },
     {
       text: 'Appointments',
       icon: <EventIcon />,
-      path: '/appointments',
+      path: '/doctor/appointments',
       badge: { count: 5, color: 'primary' }
     },
     {
       text: 'My Patients',
       icon: <PeopleIcon />,
-      path: '/patients',
+      path: '/doctor/patients',
       badge: null
     },
     {
-      text: 'Medical Records',
-      icon: <DescriptionIcon />,
-      path: '/records',
+      text: 'Online Consultations',
+      icon: <VideoCallIcon />,
+      path: '/doctor/online-appointments',
       badge: null
     },
     {
       text: 'Prescriptions',
       icon: <MedicationIcon />,
-      path: '/prescriptions',
+      path: '/doctor/prescriptions',
       badge: null
-    },
-    {
-      text: 'Lab Results',
-      icon: <ScienceIcon />,
-      path: '/lab-results',
-      badge: { count: 2, color: 'info' }
     },
     {
       text: 'Messages',
       icon: <MessageIcon />,
-      path: '/messages',
+      path: '/doctor/messages',
       badge: { count: 7, color: 'error' }
     },
     {

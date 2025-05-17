@@ -3,6 +3,11 @@ const router = express.Router();
 const healthController = require('../controllers/healthController');
 const { verifyToken } = require('../middleware/authMiddleware');
 
+// Simple health check endpoint - no authentication required
+router.get('/', (req, res) => {
+  res.status(200).json({ status: 'ok', message: 'Server is running' });
+});
+
 // Get health recommendations - protected route requiring authentication
 router.get('/recommendations', verifyToken, healthController.getHealthRecommendations);
 

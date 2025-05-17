@@ -30,8 +30,14 @@ router.get('/admins/hospital', verifyToken, chatController.getHospitalAdmins);
 // Create a super admin group with all hospital admins
 router.post('/superadmin/group', verifyToken, chatController.createSuperAdminGroup);
 
+// Find chat by user ID
+router.get('/find/:userId', verifyToken, chatController.findChatByUserId);
+
 // Mark messages as read
 router.put('/:chatId/read', verifyToken, chatController.markAsRead);
+
+// Get unread messages count for a chat
+router.get('/:chatId/messages/unread', verifyToken, chatController.getUnreadMessagesCount);
 
 // Get messages for a chat - MUST BE LAST as it uses a parameter that could match other routes
 router.get('/:chatId', verifyToken, chatController.getMessages);

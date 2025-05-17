@@ -42,6 +42,7 @@ import StatCard from '../../components/dashboard/StatCard';
 import AdvancedAnalytics from '../../components/hospital/AdvancedAnalytics';
 import StaffManagement from '../../components/hospital/StaffManagement';
 import PatientManagement from '../../components/hospital/PatientManagement';
+import DashboardBackground from '../../components/animations/DashboardBackground';
 import { checkAuthStatus } from '../../store/slices/authSlice';
 import { getCurrentUser } from '../../store/slices/userAuthSlice';
 import { getBestToken, getBestUser, isAuthenticated as checkIsAuthenticated } from '../../utils/authUtils';
@@ -60,6 +61,19 @@ const HospitalAdminDashboard = () => {
   const [recentPatients, setRecentPatients] = useState([]);
   const [doctorPerformance, setDoctorPerformance] = useState([]);
   const [departmentStats, setDepartmentStats] = useState([]);
+  const [windowWidth, setWindowWidth] = useState(window.innerWidth);
+
+  // Handle window resize
+  useEffect(() => {
+    const handleResize = () => {
+      setWindowWidth(window.innerWidth);
+    };
+
+    window.addEventListener('resize', handleResize);
+    return () => {
+      window.removeEventListener('resize', handleResize);
+    };
+  }, []);
 
   // Get user data from all auth systems
   const { user: oldAuthUser, token: oldToken, isAuthenticated: oldAuthIsAuthenticated } = useSelector((state) => state.auth);
@@ -577,6 +591,53 @@ const HospitalAdminDashboard = () => {
     fetchDashboardData();
   }, [fetchDashboardData]); // Add fetchDashboardData as dependency
 
+  // Helper function to get notification icon based on type
+  const getNotificationIcon = (type) => {
+    switch (type) {
+      case 'appointment':
+        return <CalendarMonth />;
+      case 'message':
+        return <ChatIcon />;
+      case 'system':
+        return <NotificationsIcon />;
+      case 'patient':
+        return <People />;
+      case 'doctor':
+        return <LocalHospital />;
+      default:
+        return <NotificationsIcon />;
+    }
+  };
+
+  // Helper function to get notification color based on type
+  const getNotificationColor = (type, theme) => {
+    switch (type) {
+      case 'appointment':
+        return theme.palette.primary.main;
+      case 'message':
+        return theme.palette.info.main;
+      case 'system':
+        return theme.palette.warning.main;
+      case 'patient':
+        return theme.palette.success.main;
+      case 'doctor':
+        return theme.palette.secondary.main;
+      default:
+        return theme.palette.primary.main;
+    }
+  };
+
+  // Helper function to get initials from name
+  const getInitials = (name) => {
+    if (!name) return '';
+    return name
+      .split(' ')
+      .map(part => part[0])
+      .join('')
+      .toUpperCase()
+      .substring(0, 2);
+  };
+
 
   if (loading) {
     return (
@@ -625,29 +686,36 @@ const HospitalAdminDashboard = () => {
   }
 
   return (
-    <Container maxWidth="xl">
-      <Box sx={{ mt: { xs: 2, md: 4 }, mb: { xs: 3, md: 4 } }}>
+    <Container maxWidth="xl" sx={{ position: 'relative', overflow: 'hidden' }}>
+      {/* Add the dashboard background */}
+      <DashboardBackground role="hospital_admin" />
+      <Box sx={{ mt: { xs: 2, md: 4 }, mb: { xs: 3, md: 4 }, position: 'relative', zIndex: 1 }}>
         {/* Welcome Section */}
         <motion.div
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5 }}
+          transition={{ duration: 0.6, type: "spring", stiffness: 100 }}
         >
           <Paper
             elevation={0}
             sx={{
-              p: { xs: 2.5, md: 3 },
+              p: { xs: 2.5, sm: 3, md: 4 },
               mb: { xs: 3, md: 4 },
-              borderRadius: 4,
-              background: `linear-gradient(135deg, ${alpha(theme.palette.primary.main, 0.15)} 0%, ${alpha(theme.palette.warning.main, 0.1)} 100%)`,
+              borderRadius: { xs: 3, md: 4 },
+              background: `linear-gradient(135deg, ${alpha(theme.palette.primary.main, 0.15)} 0%, ${alpha(theme.palette.warning.main, 0.12)} 100%)`,
               border: `1px solid ${alpha(theme.palette.primary.main, 0.2)}`,
               display: 'flex',
               flexDirection: { xs: 'column', md: 'row' },
-              alignItems: 'center',
+              alignItems: { xs: 'flex-start', md: 'center' },
               justifyContent: 'space-between',
               position: 'relative',
               overflow: 'hidden',
-              boxShadow: `0 10px 30px ${alpha(theme.palette.primary.main, 0.1)}`,
+              boxShadow: `0 10px 30px ${alpha(theme.palette.primary.main, 0.15)}`,
+              transition: 'all 0.3s ease-in-out',
+              '&:hover': {
+                boxShadow: `0 15px 40px ${alpha(theme.palette.primary.main, 0.2)}`,
+                transform: 'translateY(-2px)',
+              },
               '&::before': {
                 content: '""',
                 position: 'absolute',
@@ -655,10 +723,16 @@ const HospitalAdminDashboard = () => {
                 right: 0,
                 width: { xs: '150px', md: '300px' },
                 height: { xs: '150px', md: '300px' },
-                background: `radial-gradient(circle, ${alpha(theme.palette.primary.main, 0.1)} 0%, transparent 70%)`,
+                background: `radial-gradient(circle, ${alpha(theme.palette.primary.main, 0.15)} 0%, transparent 70%)`,
                 transform: 'translate(30%, -30%)',
                 borderRadius: '50%',
                 zIndex: 0,
+                animation: 'pulse 8s infinite ease-in-out',
+                '@keyframes pulse': {
+                  '0%': { opacity: 0.5, transform: 'translate(30%, -30%) scale(1)' },
+                  '50%': { opacity: 0.7, transform: 'translate(30%, -30%) scale(1.1)' },
+                  '100%': { opacity: 0.5, transform: 'translate(30%, -30%) scale(1)' },
+                },
               },
               '&::after': {
                 content: '""',
@@ -667,49 +741,219 @@ const HospitalAdminDashboard = () => {
                 left: 0,
                 width: { xs: '100px', md: '200px' },
                 height: { xs: '100px', md: '200px' },
-                background: `radial-gradient(circle, ${alpha(theme.palette.warning.main, 0.1)} 0%, transparent 70%)`,
+                background: `radial-gradient(circle, ${alpha(theme.palette.warning.main, 0.15)} 0%, transparent 70%)`,
                 transform: 'translate(-30%, 30%)',
                 borderRadius: '50%',
                 zIndex: 0,
+                animation: 'float 10s infinite ease-in-out',
+                '@keyframes float': {
+                  '0%': { opacity: 0.5, transform: 'translate(-30%, 30%) scale(1)' },
+                  '50%': { opacity: 0.7, transform: 'translate(-25%, 25%) scale(1.05)' },
+                  '100%': { opacity: 0.5, transform: 'translate(-30%, 30%) scale(1)' },
+                },
               }
             }}
           >
-            <Box sx={{ mb: { xs: 3, md: 0 }, position: 'relative', zIndex: 1 }}>
-              <Typography
-                variant="h4"
-                fontWeight={700}
-                gutterBottom
-                sx={{
-                  fontSize: { xs: '1.75rem', md: '2.25rem' },
-                  background: `linear-gradient(90deg, ${theme.palette.primary.main} 0%, ${theme.palette.warning.dark} 100%)`,
-                  WebkitBackgroundClip: 'text',
-                  WebkitTextFillColor: 'transparent',
-                  mb: 1
-                }}
-              >
-                Welcome, {user?.name || 'Hospital Admin'}
-              </Typography>
-              <Typography
-                variant="body1"
-                color="text.secondary"
-                sx={{
-                  maxWidth: { md: '600px' },
-                  fontSize: { xs: '0.9rem', md: '1rem' },
-                  lineHeight: 1.6
-                }}
-              >
-                Manage your hospital operations, staff, and patients from this dashboard.
-                Here's your hospital's overview for today.
-              </Typography>
-            </Box>
+            {/* Decorative elements */}
             <Box
               sx={{
+                position: 'absolute',
+                top: { xs: '10%', md: '20%' },
+                right: { xs: '5%', md: '15%' },
+                width: { xs: 30, md: 40 },
+                height: { xs: 30, md: 40 },
+                borderRadius: '50%',
+                background: `linear-gradient(135deg, ${alpha(theme.palette.success.light, 0.4)}, ${alpha(theme.palette.success.main, 0.2)})`,
+                boxShadow: `0 4px 12px ${alpha(theme.palette.success.main, 0.3)}`,
+                zIndex: 0,
+                animation: 'float-sm 6s infinite ease-in-out',
+                '@keyframes float-sm': {
+                  '0%': { transform: 'translateY(0px)' },
+                  '50%': { transform: 'translateY(-10px)' },
+                  '100%': { transform: 'translateY(0px)' },
+                },
+              }}
+            />
+            <Box
+              sx={{
+                position: 'absolute',
+                bottom: { xs: '15%', md: '25%' },
+                right: { xs: '15%', md: '30%' },
+                width: { xs: 20, md: 25 },
+                height: { xs: 20, md: 25 },
+                borderRadius: '50%',
+                background: `linear-gradient(135deg, ${alpha(theme.palette.info.light, 0.4)}, ${alpha(theme.palette.info.main, 0.2)})`,
+                boxShadow: `0 4px 12px ${alpha(theme.palette.info.main, 0.3)}`,
+                zIndex: 0,
+                animation: 'float-xs 7s infinite ease-in-out',
+                '@keyframes float-xs': {
+                  '0%': { transform: 'translateY(0px)' },
+                  '50%': { transform: 'translateY(-8px)' },
+                  '100%': { transform: 'translateY(0px)' },
+                },
+              }}
+            />
+
+            {/* Pattern overlay */}
+            <Box
+              sx={{
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                right: 0,
+                bottom: 0,
+                backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23${theme.palette.primary.main.replace('#', '')}' fill-opacity='0.05'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`,
+                opacity: 0.4,
+                zIndex: 0,
+              }}
+            />
+
+            <Box
+              sx={{
+                mb: { xs: 4, md: 0 },
+                position: 'relative',
+                zIndex: 1,
+                maxWidth: { xs: '100%', md: '60%' }
+              }}
+            >
+              <motion.div
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.2, duration: 0.5 }}
+              >
+                <Typography
+                  variant="h4"
+                  fontWeight={700}
+                  gutterBottom
+                  sx={{
+                    fontSize: { xs: '1.5rem', sm: '1.75rem', md: '2.25rem' },
+                    background: `linear-gradient(90deg, ${theme.palette.primary.main} 0%, ${theme.palette.warning.dark} 100%)`,
+                    WebkitBackgroundClip: 'text',
+                    WebkitTextFillColor: 'transparent',
+                    mb: 1.5,
+                    letterSpacing: '-0.02em',
+                    textShadow: `0 2px 10px ${alpha(theme.palette.primary.main, 0.2)}`,
+                    wordBreak: 'break-word',
+                    hyphens: 'auto',
+                  }}
+                >
+                  Welcome, {user?.name || 'Hospital Admin'}
+                </Typography>
+              </motion.div>
+
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.4, duration: 0.5 }}
+              >
+                <Typography
+                  variant="body1"
+                  color="text.secondary"
+                  sx={{
+                    maxWidth: { md: '600px' },
+                    fontSize: { xs: '0.95rem', md: '1.05rem' },
+                    lineHeight: 1.7,
+                    fontWeight: 400,
+                    opacity: 0.9,
+                    textShadow: `0 1px 2px ${alpha('#fff', 0.2)}`,
+                  }}
+                >
+                  Manage your hospital operations, staff, and patients from this dashboard.
+                  Here's your hospital's overview for today.
+                </Typography>
+              </motion.div>
+
+              {/* Daily stats summary - mobile only */}
+              <Box
+                component={motion.div}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.6, duration: 0.5 }}
+                sx={{
+                  display: { xs: 'flex', md: 'none' },
+                  mt: 2.5,
+                  mb: 1,
+                  gap: 2,
+                  flexWrap: 'wrap'
+                }}
+              >
+                <Chip
+                  icon={<People sx={{ fontSize: '1rem', color: theme.palette.primary.main }} />}
+                  label={`${stats.totalPatients || 0} Patients`}
+                  size="small"
+                  sx={{
+                    bgcolor: alpha(theme.palette.primary.main, 0.1),
+                    color: theme.palette.primary.main,
+                    fontWeight: 600,
+                    '& .MuiChip-icon': { color: theme.palette.primary.main },
+                    borderRadius: 6,
+                    px: 0.5,
+                    boxShadow: `0 2px 8px ${alpha(theme.palette.primary.main, 0.2)}`,
+                    transition: 'all 0.3s ease',
+                    '&:hover': {
+                      bgcolor: alpha(theme.palette.primary.main, 0.15),
+                      transform: 'translateY(-2px)',
+                      boxShadow: `0 4px 12px ${alpha(theme.palette.primary.main, 0.3)}`,
+                    }
+                  }}
+                />
+                <Chip
+                  icon={<LocalHospital sx={{ fontSize: '1rem', color: theme.palette.success.main }} />}
+                  label={`${stats.totalDoctors || 0} Doctors`}
+                  size="small"
+                  sx={{
+                    bgcolor: alpha(theme.palette.success.main, 0.1),
+                    color: theme.palette.success.main,
+                    fontWeight: 600,
+                    '& .MuiChip-icon': { color: theme.palette.success.main },
+                    borderRadius: 6,
+                    px: 0.5,
+                    boxShadow: `0 2px 8px ${alpha(theme.palette.success.main, 0.2)}`,
+                    transition: 'all 0.3s ease',
+                    '&:hover': {
+                      bgcolor: alpha(theme.palette.success.main, 0.15),
+                      transform: 'translateY(-2px)',
+                      boxShadow: `0 4px 12px ${alpha(theme.palette.success.main, 0.3)}`,
+                    }
+                  }}
+                />
+                <Chip
+                  icon={<CalendarMonth sx={{ fontSize: '1rem', color: theme.palette.warning.main }} />}
+                  label={`${stats.pendingAppointments || 0} Pending`}
+                  size="small"
+                  sx={{
+                    bgcolor: alpha(theme.palette.warning.main, 0.1),
+                    color: theme.palette.warning.main,
+                    fontWeight: 600,
+                    '& .MuiChip-icon': { color: theme.palette.warning.main },
+                    borderRadius: 6,
+                    px: 0.5,
+                    boxShadow: `0 2px 8px ${alpha(theme.palette.warning.main, 0.2)}`,
+                    transition: 'all 0.3s ease',
+                    '&:hover': {
+                      bgcolor: alpha(theme.palette.warning.main, 0.15),
+                      transform: 'translateY(-2px)',
+                      boxShadow: `0 4px 12px ${alpha(theme.palette.warning.main, 0.3)}`,
+                    }
+                  }}
+                />
+              </Box>
+            </Box>
+
+            <Box
+              component={motion.div}
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ delay: 0.5, duration: 0.5 }}
+              sx={{
                 display: 'flex',
-                gap: { xs: 1, md: 2 },
+                gap: { xs: 1.5, md: 2 },
                 flexWrap: 'wrap',
                 justifyContent: { xs: 'center', md: 'flex-end' },
                 position: 'relative',
-                zIndex: 1
+                zIndex: 1,
+                mt: { xs: 2, md: 0 },
+                width: { xs: '100%', md: 'auto' }
               }}
             >
               <Button
@@ -720,11 +964,20 @@ const HospitalAdminDashboard = () => {
                 sx={{
                   borderRadius: 3,
                   textTransform: 'none',
-                  px: { xs: 2, md: 3 },
-                  py: { xs: 1, md: 1.2 },
+                  px: { xs: 1.5, sm: 2, md: 3 },
+                  py: { xs: 1, sm: 1.2, md: 1.4 },
+                  fontSize: { xs: '0.8rem', sm: '0.875rem', md: '0.875rem' },
                   boxShadow: `0 4px 14px ${alpha(theme.palette.primary.main, 0.4)}`,
+                  background: `linear-gradient(90deg, ${theme.palette.primary.main}, ${alpha(theme.palette.primary.dark, 0.9)})`,
+                  transition: 'all 0.3s ease',
+                  fontWeight: 600,
+                  minWidth: { xs: '110px', sm: 'auto' },
                   '&:hover': {
                     boxShadow: `0 6px 20px ${alpha(theme.palette.primary.main, 0.6)}`,
+                    transform: 'translateY(-2px)',
+                  },
+                  '&:active': {
+                    transform: 'translateY(1px)',
                   }
                 }}
               >
@@ -739,12 +992,23 @@ const HospitalAdminDashboard = () => {
                   borderRadius: 3,
                   textTransform: 'none',
                   borderWidth: 2,
+                  fontWeight: 600,
+                  px: { xs: 1.5, sm: 2, md: 3 },
+                  py: { xs: 1, sm: 1.2, md: 1.4 },
+                  fontSize: { xs: '0.8rem', sm: '0.875rem', md: '0.875rem' },
+                  minWidth: { xs: '110px', sm: 'auto' },
+                  transition: 'all 0.3s ease',
                   '&:hover': {
                     borderWidth: 2,
+                    transform: 'translateY(-2px)',
+                    boxShadow: `0 4px 12px ${alpha(theme.palette.primary.main, 0.2)}`,
+                  },
+                  '&:active': {
+                    transform: 'translateY(1px)',
                   }
                 }}
               >
-                Manage Appointments
+                {windowWidth < 360 ? 'Appointments' : 'Manage Appointments'}
               </Button>
               <Button
                 variant="outlined"
@@ -755,8 +1019,19 @@ const HospitalAdminDashboard = () => {
                   borderRadius: 3,
                   textTransform: 'none',
                   borderWidth: 2,
+                  fontWeight: 600,
+                  px: { xs: 1.5, sm: 2, md: 3 },
+                  py: { xs: 1, sm: 1.2, md: 1.4 },
+                  fontSize: { xs: '0.8rem', sm: '0.875rem', md: '0.875rem' },
+                  minWidth: { xs: '110px', sm: 'auto' },
+                  transition: 'all 0.3s ease',
                   '&:hover': {
                     borderWidth: 2,
+                    transform: 'translateY(-2px)',
+                    boxShadow: `0 4px 12px ${alpha(theme.palette.primary.main, 0.2)}`,
+                  },
+                  '&:active': {
+                    transform: 'translateY(1px)',
                   }
                 }}
               >
@@ -1212,52 +1487,6 @@ const HospitalAdminDashboard = () => {
       </Box>
     </Container>
   );
-};
-
-// Helper function to get notification icon based on type
-const getNotificationIcon = (type) => {
-  switch (type) {
-    case 'appointment':
-      return <CalendarMonth />;
-    case 'message':
-      return <ChatIcon />;
-    case 'system':
-      return <NotificationsIcon />;
-    case 'patient':
-      return <People />;
-    case 'doctor':
-      return <LocalHospital />;
-    default:
-      return <NotificationsIcon />;
-  }
-};
-
-// Helper function to get notification color based on type
-const getNotificationColor = (type, theme) => {
-  switch (type) {
-    case 'appointment':
-      return theme.palette.primary.main;
-    case 'message':
-      return theme.palette.info.main;
-    case 'system':
-      return theme.palette.warning.main;
-    case 'patient':
-      return theme.palette.success.main;
-    case 'doctor':
-      return theme.palette.secondary.main;
-    default:
-      return theme.palette.primary.main;
-  }
-};
-
-// Helper function to get initials from name
-const getInitials = (name) => {
-  return name
-    .split(' ')
-    .map(part => part[0])
-    .join('')
-    .toUpperCase()
-    .substring(0, 2);
 };
 
 export default HospitalAdminDashboard;

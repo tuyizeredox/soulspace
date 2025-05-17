@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const auth = require('../middleware/auth');
+const { verifyToken, authorizeRoles } = require('../middleware/authMiddleware');
 const Prescription = require('../models/Prescription');
 const PatientAssignment = require('../models/PatientAssignment');
 
@@ -34,6 +35,25 @@ router.post('/', auth, async (req, res) => {
     res.status(201).json(prescription);
   } catch (error) {
     res.status(500).json({ message: error.message });
+  }
+});
+
+// Get prescriptions for the logged-in patient
+router.get('/my-prescriptions', verifyToken, authorizeRoles('patient'), async (req, res) => {
+  try {
+    const patientId = req.user.id;
+
+    // Find prescriptions for this patient
+    const prescriptions = await Prescription.find({ patient: patientId })
+      .populate('doctor', 'name email specialization')
+      .populate('pharmacist', 'name email')
+      .populate('hospital', 'name location')
+      .sort('-createdAt');
+
+    res.json(prescriptions);
+  } catch (error) {
+    console.error('Error fetching patient prescriptions:', error);
+    res.status(500).json({ message: 'Error fetching prescriptions', error: error.message });
   }
 });
 

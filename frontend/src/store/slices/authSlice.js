@@ -32,9 +32,21 @@ export const login = createAsyncThunk(
                 // Set the token in axios headers for future requests
                 axios.defaults.headers.common['Authorization'] = `Bearer ${response.data.token}`;
 
-                // Store token and user data in localStorage
+                // Store token and user data in localStorage with multiple backups
                 localStorage.setItem('token', response.data.token);
+                localStorage.setItem('userToken', response.data.token); // Backup in userToken
+                localStorage.setItem('doctorToken', response.data.token); // Specific for doctor role
+                localStorage.setItem('persistentToken', response.data.token); // Extra backup
+
+                // Store user data
                 localStorage.setItem('user', JSON.stringify(response.data.user));
+
+                // Store role-specific data
+                if (response.data.user.role === 'doctor') {
+                  localStorage.setItem('doctorId', response.data.user._id);
+                  localStorage.setItem('doctorName', response.data.user.name);
+                  console.log('Stored doctor-specific data in localStorage');
+                }
 
                 console.log('Login successful, user role:', response.data.user.role);
 
@@ -61,9 +73,21 @@ export const login = createAsyncThunk(
                 // Set the token in axios headers for future requests
                 axios.defaults.headers.common['Authorization'] = `Bearer ${response.data.token}`;
 
-                // Store token and user data in localStorage
+                // Store token and user data in localStorage with multiple backups
                 localStorage.setItem('token', response.data.token);
+                localStorage.setItem('userToken', response.data.token); // Backup in userToken
+                localStorage.setItem('doctorToken', response.data.token); // Specific for doctor role
+                localStorage.setItem('persistentToken', response.data.token); // Extra backup
+
+                // Store user data
                 localStorage.setItem('user', JSON.stringify(response.data.user));
+
+                // Store role-specific data
+                if (response.data.user.role === 'doctor') {
+                  localStorage.setItem('doctorId', response.data.user._id);
+                  localStorage.setItem('doctorName', response.data.user.name);
+                  console.log('Stored doctor-specific data in localStorage');
+                }
 
                 console.log('Login successful, user role:', response.data.user.role);
 
@@ -114,12 +138,28 @@ export const login = createAsyncThunk(
 );
 
 export const logout = createAsyncThunk('auth/logout', async () => {
-  // Remove all auth data from localStorage
+  console.log('Logging out and clearing all tokens');
+
+  // Remove all auth data from localStorage (all possible token locations)
   localStorage.removeItem('token');
+  localStorage.removeItem('userToken');
+  localStorage.removeItem('doctorToken');
+  localStorage.removeItem('persistentToken');
+  localStorage.removeItem('reduxToken');
+
+  // Remove user data
   localStorage.removeItem('user');
+  localStorage.removeItem('userData');
+
+  // Remove role-specific data
+  localStorage.removeItem('doctorId');
+  localStorage.removeItem('doctorName');
 
   // Remove auth header from axios
   delete axios.defaults.headers.common['Authorization'];
+
+  // Log the logout for debugging
+  console.log('All tokens and user data cleared from localStorage');
 
   return null;
 });
@@ -129,11 +169,16 @@ export const checkAuthStatus = createAsyncThunk(
   'auth/checkStatus',
   async (_, { rejectWithValue }) => {
     try {
-      const token = localStorage.getItem('token');
+      // Try to get token from any available source
+      const token = localStorage.getItem('token') ||
+                   localStorage.getItem('userToken') ||
+                   localStorage.getItem('doctorToken') ||
+                   localStorage.getItem('persistentToken');
+
       console.log('Checking auth status, token exists:', !!token);
 
       if (!token) {
-        console.log('No token found in localStorage');
+        console.log('No token found in any localStorage location');
         return rejectWithValue('No token found');
       }
 
@@ -145,8 +190,21 @@ export const checkAuthStatus = createAsyncThunk(
       const response = await axios.get('/api/auth/me');
       console.log('User data retrieved successfully:', response.data.user.role);
 
+      // Store token in all locations for redundancy
+      localStorage.setItem('token', token);
+      localStorage.setItem('userToken', token);
+      localStorage.setItem('doctorToken', token);
+      localStorage.setItem('persistentToken', token);
+
       // Store user data in localStorage
       localStorage.setItem('user', JSON.stringify(response.data.user));
+
+      // Store role-specific data
+      if (response.data.user.role === 'doctor') {
+        localStorage.setItem('doctorId', response.data.user._id);
+        localStorage.setItem('doctorName', response.data.user.name);
+        console.log('Refreshed doctor-specific data in localStorage');
+      }
 
       return {
         user: response.data.user,
@@ -154,11 +212,28 @@ export const checkAuthStatus = createAsyncThunk(
       };
     } catch (error) {
       console.error('Auth check failed:', error.response?.data || error.message);
-      // If token is invalid or expired, remove all auth data
-      localStorage.removeItem('token');
-      localStorage.removeItem('user');
-      // Also remove from axios headers
-      delete axios.defaults.headers.common['Authorization'];
+
+      // Only clear tokens if we get a specific auth error (401/403)
+      // This prevents clearing tokens on network errors
+      if (error.response && (error.response.status === 401 || error.response.status === 403)) {
+        console.log('Authentication error, clearing tokens');
+        // If token is invalid or expired, remove all auth data
+        localStorage.removeItem('token');
+        localStorage.removeItem('userToken');
+        localStorage.removeItem('doctorToken');
+        localStorage.removeItem('persistentToken');
+        localStorage.removeItem('user');
+        localStorage.removeItem('userData');
+        localStorage.removeItem('doctorId');
+        localStorage.removeItem('doctorName');
+
+        // Also remove from axios headers
+        delete axios.defaults.headers.common['Authorization'];
+      } else {
+        console.log('Network or server error, keeping tokens');
+        // For network errors, don't clear the token - it might be a temporary issue
+      }
+
       return rejectWithValue(error.response?.data || { message: 'Authentication failed' });
     }
   }
@@ -178,6 +253,17 @@ const authSlice = createSlice({
     clearError: (state) => {
       state.error = null;
       state.errorDetails = null;
+    },
+    setToken: (state, action) => {
+      state.token = action.payload;
+      // Also update axios headers
+      axios.defaults.headers.common['Authorization'] = `Bearer ${action.payload}`;
+    },
+    setUser: (state, action) => {
+      state.user = action.payload;
+    },
+    setAuthenticated: (state, action) => {
+      state.isAuthenticated = action.payload;
     },
   },
   extraReducers: (builder) => {
@@ -261,5 +347,5 @@ const authSlice = createSlice({
   },
 });
 
-export const { clearError } = authSlice.actions;
+export const { clearError, setToken, setUser, setAuthenticated } = authSlice.actions;
 export default authSlice.reducer;
