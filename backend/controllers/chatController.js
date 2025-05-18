@@ -316,8 +316,10 @@ exports.getMessages = async (req, res) => {
     if (!mongoose.Types.ObjectId.isValid(chatId)) {
       console.log(`Invalid chat ID format: ${chatId}`);
       return res.status(400).json({
+        success: false,
         message: 'Invalid chat ID format',
-        details: 'The provided chat ID is not in a valid format.'
+        details: 'The provided chat ID is not in a valid format.',
+        messages: [] // Return empty array instead of string
       });
     }
 
@@ -325,8 +327,10 @@ exports.getMessages = async (req, res) => {
     if (chatId.startsWith('mock-')) {
       console.log(`Mock chat ID detected: ${chatId}, returning error to force real data usage`);
       return res.status(404).json({
+        success: false,
         message: 'Chat not found',
-        details: 'Mock chats are disabled. Please use real chat IDs.'
+        details: 'Mock chats are disabled. Please use real chat IDs.',
+        messages: [] // Return empty array instead of string
       });
     }
 
@@ -360,7 +364,11 @@ exports.getMessages = async (req, res) => {
         .lean();
 
       if (!adminChat) {
-        return res.status(404).json({ message: 'Chat not found' });
+        return res.status(404).json({
+          success: false,
+          message: 'Chat not found',
+          messages: [] // Return empty array instead of string
+        });
       }
 
       // Reset unread count for super admin (in a separate non-blocking operation)
@@ -369,7 +377,19 @@ exports.getMessages = async (req, res) => {
         { $set: { [`unreadCounts.${userId}`]: 0 } }
       ).catch(err => console.error('Error updating unread count for super admin:', err));
 
-      return res.status(200).json(adminChat);
+      // If no messages, return empty array
+      if (!adminChat.messages || adminChat.messages.length === 0) {
+        return res.status(200).json({
+          success: true,
+          ...adminChat,
+          messages: [] // Ensure messages is an array
+        });
+      }
+
+      return res.status(200).json({
+        success: true,
+        ...adminChat
+      });
     }
 
     if (!fullChat) {
@@ -377,10 +397,18 @@ exports.getMessages = async (req, res) => {
       const chatExists = await Chat.exists({ _id: chatId });
 
       if (!chatExists) {
-        return res.status(404).json({ message: 'Chat not found' });
+        return res.status(404).json({
+          success: false,
+          message: 'Chat not found',
+          messages: [] // Return empty array instead of string
+        });
       } else {
         // Chat exists but user is not a participant
-        return res.status(403).json({ message: 'You are not a participant in this chat' });
+        return res.status(403).json({
+          success: false,
+          message: 'You are not a participant in this chat',
+          messages: [] // Return empty array instead of string
+        });
       }
     }
 
@@ -403,15 +431,23 @@ exports.getMessages = async (req, res) => {
           read: true
         };
       });
+    } else {
+      // Ensure messages is an array
+      fullChat.messages = [];
     }
 
-    res.status(200).json(fullChat);
+    res.status(200).json({
+      success: true,
+      ...fullChat
+    });
   } catch (error) {
     console.error('Error fetching messages:', error);
     res.status(500).json({
+      success: false,
       message: 'Server error while fetching messages',
       error: error.message,
-      stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
+      stack: process.env.NODE_ENV === 'development' ? error.stack : undefined,
+      messages: [] // Return empty array instead of string
     });
   }
 };

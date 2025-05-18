@@ -8,9 +8,9 @@ const { verifyToken, authorizeRoles } = require('../middleware/authMiddleware');
  * @desc Get all chats for a patient with their doctors
  * @access Private (Patient only)
  */
-router.get('/patient', 
-  verifyToken, 
-  authorizeRoles('patient'), 
+router.get('/patient',
+  verifyToken,
+  authorizeRoles('patient'),
   patientDoctorChatController.getPatientChats
 );
 
@@ -19,9 +19,9 @@ router.get('/patient',
  * @desc Get all chats for a doctor with their patients
  * @access Private (Doctor only)
  */
-router.get('/doctor', 
-  verifyToken, 
-  authorizeRoles('doctor'), 
+router.get('/doctor',
+  verifyToken,
+  authorizeRoles('doctor'),
   patientDoctorChatController.getDoctorChats
 );
 
@@ -30,8 +30,8 @@ router.get('/doctor',
  * @desc Create or access a chat between a patient and a doctor
  * @access Private
  */
-router.post('/', 
-  verifyToken, 
+router.post('/',
+  verifyToken,
   patientDoctorChatController.accessPatientDoctorChat
 );
 
@@ -40,9 +40,18 @@ router.post('/',
  * @desc Get messages for a specific chat
  * @access Private
  */
-router.get('/:chatId/messages', 
-  verifyToken, 
-  patientDoctorChatController.getChatMessages
+router.get('/:chatId/messages',
+  verifyToken,
+  (req, res, next) => {
+    // Try the new implementation first
+    patientDoctorChatController.getChatMessages(req, res, (err) => {
+      if (err) {
+        // If the new implementation fails, fall back to the legacy implementation
+        console.log('Falling back to legacy getMessages implementation');
+        patientDoctorChatController.getMessages(req, res, next);
+      }
+    });
+  }
 );
 
 /**
@@ -50,8 +59,8 @@ router.get('/:chatId/messages',
  * @desc Send a message in a patient-doctor chat
  * @access Private
  */
-router.post('/:chatId/messages', 
-  verifyToken, 
+router.post('/:chatId/messages',
+  verifyToken,
   patientDoctorChatController.sendChatMessage
 );
 

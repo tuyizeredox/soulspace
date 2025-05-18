@@ -47,6 +47,9 @@ import {
   PictureAsPdf as PdfIcon,
   Image as ImageIcon,
   InsertDriveFile as GenericFileIcon,
+  AudioFile as AudioFileIcon,
+  VideoFile as VideoFileIcon,
+  Description as DescriptionIcon,
   Delete as DeleteIcon,
   Videocam as VideocamIcon,
   VideocamOff as VideocamOffIcon,
@@ -101,6 +104,7 @@ const DoctorPatientChat = ({
   const navigate = useNavigate();
   const messagesEndRef = useRef(null);
   const fileInputRef = useRef(null);
+  const socketInitialized = useRef(false);
   const [message, setMessage] = useState('');
   const [messages, setMessages] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -797,6 +801,8 @@ const DoctorPatientChat = ({
         socket.off('message-received');
         socket.off('messages-marked-read');
       }
+      // Reset socket initialization flag on unmount
+      socketInitialized.current = false;
     };
   }, [
     patient,
@@ -809,8 +815,8 @@ const DoctorPatientChat = ({
     scrollToBottom,
     processMessageQueue,
     accessChat,
-    checkBackendAvailability,
-    messages
+    checkBackendAvailability
+    // Removed 'messages' from dependency array to prevent infinite re-renders
   ]);
 
 
@@ -863,11 +869,12 @@ const DoctorPatientChat = ({
         // Add older messages to the beginning of the messages array
         const olderMessages = response.data.messages;
         if (olderMessages.length > 0) {
-          setMessages(prev => [...olderMessages, ...prev]);
-
-          // Save updated messages to localStorage
-          const allMessages = [...olderMessages, ...messages];
-          saveChatHistory(chatId, allMessages);
+          // Update messages and save to localStorage in one operation to avoid stale state
+          setMessages(prev => {
+            const allMessages = [...olderMessages, ...prev];
+            saveChatHistory(chatId, allMessages);
+            return allMessages;
+          });
 
           setMessageStatus('Older messages loaded successfully.');
 
@@ -896,7 +903,7 @@ const DoctorPatientChat = ({
     } finally {
       setLoadingOlderMessages(false);
     }
-  }, [chatId, currentPage, messages, loadingOlderMessages]);
+  }, [chatId, currentPage, loadingOlderMessages, checkBackendAvailability]);
 
   // We already have lastRefreshTime defined above
 
@@ -928,7 +935,9 @@ const DoctorPatientChat = ({
       // Try to load from cache
       const cachedMessages = loadChatHistory(chatId);
       if (cachedMessages && cachedMessages.length > 0) {
-        setMessages(cachedMessages);
+        // Filter out any non-object messages (like strings)
+        const validMessages = cachedMessages.filter(msg => msg && typeof msg === 'object');
+        setMessages(validMessages);
       }
 
       return;
@@ -952,13 +961,27 @@ const DoctorPatientChat = ({
 
       // Save fetched messages to localStorage for offline access
       if (contextMessages && contextMessages.length > 0) {
+        // Filter out any non-object messages (like strings)
+        const validMessages = contextMessages.filter(msg => msg && typeof msg === 'object');
+
         // Compare with current messages to see if there are any changes
-        const currentMessageIds = messages.map(m => m._id || m.id || '').filter(Boolean).join(',');
-        const newMessageIds = contextMessages.map(m => m._id || m.id || '').filter(Boolean).join(',');
+        // Use a function to get the current messages to avoid stale state
+        const currentMessageIds = (() => {
+          return messages
+            .filter(m => m && typeof m === 'object')
+            .map(m => m._id || m.id || '')
+            .filter(Boolean)
+            .join(',');
+        })();
+
+        const newMessageIds = validMessages
+          .map(m => m._id || m.id || '')
+          .filter(Boolean)
+          .join(',');
 
         // Only update if there are changes or this is a forced refresh
         if (force || currentMessageIds !== newMessageIds) {
-          saveChatHistory(chatId, contextMessages);
+          saveChatHistory(chatId, validMessages);
 
           // Only log for forced refreshes to reduce console noise
           if (force) {
@@ -966,13 +989,13 @@ const DoctorPatientChat = ({
           }
 
           // Check if there might be more messages to load
-          setHasMoreMessages(contextMessages.length >= 20);
+          setHasMoreMessages(validMessages.length >= 20);
 
           // Reset current page to 1 since we've loaded the most recent messages
           setCurrentPage(1);
 
           // Update messages state
-          setMessages(contextMessages);
+          setMessages(validMessages);
 
           // Removed automatic scroll to bottom after refresh
         } else {
@@ -1000,7 +1023,10 @@ const DoctorPatientChat = ({
       // Try to load from cache if refresh fails
       const cachedMessages = loadChatHistory(chatId);
       if (cachedMessages && cachedMessages.length > 0) {
-        setMessages(cachedMessages);
+        // Filter out any non-object messages (like strings)
+        const validMessages = cachedMessages.filter(msg => msg && typeof msg === 'object');
+        setMessages(validMessages);
+
         if (force) {
           setMessageStatus('Could not refresh. Using cached conversation.');
         }
@@ -1014,7 +1040,7 @@ const DoctorPatientChat = ({
         setLoading(false);
       }
     }
-  }, [chatId, contextFetchMessages, contextMessages, markChatAsRead, forceScrollToBottom, loading, messages]);
+  }, [chatId, contextFetchMessages, contextMessages, markChatAsRead, forceScrollToBottom, loading]);
 
   // Add a useEffect to log when messages change - helps with debugging
   useEffect(() => {
@@ -1026,17 +1052,28 @@ const DoctorPatientChat = ({
   // Initialize socket connection - only once
   useEffect(() => {
     // Check if socket already exists to prevent multiple connections
-    if (!socket) {
+    if (!socket && !socketInitialized.current) {
+      // Set flag to prevent multiple initialization attempts
+      socketInitialized.current = true;
+
       // First check if backend is available
       checkBackendAvailability().then(isAvailable => {
         if (!isAvailable) {
           console.log('Backend not available, skipping socket connection');
+          socketInitialized.current = false; // Reset flag to allow retry later
           return;
         }
 
         try {
           // Connect to socket server with options to prevent frequent reconnects
-          const newSocket = io('http://localhost:5000', {
+          // Use relative URL to avoid hardcoding localhost
+          const socketUrl = window.location.hostname === 'localhost'
+            ? `${window.location.protocol}//${window.location.hostname}:5000`
+            : window.location.origin;
+
+          console.log('Connecting to socket server at:', socketUrl);
+
+          const newSocket = io(socketUrl, {
             reconnectionAttempts: 3,
             reconnectionDelay: 5000,
             timeout: 10000,
@@ -1080,11 +1117,14 @@ const DoctorPatientChat = ({
       // Cleanup on unmount
       return () => {
         if (socket) {
+          console.log('Disconnecting socket on cleanup');
           socket.disconnect();
         }
+        // Reset socket initialization flag
+        socketInitialized.current = false;
       };
     }
-  }, [socket, processPendingReadOperations, checkBackendAvailability]);
+  }, [processPendingReadOperations, checkBackendAvailability]);
 
   // Setup user in socket when user is available
   useEffect(() => {
@@ -1177,30 +1217,65 @@ const DoctorPatientChat = ({
     }
   };
 
-  // Send message
+  // Send message - optimized for better responsiveness
   const handleSendMessage = async () => {
     if (!message.trim() && selectedFiles.length === 0) return;
 
+    // Create a copy of the message content before it gets cleared
+    const messageContent = message.trim();
+
+    // Clear message input immediately for better UX
+    setMessage('');
+
+    // Set sending state
     setSending(true);
     setMessageStatus('Sending message...');
 
-    // Create a copy of the message content before it gets cleared
-    const messageContent = message;
-
     try {
-      // Upload files if any
+      // Create a temporary message to show immediately in the UI
+      const tempId = `temp-${Date.now()}`;
+      const tempMessage = {
+        _id: tempId,
+        sender: {
+          _id: user._id || user.id,
+          name: user.name,
+          avatar: user.avatar
+        },
+        content: messageContent,
+        timestamp: new Date().toISOString(),
+        attachments: [],
+        isTemp: true,
+        sending: true
+      };
+
+      // Add temporary message to the UI immediately
+      setMessages(prev => [...prev, tempMessage]);
+
+      // Scroll to bottom to show the new message
+      setTimeout(() => forceScrollToBottom(), 50);
+
+      // Upload files if any (in parallel with showing the temp message)
       let attachments = [];
       if (selectedFiles.length > 0) {
-        attachments = await uploadFiles();
-        setSelectedFiles([]);
-        setShowFileDialog(false);
+        try {
+          attachments = await uploadFiles();
+          setSelectedFiles([]);
+          setShowFileDialog(false);
+
+          // Update the temporary message with attachments
+          if (attachments.length > 0) {
+            setMessages(prev => prev.map(msg =>
+              msg._id === tempId ? { ...msg, attachments } : msg
+            ));
+          }
+        } catch (uploadError) {
+          console.error('Error uploading files:', uploadError);
+          // Continue with sending the message without attachments
+        }
       }
 
       if (chatId && !chatId.startsWith('mock')) {
         console.log('Sending real message to chat:', chatId);
-
-        // Check if backend is available before attempting to send
-        const isBackendAvailable = await checkBackendAvailability();
 
         // Make sure we have the token in axios headers
         const currentToken = localStorage.getItem('token') ||
@@ -1209,112 +1284,63 @@ const DoctorPatientChat = ({
 
         if (currentToken) {
           axios.defaults.headers.common['Authorization'] = `Bearer ${currentToken}`;
-          console.log('Set Authorization header with token for message sending');
         }
 
-        // If backend is not available, create a failed message
-        if (!isBackendAvailable) {
-          console.log('Backend is not available, creating failed message');
-
-          const failedMessage = {
-            _id: `failed-${Date.now()}`,
-            sender: {
-              _id: user._id || user.id,
-              name: user.name,
-              avatar: user.avatar
-            },
+        // Try to send the message directly to the patient-doctor chat endpoint first
+        try {
+          const response = await axios.post(`/api/patient-doctor-chat/${chatId}/messages`, {
             content: messageContent,
-            timestamp: new Date().toISOString(),
-            attachments: attachments,
-            failed: true
-          };
+            attachments
+          }, {
+            headers: { Authorization: `Bearer ${currentToken}` },
+            timeout: 5000 // 5 second timeout for faster response
+          });
 
-          setMessages(prev => [...prev, failedMessage]);
-          setMessageStatus('Could not send message. Server is unavailable.');
+          console.log('Message sent successfully:', response.data);
 
-          // Save to local storage for later retry
-          saveChatHistory(chatId, [...messages, failedMessage]);
-
-          // Add to message queue for automatic retry
-          addToMessageQueue(failedMessage, chatId);
-
-          // Clear message input
-          setMessage('');
-          setSending(false);
-          return;
-        }
-
-        // Create a temporary message to show immediately in the UI
-        const tempMessage = {
-          _id: `temp-${Date.now()}`,
-          sender: {
-            _id: user._id || user.id,
-            name: user.name,
-            avatar: user.avatar
-          },
-          content: message,
-          timestamp: new Date().toISOString(),
-          attachments: attachments,
-          isTemp: true, // Flag to identify temporary messages
-          sending: true // Flag to show sending status
-        };
-
-        // Add temporary message to the UI
-        setMessages(prev => [...prev, tempMessage]);
-
-        // Removed automatic scroll to new message
-
-        // Use chat context to send message with attachments
-        const result = await contextSendMessage(message, chatId, attachments);
-        console.log('Message sent result:', result);
-
-        if (result) {
           // Replace the temporary message with the real one
-          setMessages(prev => prev.map(msg =>
-            msg._id === tempMessage._id ? { ...result.message, read: false } : msg
-          ));
+          if (response.data && (response.data.message || response.data.data)) {
+            const realMessage = response.data.message || response.data.data;
+            setMessages(prev => prev.map(msg =>
+              msg._id === tempId ? { ...realMessage, read: false } : msg
+            ));
 
-          // Save the updated messages to localStorage
-          if (contextMessages && contextMessages.length > 0) {
-            saveChatHistory(chatId, contextMessages);
-          }
-
-          setMessageStatus('');
-        } else {
-          // If the context method failed, try direct API call
-          console.log('Trying direct API call to send message');
-
-          const config = {
-            headers: { Authorization: `Bearer ${currentToken}` }
-          };
-
-          try {
-            const response = await axios.post('/api/chats/message', {
-              content: message,
-              chatId,
-              attachments
-            }, config);
-
-            console.log('Message sent via direct API call:', response.data);
-
-            // Replace the temporary message with the real one
-            if (response.data && response.data.message) {
-              setMessages(prev => prev.map(msg =>
-                msg._id === tempMessage._id ? { ...response.data.message, read: false } : msg
-              ));
-            }
-
-            // Refresh messages to ensure we have the latest
-            contextFetchMessages(chatId).then(() => {
-              // Save the updated messages to localStorage
-              if (contextMessages && contextMessages.length > 0) {
-                saveChatHistory(chatId, contextMessages);
-              }
+            // Save to local storage - use the previous state to avoid stale state issues
+            setMessages(prev => {
+              const updatedMessages = prev.map(msg =>
+                msg._id === tempId ? { ...realMessage, read: false } : msg
+              );
+              // Save to local storage after updating state
+              saveChatHistory(chatId, updatedMessages);
+              return updatedMessages;
             });
 
             setMessageStatus('');
-          } catch (apiError) {
-            console.error('Direct API call failed:', apiError);
+          }
+        } catch (directApiError) {
+          console.error('Direct API call failed, trying context method:', directApiError);
+
+          // Try the context method as fallback
+          try {
+            const result = await contextSendMessage(messageContent, chatId, attachments);
+
+            if (result && result.message) {
+              // Replace the temporary message with the real one
+              setMessages(prev => prev.map(msg =>
+                msg._id === tempId ? { ...result.message, read: false } : msg
+              ));
+
+              // Save to local storage
+              if (contextMessages && contextMessages.length > 0) {
+                saveChatHistory(chatId, contextMessages);
+              }
+
+              setMessageStatus('');
+            } else {
+              throw new Error('Context method failed to return a valid message');
+            }
+          } catch (contextError) {
+            console.error('Context method failed:', contextError);
 
             // Convert the temporary message to a failed message
             const failedMessage = {
@@ -1326,7 +1352,7 @@ const DoctorPatientChat = ({
 
             // Update the UI
             setMessages(prev => prev.map(msg =>
-              msg._id === tempMessage._id ? failedMessage : msg
+              msg._id === tempId ? failedMessage : msg
             ));
 
             // Add to message queue for automatic retry
@@ -1338,46 +1364,36 @@ const DoctorPatientChat = ({
       } else {
         console.log('Using mock messaging');
 
-        // Create a temporary message to show immediately
-        const tempMessage = {
-          _id: `temp-mock-${Date.now()}`,
-          sender: { _id: user._id || user.id, name: user.name },
-          content: message,
-          timestamp: new Date().toISOString(),
-          attachments: attachments,
-          isTemp: true,
-          sending: true
-        };
-
-        // Add temporary message to the UI
-        setMessages(prev => [...prev, tempMessage]);
-
-        // Removed automatic scroll to new message
-
-        // Simulate sending delay
-        await new Promise(resolve => setTimeout(resolve, 1000));
+        // Simulate sending delay (very short for better UX)
+        await new Promise(resolve => setTimeout(resolve, 300));
 
         // Replace temporary message with "sent" message
         const newMessage = {
           _id: `mock${Date.now()}`,
           sender: { _id: user._id || user.id, name: user.name },
-          content: message,
+          content: messageContent,
           timestamp: new Date().toISOString(),
           attachments: attachments,
           read: false
         };
 
         setMessages(prev => prev.map(msg =>
-          msg._id === tempMessage._id ? newMessage : msg
+          msg._id === tempId ? newMessage : msg
         ));
 
-        // Save to local storage
-        saveChatHistory(chatId, [...messages.filter(m => m._id !== tempMessage._id), newMessage]);
+        // Save to local storage using the current state to avoid stale state
+        setMessages(prev => {
+          const updatedMessages = prev.map(msg =>
+            msg._id === tempId ? newMessage : msg
+          );
+          saveChatHistory(chatId, updatedMessages);
+          return updatedMessages;
+        });
 
         // Clear status
         setMessageStatus('');
 
-        // Simulate patient response after a delay
+        // Simulate patient response after a short delay
         setTimeout(() => {
           const responses = [
             "Thank you for the information, doctor.",
@@ -1395,17 +1411,17 @@ const DoctorPatientChat = ({
             read: true
           };
 
-          setMessages(prev => [...prev, patientResponse]);
+          // Update messages and save to local storage in one operation
+          setMessages(prev => {
+            const updatedWithResponse = [...prev, patientResponse];
+            saveChatHistory(chatId, updatedWithResponse);
+            return updatedWithResponse;
+          });
 
-          // Save updated conversation to local storage
-          saveChatHistory(chatId, [...messages.filter(m => m._id !== tempMessage._id), newMessage, patientResponse]);
-
-          // Removed automatic scroll to response
-        }, 3000);
+          // Scroll to show the response
+          setTimeout(() => forceScrollToBottom(), 50);
+        }, 1000); // Reduced from 3000ms to 1000ms for better UX
       }
-
-      // Clear message input
-      setMessage('');
     } catch (error) {
       console.error('Error sending message:', error);
       setMessageStatus('Failed to send message. Please try again.');
@@ -2170,6 +2186,12 @@ const DoctorPatientChat = ({
 
                   // Process messages to group by date
                   messages.forEach((msg) => {
+                    // Skip if msg is not an object (e.g., if it's a string)
+                    if (!msg || typeof msg !== 'object') {
+                      console.error('Invalid message format:', msg);
+                      return; // Skip this message
+                    }
+
                     // Make sure timestamp is valid
                     const timestamp = msg.timestamp || msg.createdAt || new Date();
                     const msgDate = new Date(timestamp);
@@ -2309,10 +2331,17 @@ const DoctorPatientChat = ({
                                         sx={{
                                           display: 'flex',
                                           alignItems: 'center',
-                                          p: 1,
-                                          mb: 0.5,
-                                          borderRadius: 1,
-                                          bgcolor: isOwn ? alpha(theme.palette.common.white, 0.1) : alpha(theme.palette.background.paper, 0.7)
+                                          p: 1.5,
+                                          mb: 0.75,
+                                          borderRadius: 1.5,
+                                          bgcolor: isOwn ? alpha(theme.palette.common.white, 0.1) : alpha(theme.palette.background.paper, 0.7),
+                                          border: `1px solid ${isOwn ? alpha(theme.palette.common.white, 0.2) : alpha(theme.palette.divider, 0.8)}`,
+                                          boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
+                                          transition: 'all 0.2s ease',
+                                          '&:hover': {
+                                            bgcolor: isOwn ? alpha(theme.palette.common.white, 0.15) : alpha(theme.palette.background.paper, 0.9),
+                                            boxShadow: '0 2px 5px rgba(0,0,0,0.08)'
+                                          }
                                         }}
                                       >
                                         {/* Check if this is a voice message */}
@@ -2330,7 +2359,9 @@ const DoctorPatientChat = ({
                                                 // Create audio element to play the voice message
                                                 const audio = new Audio(attachment.url.startsWith('blob:') ?
                                                   attachment.url :
-                                                  `http://localhost:5000${attachment.url}`);
+                                                  (attachment.url.startsWith('http') ?
+                                                    attachment.url :
+                                                    `${window.location.origin}${attachment.url}`));
                                                 audio.play();
                                               }}
                                               sx={{
@@ -2390,56 +2421,141 @@ const DoctorPatientChat = ({
                                             </Box>
                                           </Box>
                                         ) : attachment.type?.startsWith('image/') ? (
-                                          <Box
-                                            component="img"
-                                            src={attachment.url.startsWith('blob:') ? attachment.url : `http://localhost:5000${attachment.url}`}
-                                            alt={attachment.name}
-                                            sx={{
-                                              maxWidth: '100%',
-                                              maxHeight: 150,
-                                              borderRadius: 1,
-                                              cursor: 'pointer'
-                                            }}
-                                            onClick={() => window.open(attachment.url.startsWith('blob:') ?
-                                              attachment.url :
-                                              `http://localhost:5000${attachment.url}`, '_blank')}
-                                            onError={(e) => {
-                                              console.error('Image failed to load:', attachment.url);
-                                              e.target.src = 'https://via.placeholder.com/150?text=Image+Not+Available';
-                                            }}
-                                          />
-                                        ) : (
-                                          <>
-                                            {attachment.type === 'application/pdf' ? (
-                                              <PdfIcon color="error" sx={{ mr: 1 }} />
-                                            ) : attachment.type?.startsWith('image/') ? (
-                                              <ImageIcon color="primary" sx={{ mr: 1 }} />
-                                            ) : (
-                                              <GenericFileIcon color="info" sx={{ mr: 1 }} />
-                                            )}
-                                            <Box sx={{ flexGrow: 1, overflow: 'hidden' }}>
-                                              <Typography
-                                                variant="body2"
-                                                noWrap
-                                                sx={{
-                                                  color: isOwn ? alpha(theme.palette.common.white, 0.9) : 'text.primary',
-                                                  textDecoration: 'underline',
-                                                  cursor: 'pointer'
-                                                }}
-                                                onClick={() => window.open(attachment.url.startsWith('blob:') ?
+                                          <Box sx={{
+                                              width: '100%',
+                                              display: 'flex',
+                                              flexDirection: 'column',
+                                              alignItems: 'center'
+                                            }}>
+                                            <Box
+                                              component="img"
+                                              src={attachment.url.startsWith('blob:') ?
+                                                attachment.url :
+                                                (attachment.url.startsWith('http') ?
                                                   attachment.url :
-                                                  `http://localhost:5000${attachment.url}`, '_blank')}
+                                                  `${window.location.origin}${attachment.url}`)}
+                                              alt={attachment.name || 'Image attachment'}
+                                              sx={{
+                                                maxWidth: '100%',
+                                                maxHeight: 180,
+                                                borderRadius: 1.5,
+                                                cursor: 'pointer',
+                                                objectFit: 'contain',
+                                                boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+                                                border: `1px solid ${isOwn ? alpha(theme.palette.common.white, 0.2) : theme.palette.divider}`,
+                                                transition: 'transform 0.2s ease',
+                                                '&:hover': {
+                                                  transform: 'scale(1.02)',
+                                                  boxShadow: '0 4px 12px rgba(0,0,0,0.15)'
+                                                }
+                                              }}
+                                              onClick={() => window.open(attachment.url.startsWith('blob:') ?
+                                                attachment.url :
+                                                (attachment.url.startsWith('http') ?
+                                                  attachment.url :
+                                                  `${window.location.origin}${attachment.url}`), '_blank')}
+                                              onError={(e) => {
+                                                console.error('Image failed to load:', attachment.url);
+                                                e.target.src = 'https://via.placeholder.com/150?text=Image+Not+Available';
+                                              }}
+                                            />
+                                            {attachment.name && (
+                                              <Typography
+                                                variant="caption"
+                                                sx={{
+                                                  mt: 0.5,
+                                                  color: isOwn ? alpha(theme.palette.common.white, 0.8) : 'text.secondary',
+                                                  maxWidth: '100%',
+                                                  overflow: 'hidden',
+                                                  textOverflow: 'ellipsis',
+                                                  whiteSpace: 'nowrap'
+                                                }}
                                               >
                                                 {attachment.name}
                                               </Typography>
+                                            )}
+                                          </Box>
+                                        ) : (
+                                          <Box sx={{
+                                              display: 'flex',
+                                              alignItems: 'center',
+                                              width: '100%',
+                                              '&:hover': {
+                                                '& .file-name': {
+                                                  color: isOwn ? 'white' : theme.palette.primary.main
+                                                }
+                                              }
+                                            }}>
+                                            <Box
+                                              sx={{
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                justifyContent: 'center',
+                                                width: 40,
+                                                height: 40,
+                                                borderRadius: 1,
+                                                mr: 1.5,
+                                                bgcolor: isOwn
+                                                  ? alpha(theme.palette.common.white, 0.15)
+                                                  : alpha(theme.palette.primary.main, 0.08),
+                                                flexShrink: 0
+                                              }}
+                                            >
+                                              {attachment.type === 'application/pdf' ? (
+                                                <PdfIcon color={isOwn ? "inherit" : "error"} sx={{ color: isOwn ? 'white' : undefined }} />
+                                              ) : attachment.type?.startsWith('image/') ? (
+                                                <ImageIcon color={isOwn ? "inherit" : "primary"} sx={{ color: isOwn ? 'white' : undefined }} />
+                                              ) : attachment.type?.startsWith('audio/') ? (
+                                                <AudioFileIcon color={isOwn ? "inherit" : "secondary"} sx={{ color: isOwn ? 'white' : undefined }} />
+                                              ) : attachment.type?.startsWith('video/') ? (
+                                                <VideoFileIcon color={isOwn ? "inherit" : "warning"} sx={{ color: isOwn ? 'white' : undefined }} />
+                                              ) : attachment.type?.includes('word') || attachment.type?.includes('document') ? (
+                                                <DescriptionIcon color={isOwn ? "inherit" : "info"} sx={{ color: isOwn ? 'white' : undefined }} />
+                                              ) : (
+                                                <GenericFileIcon color={isOwn ? "inherit" : "info"} sx={{ color: isOwn ? 'white' : undefined }} />
+                                              )}
+                                            </Box>
+                                            <Box
+                                              sx={{
+                                                flexGrow: 1,
+                                                overflow: 'hidden',
+                                                cursor: 'pointer'
+                                              }}
+                                              onClick={() => window.open(attachment.url.startsWith('blob:') ?
+                                                attachment.url :
+                                                (attachment.url.startsWith('http') ?
+                                                  attachment.url :
+                                                  `${window.location.origin}${attachment.url}`), '_blank')}
+                                            >
+                                              <Typography
+                                                variant="body2"
+                                                noWrap
+                                                className="file-name"
+                                                sx={{
+                                                  color: isOwn ? alpha(theme.palette.common.white, 0.9) : 'text.primary',
+                                                  fontWeight: 'medium',
+                                                  transition: 'color 0.2s ease'
+                                                }}
+                                              >
+                                                {attachment.name || 'File attachment'}
+                                              </Typography>
                                               <Typography
                                                 variant="caption"
-                                                sx={{ color: isOwn ? alpha(theme.palette.common.white, 0.7) : 'text.secondary' }}
+                                                sx={{
+                                                  color: isOwn ? alpha(theme.palette.common.white, 0.7) : 'text.secondary',
+                                                  display: 'flex',
+                                                  alignItems: 'center'
+                                                }}
                                               >
                                                 {attachment.size && formatFileSize(attachment.size)}
+                                                {attachment.type && (
+                                                  <Box component="span" sx={{ ml: 1, opacity: 0.8 }}>
+                                                    {attachment.type.split('/')[1]?.toUpperCase() || attachment.type.split('/')[0]}
+                                                  </Box>
+                                                )}
                                               </Typography>
                                             </Box>
-                                          </>
+                                          </Box>
                                         )}
                                       </Box>
                                     ))}
@@ -2717,13 +2833,29 @@ const DoctorPatientChat = ({
                     multiline
                     maxRows={4}
                     disabled={sending}
+                    autoComplete="off"
                     InputProps={{
                       sx: {
                         borderRadius: 3,
-                        fontSize: { xs: '0.875rem', sm: '1rem' }
+                        fontSize: { xs: '0.875rem', sm: '1rem' },
+                        transition: 'all 0.2s ease',
+                        '&:focus-within': {
+                          boxShadow: `0 0 0 2px ${alpha(theme.palette.primary.main, 0.25)}`
+                        }
                       }
                     }}
-                    sx={{ flexGrow: 1 }}
+                    sx={{
+                      flexGrow: 1,
+                      '& .MuiOutlinedInput-root': {
+                        '&.Mui-focused fieldset': {
+                          borderColor: theme.palette.primary.main,
+                          borderWidth: '2px'
+                        }
+                      },
+                      '& .MuiInputBase-input': {
+                        padding: { xs: '10px 14px', sm: '12px 16px' }
+                      }
+                    }}
                   />
 
                   {/* Mobile-friendly controls */}
@@ -2777,7 +2909,15 @@ const DoctorPatientChat = ({
                         px: { xs: 2, sm: 3 },
                         py: { xs: 0.5, sm: 1 },
                         minWidth: { xs: '40px', sm: '80px' },
-                        display: { xs: 'flex', sm: 'inline-flex' }
+                        display: { xs: 'flex', sm: 'inline-flex' },
+                        transition: 'all 0.2s ease',
+                        '&:active': {
+                          transform: 'scale(0.95)',
+                          transition: 'transform 0.1s'
+                        },
+                        '&:hover': {
+                          bgcolor: theme.palette.primary.dark
+                        }
                       }}
                     >
                       <Box sx={{ display: { xs: 'none', sm: 'block' } }}>Send</Box>

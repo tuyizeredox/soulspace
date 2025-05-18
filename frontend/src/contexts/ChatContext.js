@@ -1347,10 +1347,12 @@ export const ChatProvider = ({ children }) => {
         if (cachedData) {
           const cachedMessages = JSON.parse(cachedData);
           if (Array.isArray(cachedMessages) && cachedMessages.length > 0) {
+            // Filter out any non-object messages (like strings)
+            const validMessages = cachedMessages.filter(msg => msg && typeof msg === 'object');
             // Set messages from cache
-            setMessages(cachedMessages);
+            setMessages(validMessages);
             setLoading(false);
-            return cachedMessages;
+            return validMessages;
           }
         }
       } catch (e) {
@@ -1369,8 +1371,10 @@ export const ChatProvider = ({ children }) => {
         if (cachedData) {
           const cachedMessages = JSON.parse(cachedData);
           if (Array.isArray(cachedMessages) && cachedMessages.length > 0) {
+            // Filter out any non-object messages (like strings)
+            const validMessages = cachedMessages.filter(msg => msg && typeof msg === 'object');
             // Set messages from cache for immediate display
-            setMessages(cachedMessages);
+            setMessages(validMessages);
           }
         }
       } catch (e) {
@@ -1389,7 +1393,7 @@ export const ChatProvider = ({ children }) => {
       const token = getToken();
       if (!token) {
         setLoading(false);
-        return messages.length > 0 ? messages : [];
+        return messages.length > 0 ? messages.filter(msg => msg && typeof msg === 'object') : [];
       }
 
       // Set token in axios headers
@@ -1412,10 +1416,18 @@ export const ChatProvider = ({ children }) => {
       // Process the response
       let processedMessages = [];
 
+      // Handle string response (error message)
+      if (typeof response.data === 'string') {
+        console.warn(`Received string response from API: ${response.data}`);
+        // Return current messages or empty array
+        setLoading(false);
+        return messages.length > 0 ? messages.filter(msg => msg && typeof msg === 'object') : [];
+      }
+
       if (response.data && response.data.messages && Array.isArray(response.data.messages)) {
         // Handle response with messages property
         processedMessages = response.data.messages
-          .filter(Boolean)
+          .filter(msg => msg && typeof msg === 'object') // Filter out any non-object messages
           .map(message => ({
             ...message,
             _id: message._id?.toString() || `temp-${Date.now()}`,
@@ -1431,7 +1443,7 @@ export const ChatProvider = ({ children }) => {
       } else if (Array.isArray(response.data)) {
         // Handle response that is directly an array of messages
         processedMessages = response.data
-          .filter(Boolean)
+          .filter(msg => msg && typeof msg === 'object') // Filter out any non-object messages
           .map(message => ({
             ...message,
             _id: message._id?.toString() || `temp-${Date.now()}`,

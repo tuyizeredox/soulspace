@@ -45,6 +45,15 @@ const PatientChat = ({ doctor, onVideoCall }) => {
   const [socket, setSocket] = useState(null);
   const [isTyping, setIsTyping] = useState(false);
   const [error, setError] = useState('');
+  const [pollingInterval, setPollingInterval] = useState(null);
+  const [debugMode, setDebugMode] = useState(false);
+  const [welcomeMessageAdded, setWelcomeMessageAdded] = useState(false);
+  const [chatInitialized, setChatInitialized] = useState(false);
+
+  // Refs for tracking fetch state without causing re-renders
+  const lastFetchTimeRef = useRef(0);
+  const isFetchingRef = useRef(false);
+  const welcomeTimerRef = useRef(false);
 
   // Get user from Redux store
   const authUser = useSelector((state) => state.auth.user);
@@ -69,6 +78,30 @@ const PatientChat = ({ doctor, onVideoCall }) => {
         return;
       }
 
+      // Get current time for debouncing
+      const now = Date.now();
+
+      // Debounce API calls - prevent calling more than once every 2 seconds
+      if (now - lastFetchTimeRef.current < 2000) {
+        console.log('⏱️ Debouncing API call - too soon since last fetch');
+        return;
+      }
+
+      // Prevent concurrent fetches
+      if (isFetchingRef.current) {
+        console.log('⏱️ Already fetching messages, skipping duplicate call');
+        return;
+      }
+
+      // Update fetch tracking without triggering re-renders
+      lastFetchTimeRef.current = now;
+      isFetchingRef.current = true;
+
+      // Only set loading if we don't have any messages yet
+      if (messages.length === 0) {
+        setLoading(true);
+      }
+
       // Check if this is a valid MongoDB ObjectId format
       const isValidObjectId = /^[0-9a-fA-F]{24}$/.test(chatId);
       console.log('🔍 Is valid ObjectId?', isValidObjectId);
@@ -79,14 +112,18 @@ const PatientChat = ({ doctor, onVideoCall }) => {
 
       // Store the last fetch time to prevent too frequent API calls
       const lastFetchKey = `last_fetch_${chatId}`;
-      const lastFetchTime = localStorage.getItem(lastFetchKey);
-      const now = Date.now();
+      const lastFetchTimeFromStorage = localStorage.getItem(lastFetchKey);
+      const currentTime = Date.now();
 
-      // If this is a fallback ID and we've fetched recently (within 10 seconds), use cached data
-      if (isFallbackId && lastFetchTime && (now - parseInt(lastFetchTime)) < 10000) {
+      // If this is a fallback ID and we've fetched recently (within 5 seconds), use cached data
+      if (isFallbackId && lastFetchTimeFromStorage && (currentTime - parseInt(lastFetchTimeFromStorage)) < 5000) {
         console.log('⏱️ Using cached messages for fallback ID (throttling API calls)');
+        isFetchingRef.current = false; // Reset fetching flag using ref instead of state
         return; // Skip API call to prevent flooding
       }
+
+      // Update last fetch time in storage
+      localStorage.setItem(lastFetchKey, currentTime.toString());
 
       // Get doctor ID for direct API call if needed
       const docId = doctor?._id || doctor?.id;
@@ -132,8 +169,10 @@ const PatientChat = ({ doctor, onVideoCall }) => {
               localStorage.setItem(`chat_${doctorId}`, directChatId);
             }
 
-            // Fetch messages with the direct chat ID
-            const messagesResponse = await axios.get(`/api/patient-doctor-chat/${directChatId}/messages`);
+            // Fetch messages with the direct chat ID - add timeout to ensure quick response
+            const messagesResponse = await axios.get(`/api/patient-doctor-chat/${directChatId}/messages`, {
+              timeout: 5000 // 5 second timeout to prevent hanging requests
+            });
             console.log('✅ Fetched messages using direct API call, status:', messagesResponse.status);
             console.log('📦 Messages response data:', messagesResponse.data);
             console.log('📦 Messages count:', messagesResponse.data.messages?.length || 0);
@@ -161,18 +200,22 @@ const PatientChat = ({ doctor, onVideoCall }) => {
       if (!response) {
         if (isValidObjectId) {
           try {
-            // Try the patient-doctor-chat API first
+            // Try the patient-doctor-chat API first with timeout
             console.log('🔄 Fetching messages from patient-doctor-chat API:', `/api/patient-doctor-chat/${chatId}/messages`);
-            response = await axios.get(`/api/patient-doctor-chat/${chatId}/messages`);
+            response = await axios.get(`/api/patient-doctor-chat/${chatId}/messages`, {
+              timeout: 5000 // 5 second timeout to ensure quick response
+            });
             console.log('✅ Fetched messages using patient-doctor-chat API, status:', response.status);
           } catch (patientDoctorApiError) {
             console.log('⚠️ Patient-doctor-chat API error:', patientDoctorApiError.message);
             console.log('🔄 Trying regular chat API as fallback');
 
             try {
-              // Fall back to regular chat API
+              // Fall back to regular chat API with timeout
               console.log('🔄 Fetching messages from regular chat API:', `/api/chats/${chatId}`);
-              response = await axios.get(`/api/chats/${chatId}`);
+              response = await axios.get(`/api/chats/${chatId}`, {
+                timeout: 5000 // 5 second timeout to ensure quick response
+              });
               console.log('✅ Fetched messages using regular chat API, status:', response.status);
             } catch (chatApiError) {
               console.log('⚠️ Regular chat API error:', chatApiError.message);
@@ -187,7 +230,9 @@ const PatientChat = ({ doctor, onVideoCall }) => {
           try {
             // For fallback IDs, try the patient-doctor-chat API which now handles them
             console.log('🔄 Fetching messages for fallback ID from patient-doctor-chat API');
-            response = await axios.get(`/api/patient-doctor-chat/${chatId}/messages`);
+            response = await axios.get(`/api/patient-doctor-chat/${chatId}/messages`, {
+              timeout: 5000 // 5 second timeout to ensure quick response
+            });
             console.log('✅ Fetched messages for fallback ID using patient-doctor-chat API, status:', response.status);
           } catch (error) {
             console.log('⚠️ API error for fallback ID:', error.message);
@@ -208,24 +253,58 @@ const PatientChat = ({ doctor, onVideoCall }) => {
       console.log('📦 Message response received:', response);
       console.log('📦 Message response data:', response.data);
 
-      // Handle different response formats
+      // Extract messages from response
+      let extractedMessages = [];
+
       if (response.data && Array.isArray(response.data)) {
-        console.log('✅ Setting messages from array response, count:', response.data.length);
-        setMessages(response.data);
+        console.log('✅ Found messages in array response, count:', response.data.length);
+        extractedMessages = response.data;
       } else if (response.data && Array.isArray(response.data.messages)) {
-        console.log('✅ Setting messages from response.data.messages, count:', response.data.messages.length);
-        setMessages(response.data.messages);
+        console.log('✅ Found messages in response.data.messages, count:', response.data.messages.length);
+        extractedMessages = response.data.messages;
       } else if (response.data && response.data.chat && Array.isArray(response.data.chat.messages)) {
-        console.log('✅ Setting messages from response.data.chat.messages, count:', response.data.chat.messages.length);
-        setMessages(response.data.chat.messages);
+        console.log('✅ Found messages in response.data.chat.messages, count:', response.data.chat.messages.length);
+        extractedMessages = response.data.chat.messages;
       } else if (response.data && response.data.messages && Array.isArray(response.data.messages)) {
-        console.log('✅ Setting messages from response.data.messages array, count:', response.data.messages.length);
-        setMessages(response.data.messages);
+        console.log('✅ Found messages in response.data.messages array, count:', response.data.messages.length);
+        extractedMessages = response.data.messages;
+      } else if (response.data && response.data.data && Array.isArray(response.data.data)) {
+        console.log('✅ Found messages in response.data.data array, count:', response.data.data.length);
+        extractedMessages = response.data.data;
       } else {
-        console.log('⚠️ No valid message format found in response, setting empty array');
+        console.log('⚠️ No valid message format found in response');
         console.log('Response data type:', typeof response.data);
         console.log('Response data keys:', response.data ? Object.keys(response.data) : 'null/undefined');
-        setMessages([]);
+      }
+
+      // Only update messages if we found real messages
+      if (extractedMessages.length > 0) {
+        console.log('✅ Setting messages from API response, count:', extractedMessages.length);
+        setMessages(extractedMessages);
+        setWelcomeMessageAdded(true); // Mark welcome message as added since we have real messages
+      } else {
+        console.log('⚠️ No messages found in API response');
+
+        // If we have no messages and no welcome message has been added yet
+        if (messages.length === 0 && !welcomeMessageAdded && doctor && (doctor._id || doctor.id)) {
+          const welcomeMessages = [
+            {
+              _id: `welcome-${Date.now()}`,
+              content: `Hello! I'm Dr. ${doctor.name || 'Doctor'}. How can I help you today?`,
+              sender: {
+                _id: doctor._id || doctor.id,
+                name: doctor.name || 'Doctor',
+                role: 'doctor',
+                avatar: doctor.avatar || doctor.profileImage
+              },
+              timestamp: new Date(Date.now() - 60000).toISOString(),
+              chat: chatId
+            }
+          ];
+          console.log('✅ Creating welcome message since no messages were found');
+          setMessages(welcomeMessages);
+          setWelcomeMessageAdded(true);
+        }
       }
 
       // Force a scroll to bottom after messages are updated
@@ -238,22 +317,84 @@ const PatientChat = ({ doctor, onVideoCall }) => {
       setMessages([]);
     } finally {
       setLoading(false);
+      // Reset fetching flag using ref to avoid re-renders
+      isFetchingRef.current = false;
     }
-  }, []);
+  // Remove messages.length from dependencies to prevent re-creation on every message
+  // This function should be stable and not recreated when messages change
+  }, [welcomeMessageAdded]);
 
   // Scroll to bottom of messages
   const scrollToBottom = useCallback(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, []);
 
-  // Add polling interval state
-  const [pollingInterval, setPollingInterval] = useState(null);
+  // We're now using refs for these instead of state to avoid re-renders
 
-  // Add debug mode state
-  const [debugMode, setDebugMode] = useState(false);
+  // Add welcome message if there are no messages - only once
+  useEffect(() => {
+    // Skip if we're already fetching messages or if welcome message was already added
+    if (isFetchingRef.current || welcomeMessageAdded) {
+      return;
+    }
+
+    // Only add welcome message if:
+    // 1. We have a doctor and chat ID
+    // 2. No messages are present
+    // 3. We're not currently loading messages
+    // 4. We haven't already added a welcome message
+    if (
+      !loading &&
+      messages.length === 0 &&
+      doctor &&
+      (doctor._id || doctor.id) &&
+      chatId
+    ) {
+      console.log('Setting up welcome message timer');
+
+      // Check if we've already set up the timer
+      if (welcomeTimerRef.current) {
+        return;
+      }
+
+      welcomeTimerRef.current = true;
+
+      const timer = setTimeout(() => {
+        // Double-check conditions before adding welcome message
+        if (messages.length === 0 && !loading && !isFetchingRef.current) {
+          console.log('Adding welcome message');
+
+          const welcomeMessage = {
+            _id: `welcome-${Date.now()}`,
+            content: `Hello! I'm ${doctor.name || 'your doctor'}. How can I help you today?`,
+            sender: {
+              _id: doctor._id || doctor.id || 'doctor',
+              name: doctor.name || 'Doctor',
+              role: 'doctor',
+              avatar: doctor.avatar || doctor.profileImage
+            },
+            timestamp: new Date(Date.now() - 60000).toISOString(),
+            chat: chatId
+          };
+
+          setMessages([welcomeMessage]);
+          setWelcomeMessageAdded(true);
+        }
+      }, 3000);
+
+      return () => clearTimeout(timer);
+    }
+  }, [welcomeMessageAdded, loading, messages.length, doctor, chatId]);
+
+  // Chat initialization is tracked with the state at the top of the component
 
   // Initialize chat
   useEffect(() => {
+    // Skip if already initialized or if we're missing user info
+    if (chatInitialized || !user) {
+      return;
+    }
+
     let isMounted = true;
     let socketInstance = null;
 
@@ -267,8 +408,11 @@ const PatientChat = ({ doctor, onVideoCall }) => {
       console.log('🚀 Doctor:', doctor);
       console.log('🚀 User:', user);
 
-      if (!doctor || !user) {
-        console.error('❌ Missing doctor or user information, cannot initialize chat');
+      // Mark as initialized to prevent multiple runs
+      setChatInitialized(true);
+
+      if (!user) {
+        console.error('❌ Missing user information, cannot initialize chat');
         return;
       }
 
@@ -495,17 +639,33 @@ const PatientChat = ({ doctor, onVideoCall }) => {
 
     initializeChat();
 
-    // Set up polling for fallback IDs
-    if (chatId && (chatId.startsWith('fallback_') || chatId.startsWith('mock_'))) {
+    // Set up polling for fallback IDs - but only if we don't already have a polling interval
+    if (chatId && (chatId.startsWith('fallback_') || chatId.startsWith('mock_')) && !pollingInterval) {
       console.log('Setting up polling for fallback chat ID');
 
-      // Use a longer interval (15 seconds) to reduce API calls
+      // Use a smarter polling approach with progressive intervals
+      let pollCount = 0;
+      const maxPolls = 5; // Only poll a few times then stop to prevent server load
+
       const interval = setInterval(() => {
-        if (isMounted) {
-          console.log('Polling for messages (fallback ID)');
-          fetchMessages(chatId);
+        // Skip if component unmounted, fetch in progress, or we've reached max polls
+        if (!isMounted || isFetchingRef.current) {
+          console.log('Skipping poll - component unmounted or fetch in progress');
+          return;
         }
-      }, 15000); // 15 seconds
+
+        if (pollCount >= maxPolls) {
+          console.log('Reached maximum poll count, stopping automatic polling');
+          clearInterval(interval);
+          setPollingInterval(null);
+          return;
+        }
+
+        console.log(`Polling for messages (fallback ID) - poll #${pollCount + 1}`);
+        fetchMessages(chatId);
+        pollCount++;
+
+      }, 15000); // 15 seconds - optimized for better user experience while limiting server load
 
       setPollingInterval(interval);
     }
@@ -520,7 +680,10 @@ const PatientChat = ({ doctor, onVideoCall }) => {
         clearInterval(pollingInterval);
       }
     };
-  }, [doctor, user, fetchMessages, scrollToBottom, chatId, pollingInterval]);
+  // Only depend on chatInitialized and user to prevent unnecessary re-renders
+  // fetchMessages and scrollToBottom are stable functions (useCallback)
+  // chatId changes are handled inside the effect
+  }, [chatInitialized, user]);
 
   // Send message
   const handleSendMessage = async () => {
@@ -671,24 +834,84 @@ const PatientChat = ({ doctor, onVideoCall }) => {
 
     setSending(true);
 
+    // Show a temporary message to indicate file upload is in progress
+    setMessages(prevMessages => [
+      ...prevMessages,
+      {
+        _id: `temp-upload-${Date.now()}`,
+        content: `Uploading ${files.length} file${files.length > 1 ? 's' : ''}...`,
+        sender: {
+          _id: user._id || user.id,
+          name: user.name
+        },
+        timestamp: new Date().toISOString(),
+        isTemp: true,
+        isUploading: true
+      }
+    ]);
+
+    // Scroll to the temporary message
+    setTimeout(scrollToBottom, 100);
+
     try {
       const formData = new FormData();
       for (let i = 0; i < files.length; i++) {
         formData.append('files', files[i]);
       }
 
-      const response = await axios.post('/api/upload', formData, {
+      // Add progress tracking - using the correct endpoint for chat attachments
+      const response = await axios.post('/api/uploads/chat-attachment', formData, {
         headers: {
-          'Content-Type': 'multipart/form-data'
+          'Content-Type': 'multipart/form-data',
+          'Authorization': `Bearer ${getAuthToken()}` // Make sure to include the auth token
+        },
+        timeout: 30000, // 30 second timeout for file uploads
+        onUploadProgress: (progressEvent) => {
+          const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+          console.log(`Upload progress: ${percentCompleted}%`);
+
+          // Update the temporary message with progress
+          setMessages(prevMessages =>
+            prevMessages.map(msg =>
+              msg.isUploading ? {
+                ...msg,
+                content: `Uploading ${files.length} file${files.length > 1 ? 's' : ''}... ${percentCompleted}%`
+              } : msg
+            )
+          );
         }
       });
 
       if (response.data && response.data.files) {
+        // Remove the temporary upload message
+        setMessages(prevMessages =>
+          prevMessages.filter(msg => !msg.isUploading)
+        );
+
         const attachments = response.data.files.map(file => ({
           url: file.url,
           name: file.originalname,
           type: file.mimetype
         }));
+
+        // Create a temporary message with attachments for immediate display
+        const tempMessage = {
+          _id: `temp-file-${Date.now()}`,
+          content: attachments.length > 1 ? `${attachments.length} files attached` : '',
+          sender: {
+            _id: user._id || user.id,
+            name: user.name
+          },
+          timestamp: new Date().toISOString(),
+          isTemp: true,
+          attachments
+        };
+
+        // Add to messages immediately for better UX
+        setMessages(prev => [...prev, tempMessage]);
+
+        // Scroll to show the new message
+        setTimeout(scrollToBottom, 100);
 
         // Send message with attachments
         // Check if this is a valid MongoDB ObjectId format
@@ -807,7 +1030,32 @@ const PatientChat = ({ doctor, onVideoCall }) => {
       }
     } catch (error) {
       console.error('Error uploading file:', error);
+
+      // Remove the temporary upload message
+      setMessages(prevMessages =>
+        prevMessages.filter(msg => !msg.isUploading)
+      );
+
+      // Add an error message
+      setMessages(prevMessages => [
+        ...prevMessages,
+        {
+          _id: `error-${Date.now()}`,
+          content: `File upload failed: ${error.response?.data?.message || error.message || 'Unknown error'}`,
+          sender: {
+            _id: 'system',
+            name: 'System'
+          },
+          timestamp: new Date().toISOString(),
+          isError: true
+        }
+      ]);
+
+      // Show error message
       setError('Failed to upload file. Please try again.');
+
+      // Scroll to show the error message
+      setTimeout(scrollToBottom, 100);
     } finally {
       setSending(false);
       if (fileInputRef.current) {
@@ -1211,9 +1459,43 @@ const PatientChat = ({ doctor, onVideoCall }) => {
             height: '100%',
             gap: 2
           }}>
-            <Typography variant="body1" color="text.secondary">
-              No messages yet. Start the conversation!
-            </Typography>
+            {doctor && (doctor._id || doctor.id) ? (
+              <>
+                <Box sx={{ textAlign: 'center', mb: 2 }}>
+                  <Avatar
+                    src={doctor?.avatar || doctor?.profileImage}
+                    alt={doctor?.name}
+                    sx={{
+                      width: 64,
+                      height: 64,
+                      mb: 1,
+                      mx: 'auto',
+                      border: `2px solid ${theme.palette.primary.main}`
+                    }}
+                  >
+                    {doctor?.name?.charAt(0) || 'D'}
+                  </Avatar>
+                  <Typography variant="h6" color="primary.main">
+                    {doctor?.name ? (doctor.name.toLowerCase().startsWith('dr.') ? doctor.name : `Dr. ${doctor.name}`) : 'Your Doctor'}
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+                    {doctor?.specialization || doctor?.profile?.specialization || 'Medical Specialist'}
+                  </Typography>
+                </Box>
+                <Typography variant="body1" color="text.secondary" sx={{ mb: 1 }}>
+                  Start your conversation with your doctor!
+                </Typography>
+                <Typography variant="body2" color="text.secondary" sx={{ maxWidth: '80%', textAlign: 'center' }}>
+                  Ask questions about your health, symptoms, or treatment plan. Your doctor is here to help.
+                </Typography>
+
+                {/* Welcome message will be added by the useEffect hook */}
+              </>
+            ) : (
+              <Typography variant="body1" color="text.secondary">
+                No messages yet. Start the conversation!
+              </Typography>
+            )}
           </Box>
         ) : (
           messages.map((msg, index) => {
@@ -1301,13 +1583,26 @@ const PatientChat = ({ doctor, onVideoCall }) => {
                         borderRadius: isOwn
                           ? '20px 4px 20px 20px'
                           : '4px 20px 20px 20px',
-                        bgcolor: isOwn
-                          ? theme.palette.primary.main
-                          : alpha(theme.palette.success.main, 0.1),
-                        color: isOwn ? 'white' : theme.palette.text.primary,
+                        bgcolor: msg.isError
+                          ? alpha(theme.palette.error.main, 0.1)
+                          : isOwn
+                            ? theme.palette.primary.main
+                            : alpha(theme.palette.success.main, 0.1),
+                        color: msg.isError
+                          ? theme.palette.error.main
+                          : isOwn ? 'white' : theme.palette.text.primary,
                         boxShadow: theme.shadows[1],
                         position: 'relative',
-                        '&::before': isOwn ? {
+                        '&::before': msg.isError ? {
+                          content: '""',
+                          position: 'absolute',
+                          top: 0,
+                          left: 0,
+                          width: 12,
+                          height: 12,
+                          bgcolor: theme.palette.error.main,
+                          borderRadius: '4px 0 0 0'
+                        } : isOwn ? {
                           content: '""',
                           position: 'absolute',
                           top: 0,
@@ -1326,22 +1621,186 @@ const PatientChat = ({ doctor, onVideoCall }) => {
                           bgcolor: theme.palette.success.main,
                           borderRadius: '4px 0 0 0'
                         },
-                        border: isOwn
-                          ? 'none'
-                          : `1px solid ${alpha(theme.palette.success.main, 0.3)}`
+                        border: msg.isError
+                          ? `1px solid ${alpha(theme.palette.error.main, 0.3)}`
+                          : isOwn
+                            ? 'none'
+                            : `1px solid ${alpha(theme.palette.success.main, 0.3)}`
                       }}
                     >
+                      {/* Message content */}
                       <Typography
                         variant="body1"
                         sx={{
                           wordBreak: 'break-word',
                           fontWeight: isOwn ? 400 : 400,
                           lineHeight: 1.5,
-                          fontSize: '0.95rem'
+                          fontSize: '0.95rem',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 1
                         }}
                       >
-                        {msg.content || msg.text || msg.message || (msg.attachments?.length ? 'File attachment' : 'No message content')}
+                        {msg.isUploading && (
+                          <CircularProgress size={16} color={isOwn ? "inherit" : "primary"} />
+                        )}
+                        {msg.content || msg.text || msg.message || (msg.attachments?.length ? '' : 'No message content')}
                       </Typography>
+
+                      {/* File attachments */}
+                      {(msg.attachments && msg.attachments.length > 0) && (
+                        <Box sx={{ mt: msg.content ? 1.5 : 0 }}>
+                          {msg.attachments.map((attachment, attachIndex) => {
+                            const fileUrl = attachment.url || attachment.path;
+                            const fileName = attachment.name || attachment.originalname || 'File';
+                            const fileType = attachment.type || attachment.mimetype || '';
+
+                            // Determine if it's an image
+                            const isImage = fileType.startsWith('image/') ||
+                                          fileUrl?.match(/\.(jpeg|jpg|gif|png|webp)$/i);
+
+                            // Determine if it's a PDF
+                            const isPdf = fileType === 'application/pdf' ||
+                                        fileUrl?.endsWith('.pdf');
+
+                            return (
+                              <Box
+                                key={`attach-${attachIndex}`}
+                                sx={{
+                                  mb: 1,
+                                  border: `1px solid ${alpha(
+                                    isOwn ? theme.palette.common.white : theme.palette.primary.main,
+                                    0.3
+                                  )}`,
+                                  borderRadius: 1,
+                                  overflow: 'hidden',
+                                  bgcolor: alpha(
+                                    isOwn ? theme.palette.common.white : theme.palette.primary.main,
+                                    0.1
+                                  )
+                                }}
+                              >
+                                {/* Image preview */}
+                                {isImage && (
+                                  <Box
+                                    component="a"
+                                    href={fileUrl}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    sx={{
+                                      display: 'block',
+                                      textDecoration: 'none',
+                                      color: 'inherit'
+                                    }}
+                                  >
+                                    <Box
+                                      component="img"
+                                      src={fileUrl}
+                                      alt={fileName}
+                                      sx={{
+                                        width: '100%',
+                                        maxHeight: '200px',
+                                        objectFit: 'contain',
+                                        display: 'block'
+                                      }}
+                                      onError={(e) => {
+                                        e.target.onerror = null;
+                                        e.target.src = 'https://via.placeholder.com/200x150?text=Image+Not+Available';
+                                      }}
+                                    />
+                                  </Box>
+                                )}
+
+                                {/* PDF preview */}
+                                {isPdf && (
+                                  <Box
+                                    component="a"
+                                    href={fileUrl}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    sx={{
+                                      display: 'flex',
+                                      alignItems: 'center',
+                                      p: 1.5,
+                                      textDecoration: 'none',
+                                      color: isOwn ? 'white' : 'inherit',
+                                      gap: 1
+                                    }}
+                                  >
+                                    <Box
+                                      sx={{
+                                        width: 40,
+                                        height: 40,
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        bgcolor: 'error.main',
+                                        borderRadius: 1,
+                                        color: 'white',
+                                        fontWeight: 'bold',
+                                        fontSize: '0.8rem'
+                                      }}
+                                    >
+                                      PDF
+                                    </Box>
+                                    <Box>
+                                      <Typography variant="body2" sx={{ fontWeight: 'medium' }}>
+                                        {fileName}
+                                      </Typography>
+                                      <Typography variant="caption" sx={{ opacity: 0.7 }}>
+                                        Click to open PDF
+                                      </Typography>
+                                    </Box>
+                                  </Box>
+                                )}
+
+                                {/* Other file types */}
+                                {!isImage && !isPdf && (
+                                  <Box
+                                    component="a"
+                                    href={fileUrl}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    sx={{
+                                      display: 'flex',
+                                      alignItems: 'center',
+                                      p: 1.5,
+                                      textDecoration: 'none',
+                                      color: isOwn ? 'white' : 'inherit',
+                                      gap: 1
+                                    }}
+                                  >
+                                    <Box
+                                      sx={{
+                                        width: 40,
+                                        height: 40,
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        bgcolor: 'primary.main',
+                                        borderRadius: 1,
+                                        color: 'white',
+                                        fontWeight: 'bold',
+                                        fontSize: '0.8rem'
+                                      }}
+                                    >
+                                      FILE
+                                    </Box>
+                                    <Box>
+                                      <Typography variant="body2" sx={{ fontWeight: 'medium' }}>
+                                        {fileName}
+                                      </Typography>
+                                      <Typography variant="caption" sx={{ opacity: 0.7 }}>
+                                        {fileType || 'Unknown file type'}
+                                      </Typography>
+                                    </Box>
+                                  </Box>
+                                )}
+                              </Box>
+                            );
+                          })}
+                        </Box>
+                      )}
                     </Paper>
 
                     {/* Message info with sender name for doctor */}

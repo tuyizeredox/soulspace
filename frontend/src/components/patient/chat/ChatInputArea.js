@@ -57,7 +57,7 @@ const ChatInputArea = ({ onSendMessage, onTyping, sending }) => {
   const [showFileDialog, setShowFileDialog] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
-  
+
   // Voice recording states
   const [isRecording, setIsRecording] = useState(false);
   const [recordingTime, setRecordingTime] = useState(0);
@@ -66,7 +66,7 @@ const ChatInputArea = ({ onSendMessage, onTyping, sending }) => {
   const audioRef = useRef(null);
   const recordingTimerRef = useRef(null);
   const typingTimerRef = useRef(null);
-  
+
   // Clean up timers on unmount
   useEffect(() => {
     return () => {
@@ -78,25 +78,25 @@ const ChatInputArea = ({ onSendMessage, onTyping, sending }) => {
       }
     };
   }, []);
-  
+
   // Handle message input change
   const handleMessageChange = (e) => {
     setMessage(e.target.value);
-    
+
     // Send typing indicator
     onTyping(true);
-    
+
     // Clear previous timer
     if (typingTimerRef.current) {
       clearTimeout(typingTimerRef.current);
     }
-    
+
     // Set new timer to stop typing indicator after 3 seconds
     typingTimerRef.current = setTimeout(() => {
       onTyping(false);
     }, 3000);
   };
-  
+
   // Handle key press (Enter to send)
   const handleKeyDown = (e) => {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -104,14 +104,14 @@ const ChatInputArea = ({ onSendMessage, onTyping, sending }) => {
       handleSendMessage();
     }
   };
-  
+
   // Handle send message
   const handleSendMessage = async () => {
     if ((!message || !message.trim()) && selectedFiles.length === 0) return;
-    
+
     const messageText = message;
     setMessage('');
-    
+
     // Upload files if any
     let attachments = [];
     if (selectedFiles.length > 0) {
@@ -119,30 +119,30 @@ const ChatInputArea = ({ onSendMessage, onTyping, sending }) => {
       setSelectedFiles([]);
       setShowFileDialog(false);
     }
-    
+
     // Send message
     onSendMessage(messageText, attachments);
-    
+
     // Clear typing indicator
     if (typingTimerRef.current) {
       clearTimeout(typingTimerRef.current);
     }
     onTyping(false);
   };
-  
+
   // Handle file selection
   const handleFileSelect = () => {
     fileInputRef.current?.click();
   };
-  
+
   // Handle file change
   const handleFileChange = (e) => {
     const files = Array.from(e.target.files);
     if (files.length === 0) return;
-    
+
     // Check file size (limit to 10MB per file)
     const validFiles = files.filter(file => file.size <= 10 * 1024 * 1024);
-    
+
     if (validFiles.length !== files.length) {
       // Show error for files that are too large
       window.dispatchEvent(new CustomEvent('show-toast', {
@@ -152,42 +152,43 @@ const ChatInputArea = ({ onSendMessage, onTyping, sending }) => {
         }
       }));
     }
-    
+
     setSelectedFiles(prev => [...prev, ...validFiles]);
     setShowFileDialog(true);
-    
+
     // Reset file input
     e.target.value = '';
   };
-  
+
   // Handle remove file
   const handleRemoveFile = (index) => {
     setSelectedFiles(prev => prev.filter((_, i) => i !== index));
   };
-  
+
   // Upload files to server
   const uploadFiles = async () => {
     if (selectedFiles.length === 0) return [];
-    
+
     setIsUploading(true);
     setUploadProgress(0);
-    
+
     try {
       const formData = new FormData();
       selectedFiles.forEach(file => {
         formData.append('files', file);
       });
-      
-      const response = await axios.post('/api/upload', formData, {
+
+      const response = await axios.post('/api/uploads/chat-attachment', formData, {
         headers: {
-          'Content-Type': 'multipart/form-data'
+          'Content-Type': 'multipart/form-data',
+          'Authorization': `Bearer ${localStorage.getItem('token') || localStorage.getItem('userToken') || localStorage.getItem('patientToken')}`
         },
         onUploadProgress: (progressEvent) => {
           const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
           setUploadProgress(percentCompleted);
         }
       });
-      
+
       return response.data.files.map(file => ({
         url: file.url,
         name: file.originalname,
@@ -196,7 +197,7 @@ const ChatInputArea = ({ onSendMessage, onTyping, sending }) => {
       }));
     } catch (error) {
       console.error('Error uploading files:', error);
-      
+
       // Show error message
       window.dispatchEvent(new CustomEvent('show-toast', {
         detail: {
@@ -204,27 +205,27 @@ const ChatInputArea = ({ onSendMessage, onTyping, sending }) => {
           severity: 'error'
         }
       }));
-      
+
       return [];
     } finally {
       setIsUploading(false);
     }
   };
-  
+
   // Start voice recording
   const handleStartRecording = async () => {
     try {
       await startRecording();
       setIsRecording(true);
       setRecordingTime(0);
-      
+
       // Start timer
       recordingTimerRef.current = setInterval(() => {
         setRecordingTime(prev => prev + 1);
       }, 1000);
     } catch (error) {
       console.error('Error starting recording:', error);
-      
+
       // Show error message
       window.dispatchEvent(new CustomEvent('show-toast', {
         detail: {
@@ -234,22 +235,22 @@ const ChatInputArea = ({ onSendMessage, onTyping, sending }) => {
       }));
     }
   };
-  
+
   // Stop voice recording
   const handleStopRecording = async () => {
     try {
       const audioBlob = await stopRecording();
       setIsRecording(false);
-      
+
       // Stop timer
       if (recordingTimerRef.current) {
         clearInterval(recordingTimerRef.current);
       }
-      
+
       // Create audio preview
       const audioUrl = URL.createObjectURL(audioBlob);
       const audio = new Audio(audioUrl);
-      
+
       setAudioPreview({
         blob: audioBlob,
         url: audioUrl,
@@ -258,7 +259,7 @@ const ChatInputArea = ({ onSendMessage, onTyping, sending }) => {
       });
     } catch (error) {
       console.error('Error stopping recording:', error);
-      
+
       // Show error message
       window.dispatchEvent(new CustomEvent('show-toast', {
         detail: {
@@ -266,51 +267,51 @@ const ChatInputArea = ({ onSendMessage, onTyping, sending }) => {
           severity: 'error'
         }
       }));
-      
+
       setIsRecording(false);
       if (recordingTimerRef.current) {
         clearInterval(recordingTimerRef.current);
       }
     }
   };
-  
+
   // Toggle audio playback
   const handleTogglePlay = () => {
     if (!audioPreview) return;
-    
+
     if (isPlaying) {
       audioPreview.audio.pause();
       setIsPlaying(false);
     } else {
       audioPreview.audio.play();
       setIsPlaying(true);
-      
+
       // Set event listener to update state when audio ends
       audioPreview.audio.onended = () => {
         setIsPlaying(false);
       };
     }
   };
-  
+
   // Send voice message
   const handleSendVoiceMessage = async () => {
     if (!audioPreview) return;
-    
+
     try {
       // Create file from blob
       const file = await createAudioFile(audioPreview.blob);
-      
+
       // Add to selected files
       setSelectedFiles([file]);
-      
+
       // Clear audio preview
       setAudioPreview(null);
-      
+
       // Show file dialog
       setShowFileDialog(true);
     } catch (error) {
       console.error('Error creating audio file:', error);
-      
+
       // Show error message
       window.dispatchEvent(new CustomEvent('show-toast', {
         detail: {
@@ -325,9 +326,9 @@ const ChatInputArea = ({ onSendMessage, onTyping, sending }) => {
     <Box sx={{ p: 2, bgcolor: theme.palette.background.paper }}>
       {/* Voice Recording UI */}
       {isRecording ? (
-        <Box sx={{ 
-          display: 'flex', 
-          flexDirection: 'column', 
+        <Box sx={{
+          display: 'flex',
+          flexDirection: 'column',
           gap: 2,
           p: 2,
           borderRadius: 2,
@@ -365,7 +366,7 @@ const ChatInputArea = ({ onSendMessage, onTyping, sending }) => {
                 Recording... {formatRecordingTime(recordingTime)}
               </Typography>
             </Box>
-            
+
             <Button
               variant="contained"
               color="error"
@@ -377,9 +378,9 @@ const ChatInputArea = ({ onSendMessage, onTyping, sending }) => {
           </Box>
         </Box>
       ) : audioPreview ? (
-        <Box sx={{ 
-          display: 'flex', 
-          flexDirection: 'column', 
+        <Box sx={{
+          display: 'flex',
+          flexDirection: 'column',
           gap: 2,
           p: 2,
           borderRadius: 2,
@@ -397,7 +398,7 @@ const ChatInputArea = ({ onSendMessage, onTyping, sending }) => {
             >
               {isPlaying ? <PauseIcon /> : <PlayIcon />}
             </IconButton>
-            
+
             <Box sx={{ flexGrow: 1 }}>
               <Typography variant="body2" color="text.secondary">
                 Voice Message • {formatRecordingTime(audioPreview.duration)}
@@ -423,7 +424,7 @@ const ChatInputArea = ({ onSendMessage, onTyping, sending }) => {
               </Box>
             </Box>
           </Box>
-          
+
           <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 1 }}>
             <Button
               variant="outlined"
@@ -465,7 +466,7 @@ const ChatInputArea = ({ onSendMessage, onTyping, sending }) => {
                 }
               }}
             />
-            
+
             <Box sx={{ display: 'flex', gap: 0.5 }}>
               <Tooltip title="Attach File">
                 <IconButton
@@ -481,7 +482,7 @@ const ChatInputArea = ({ onSendMessage, onTyping, sending }) => {
                   <AttachFileIcon fontSize="small" />
                 </IconButton>
               </Tooltip>
-              
+
               <Tooltip title="Voice Message">
                 <IconButton
                   color="primary"
@@ -497,7 +498,7 @@ const ChatInputArea = ({ onSendMessage, onTyping, sending }) => {
                 </IconButton>
               </Tooltip>
             </Box>
-            
+
             <Box sx={{ display: 'flex', flexDirection: 'column', justifyContent: 'flex-end' }}>
               <Tooltip title="Send Message">
                 <IconButton
@@ -519,7 +520,7 @@ const ChatInputArea = ({ onSendMessage, onTyping, sending }) => {
               </Tooltip>
             </Box>
           </Box>
-          
+
           {/* Quick Responses */}
           <Box sx={{
             display: 'flex',
@@ -560,7 +561,7 @@ const ChatInputArea = ({ onSendMessage, onTyping, sending }) => {
           </Box>
         </Box>
       )}
-      
+
       {/* Hidden file input */}
       <input
         type="file"
@@ -569,7 +570,7 @@ const ChatInputArea = ({ onSendMessage, onTyping, sending }) => {
         onChange={handleFileChange}
         multiple
       />
-      
+
       {/* File Dialog */}
       <Dialog
         open={showFileDialog}
@@ -580,7 +581,7 @@ const ChatInputArea = ({ onSendMessage, onTyping, sending }) => {
         <DialogTitle>
           Send Files
         </DialogTitle>
-        
+
         <DialogContent dividers>
           {selectedFiles.length > 0 ? (
             <>
@@ -598,12 +599,12 @@ const ChatInputArea = ({ onSendMessage, onTyping, sending }) => {
                         <GenericFileIcon color="action" />
                       )}
                     </ListItemIcon>
-                    
+
                     <ListItemText
                       primary={file.name}
                       secondary={formatAudioFileSize(file.size)}
                     />
-                    
+
                     <ListItemSecondaryAction>
                       <IconButton edge="end" onClick={() => handleRemoveFile(index)}>
                         <DeleteIcon />
@@ -612,7 +613,7 @@ const ChatInputArea = ({ onSendMessage, onTyping, sending }) => {
                   </ListItem>
                 ))}
               </List>
-              
+
               <Box sx={{ mt: 2 }}>
                 <Button
                   startIcon={<AttachFileIcon />}
@@ -624,10 +625,10 @@ const ChatInputArea = ({ onSendMessage, onTyping, sending }) => {
               </Box>
             </>
           ) : (
-            <Box sx={{ 
-              display: 'flex', 
-              flexDirection: 'column', 
-              alignItems: 'center', 
+            <Box sx={{
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
               justifyContent: 'center',
               py: 4
             }}>
@@ -645,7 +646,7 @@ const ChatInputArea = ({ onSendMessage, onTyping, sending }) => {
             </Box>
           )}
         </DialogContent>
-        
+
         <DialogActions>
           <Button onClick={() => setShowFileDialog(false)} disabled={isUploading}>
             Cancel
@@ -663,7 +664,7 @@ const ChatInputArea = ({ onSendMessage, onTyping, sending }) => {
             {isUploading ? `Uploading... ${uploadProgress}%` : 'Send Files'}
           </Button>
         </DialogActions>
-        
+
         {isUploading && (
           <LinearProgress variant="determinate" value={uploadProgress} />
         )}

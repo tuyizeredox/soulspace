@@ -3,6 +3,61 @@
  */
 
 /**
+ * Handles API errors and provides detailed logging
+ * @param {Error} error - The error object from axios or fetch
+ * @param {string} context - Context where the error occurred (e.g., 'fetchPatients')
+ * @param {Function} setError - Optional state setter for error message
+ * @returns {string} User-friendly error message
+ */
+export const handleApiError = (error, context, setError = null) => {
+  // Generate a unique error ID for tracking
+  const errorId = `${context}-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+
+  // Extract error details
+  const status = error.response?.status;
+  const statusText = error.response?.statusText;
+  const data = error.response?.data;
+  const message = error.message || 'Unknown error';
+
+  // Log detailed error information
+  console.error(`[${errorId}] API Error in ${context}:`, {
+    message,
+    status,
+    statusText,
+    data,
+    stack: error.stack
+  });
+
+  // Determine user-friendly message based on status code
+  let userMessage = 'An error occurred. Please try again later.';
+
+  if (status === 401) {
+    userMessage = 'Your session has expired. Please log in again.';
+  } else if (status === 403) {
+    userMessage = 'You do not have permission to access this resource.';
+  } else if (status === 404) {
+    userMessage = 'The requested resource was not found.';
+  } else if (status === 500) {
+    userMessage = 'A server error occurred. Please try again later.';
+  } else if (error.code === 'ECONNABORTED') {
+    userMessage = 'The request timed out. Please check your connection and try again.';
+  } else if (!navigator.onLine) {
+    userMessage = 'You are offline. Please check your internet connection.';
+  } else if (data?.message) {
+    // Use server-provided message if available
+    userMessage = data.message;
+  }
+
+  // Update error state if provided
+  if (setError) {
+    setError(userMessage);
+  }
+
+  // Return the user-friendly message
+  return userMessage;
+};
+
+/**
  * Creates a mock response for when an API call fails
  * @param {string} endpoint - The API endpoint that failed
  * @param {Object} mockData - The mock data to return
@@ -38,7 +93,7 @@ export const callWithFallback = async (apiCall, mockData, retries = 1, delay = 1
       await new Promise(resolve => setTimeout(resolve, delay));
       return callWithFallback(apiCall, mockData, retries - 1, delay);
     }
-    
+
     // If all retries fail, return mock data
     return createMockResponse(apiCall.name || 'unknown-endpoint', mockData, error);
   }
@@ -54,7 +109,7 @@ export const callWithFallback = async (apiCall, mockData, retries = 1, delay = 1
 export const generateMockMessages = (count = 5, senderId = 'doctor-123', receiverId = 'patient-456') => {
   const messages = [];
   const now = new Date();
-  
+
   const sampleMessages = [
     "Hello, how are you feeling today?",
     "Have you been taking your medication as prescribed?",
@@ -67,11 +122,11 @@ export const generateMockMessages = (count = 5, senderId = 'doctor-123', receive
     "The new medication might cause some mild side effects initially.",
     "It's important to complete the full course of antibiotics."
   ];
-  
+
   for (let i = 0; i < count; i++) {
     const isFromSender = i % 2 === 0;
     const messageTime = new Date(now.getTime() - (count - i) * 3600000);
-    
+
     messages.push({
       _id: `mock-msg-${Date.now()}-${i}`,
       sender: {
@@ -83,7 +138,7 @@ export const generateMockMessages = (count = 5, senderId = 'doctor-123', receive
       read: true
     });
   }
-  
+
   return messages;
 };
 
@@ -95,16 +150,16 @@ export const generateMockMessages = (count = 5, senderId = 'doctor-123', receive
  */
 export const handleSocketErrors = (socket, onError) => {
   if (!socket) return null;
-  
+
   socket.on('connect_error', (error) => {
     console.error('Socket connection error:', error);
     if (onError) onError(error);
   });
-  
+
   socket.on('connect_timeout', (timeout) => {
     console.error('Socket connection timeout:', timeout);
     if (onError) onError(new Error('Connection timeout'));
   });
-  
+
   return socket;
 };

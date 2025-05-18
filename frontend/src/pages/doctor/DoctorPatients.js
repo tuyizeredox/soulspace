@@ -44,6 +44,7 @@ import { useNavigate } from 'react-router-dom';
 import { useSelector } from 'react-redux';
 import { motion } from 'framer-motion';
 import axios from '../../utils/axiosConfig';
+import { handleApiError } from '../../utils/apiErrorHandler';
 
 const DoctorPatients = () => {
   const theme = useTheme();
@@ -96,11 +97,19 @@ const DoctorPatients = () => {
     try {
       setRefreshing(true);
 
+      // Validate token
+      if (!token) {
+        console.error('No authentication token found');
+        setError('Authentication error. Please log in again.');
+        return;
+      }
+
       // Ensure axios has the token in its default headers
       axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
 
       const config = {
-        headers: { Authorization: `Bearer ${token}` }
+        headers: { Authorization: `Bearer ${token}` },
+        timeout: 10000 // 10 second timeout
       };
 
       console.log('Fetching patients for doctor...');
@@ -108,44 +117,152 @@ const DoctorPatients = () => {
       // Try multiple endpoints to ensure we get the data
       let response;
       let success = false;
+      let errorDetails = null;
+      const doctorId = user?.id || user?._id;
 
-      try {
-        // First try the specific endpoint for doctor's patients
-        response = await axios.get('/api/doctors/my-patients', config);
-        if (response.data && Array.isArray(response.data)) {
-          success = true;
-          console.log(`Successfully fetched ${response.data.length} patients from /api/doctors/my-patients`);
-        }
-      } catch (err) {
-        console.log('Failed to fetch from /api/doctors/my-patients:', err.message);
+      // Array of possible endpoints to try
+      const endpoints = [
+        { url: '/api/doctors/my-patients', name: 'my-patients' },
+        { url: '/api/patient-doctor-chat/doctor', name: 'patient-doctor-chat' },
+        { url: `/api/doctors/${doctorId}/patients`, name: 'doctor-id-patients' },
+        { url: '/api/patients/assigned', name: 'patients-assigned' },
+        { url: `/api/hospitals/${user?.hospitalId}/doctors/${doctorId}/patients`, name: 'hospital-doctor-patients' }
+      ];
 
-        // Try alternative endpoint
+      // Try each endpoint until one works
+      for (const endpoint of endpoints) {
         try {
-          const doctorId = user?.id || user?._id;
-          if (doctorId) {
-            response = await axios.get(`/api/doctors/${doctorId}/patients`, config);
-            if (response.data && Array.isArray(response.data)) {
+          console.log(`Trying to fetch patients from endpoint: ${endpoint.name} (${endpoint.url})`);
+          response = await axios.get(endpoint.url, config);
+
+          if (response.data && Array.isArray(response.data)) {
+            if (response.data.length > 0) {
               success = true;
-              console.log(`Successfully fetched ${response.data.length} patients from /api/doctors/${doctorId}/patients`);
+              console.log(`Successfully fetched ${response.data.length} patients from ${endpoint.name}`);
+              break;
+            } else {
+              console.log(`Endpoint ${endpoint.name} returned 0 patients`);
             }
           }
         } catch (err) {
-          console.log('Failed to fetch from alternative endpoint:', err.message);
+          console.log(`Failed to fetch from ${endpoint.name}:`, err.message);
+          errorDetails = err;
         }
       }
 
-      if (success && response.data) {
-        console.log(`Fetched ${response.data.length} patients`);
-        setPatients(response.data);
+      // If we successfully fetched patients
+      if (success && response?.data) {
+        console.log(`Processing ${response.data.length} patients`);
+
+        // Process the patients data to ensure consistent format
+        const processedPatients = response.data.map(patient => ({
+          _id: patient._id || patient.id,
+          id: patient._id || patient.id,
+          name: patient.name || 'Unknown Patient',
+          email: patient.email || '',
+          gender: patient.gender || patient.profile?.gender || 'Not specified',
+          age: patient.age || (patient.dateOfBirth ? Math.floor((new Date() - new Date(patient.dateOfBirth)) / (365.25 * 24 * 60 * 60 * 1000)) : null),
+          phone: patient.phone || patient.profile?.phone || 'Not provided',
+          lastVisit: patient.lastVisit || null,
+          upcomingAppointments: patient.upcomingAppointments || 0,
+          recentAppointments: patient.recentAppointments || [],
+          ...patient
+        }));
+
+        setPatients(processedPatients);
         setError('');
       } else {
-        throw new Error('Could not fetch patients from any endpoint');
+        // Try one more approach - get all patients and filter by doctor
+        try {
+          console.log('Attempting to fetch all patients and filter by doctor');
+          const allPatientsResponse = await axios.get('/api/patients', config);
+
+          if (allPatientsResponse.data && Array.isArray(allPatientsResponse.data)) {
+            // Filter patients that might be assigned to this doctor
+            const filteredPatients = allPatientsResponse.data.filter(p =>
+              p.doctorId === doctorId ||
+              p.doctor?._id === doctorId ||
+              p.assignedDoctor === doctorId ||
+              p.profile?.assignedDoctor === doctorId
+            );
+
+            if (filteredPatients.length > 0) {
+              console.log(`Found ${filteredPatients.length} patients by filtering all patients`);
+
+              // Process the patients data
+              const processedPatients = filteredPatients.map(patient => ({
+                _id: patient._id || patient.id,
+                id: patient._id || patient.id,
+                name: patient.name || 'Unknown Patient',
+                email: patient.email || '',
+                gender: patient.gender || patient.profile?.gender || 'Not specified',
+                age: patient.age || (patient.dateOfBirth ? Math.floor((new Date() - new Date(patient.dateOfBirth)) / (365.25 * 24 * 60 * 60 * 1000)) : null),
+                phone: patient.phone || patient.profile?.phone || 'Not provided',
+                lastVisit: patient.lastVisit || null,
+                upcomingAppointments: patient.upcomingAppointments || 0,
+                recentAppointments: patient.recentAppointments || [],
+                ...patient
+              }));
+
+              setPatients(processedPatients);
+              setError('');
+              return;
+            }
+          }
+        } catch (err) {
+          console.log('Failed to fetch and filter all patients:', err.message);
+        }
+
+        // If all attempts failed, use mock data
+        console.log('All endpoints failed, using mock data as fallback');
+
+        if (errorDetails) {
+          handleApiError(errorDetails, 'fetchPatients', setError);
+        } else {
+          setError('Could not fetch patients. Using sample data instead.');
+        }
+
+        // Use mock data for development/testing
+        const mockPatients = [
+          {
+            _id: 'p1',
+            name: 'John Smith',
+            email: 'john.smith@example.com',
+            gender: 'Male',
+            age: 45,
+            phone: '+1 (555) 123-4567',
+            lastVisit: new Date('2023-05-15').toISOString(),
+            upcomingAppointments: 1
+          },
+          {
+            _id: 'p2',
+            name: 'Sarah Johnson',
+            email: 'sarah.j@example.com',
+            gender: 'Female',
+            age: 32,
+            phone: '+1 (555) 987-6543',
+            lastVisit: new Date('2023-06-02').toISOString(),
+            upcomingAppointments: 0
+          },
+          {
+            _id: 'p3',
+            name: 'Michael Brown',
+            email: 'michael.b@example.com',
+            gender: 'Male',
+            age: 58,
+            phone: '+1 (555) 456-7890',
+            lastVisit: new Date('2023-06-15').toISOString(),
+            upcomingAppointments: 2
+          }
+        ];
+
+        setPatients(mockPatients);
       }
     } catch (error) {
-      console.error('Error fetching patients:', error);
-      setError('Failed to load patients. Please try again later.');
+      // Handle any unexpected errors
+      handleApiError(error, 'fetchPatients', setError);
 
-      // Use mock data for development/testing
+      // Use mock data as fallback
       setPatients([
         {
           _id: 'p1',
