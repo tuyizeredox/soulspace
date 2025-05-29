@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Clear Authentication Data - SoulSpace</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+        }
+        .warning {
+            background-color: #fff3cd;
+            border: 1px solid #ffeaa7;
+            color: #856404;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 20px 0;
+        }
+        .success {
+            background-color: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 20px 0;
+            display: none;
+        }
+        button {
+            background-color: #dc3545;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 10px 5px;
+        }
+        button:hover {
+            background-color: #c82333;
+        }
+        .info-button {
+            background-color: #007bff;
+        }
+        .info-button:hover {
+            background-color: #0056b3;
+        }
+        .back-button {
+            background-color: #28a745;
+        }
+        .back-button:hover {
+            background-color: #218838;
+        }
+        .debug-info {
+            background-color: #f8f9fa;
+            border: 1px solid #dee2e6;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 20px 0;
+            font-family: monospace;
+            font-size: 12px;
+            white-space: pre-wrap;
+        }
+        .step {
+            margin: 15px 0;
+            padding: 10px;
+            background-color: #e9ecef;
+            border-radius: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔧 Authentication Debug Tool</h1>
+        
+        <div class="warning">
+            <strong>⚠️ Warning:</strong> This tool will clear all authentication data from your browser. 
+            You will need to log in again after using this tool.
+        </div>
+
+        <div class="step">
+            <h3>Step 1: Check Current Authentication State</h3>
+            <button class="info-button" onclick="showDebugInfo()">Show Debug Info</button>
+            <div id="debugInfo" class="debug-info" style="display: none;"></div>
+        </div>
+
+        <div class="step">
+            <h3>Step 2: Clear Authentication Data</h3>
+            <p>Click this button to clear all stored authentication tokens and user data:</p>
+            <button onclick="clearAllAuthData()">Clear All Authentication Data</button>
+        </div>
+
+        <div class="step">
+            <h3>Step 3: Return to Application</h3>
+            <p>After clearing the data, return to the application and try logging in again:</p>
+            <button class="back-button" onclick="goToLogin()">Go to Login Page</button>
+            <button class="info-button" onclick="goToHome()">Go to Home Page</button>
+        </div>
+
+        <div id="successMessage" class="success">
+            ✅ Authentication data cleared successfully! You can now try logging in again.
+        </div>
+
+        <div class="step">
+            <h3>Common Issues and Solutions:</h3>
+            <ul>
+                <li><strong>Invalid signature errors:</strong> Usually fixed by clearing auth data</li>
+                <li><strong>Token expired:</strong> The system should auto-refresh, but clearing helps</li>
+                <li><strong>Connection refused:</strong> Make sure the backend server is running</li>
+                <li><strong>Persistent issues:</strong> Try clearing browser cache and cookies</li>
+            </ul>
+        </div>
+    </div>
+
+    <script>
+        function showDebugInfo() {
+            const debugDiv = document.getElementById('debugInfo');
+            
+            const authData = {
+                tokens: {
+                    token: localStorage.getItem('token'),
+                    userToken: localStorage.getItem('userToken'),
+                    doctorToken: localStorage.getItem('doctorToken'),
+                    persistentToken: localStorage.getItem('persistentToken'),
+                    reduxToken: localStorage.getItem('reduxToken')
+                },
+                userData: {
+                    user: localStorage.getItem('user'),
+                    userData: localStorage.getItem('userData'),
+                    currentUser: localStorage.getItem('currentUser')
+                },
+                authFlags: {
+                    auth_error: localStorage.getItem('auth_error'),
+                    auth_error_time: localStorage.getItem('auth_error_time')
+                },
+                localStorage_keys: Object.keys(localStorage).filter(key => 
+                    key.includes('token') || key.includes('user') || key.includes('auth')
+                )
+            };
+
+            debugDiv.textContent = JSON.stringify(authData, null, 2);
+            debugDiv.style.display = 'block';
+        }
+
+        function clearAllAuthData() {
+            console.log('Clearing all authentication data...');
+            
+            // Clear all possible token storage locations
+            const tokenKeys = [
+                'token', 'userToken', 'doctorToken', 'persistentToken', 'reduxToken',
+                'authToken', 'accessToken', 'jwt', 'jwtToken'
+            ];
+            
+            tokenKeys.forEach(key => {
+                if (localStorage.getItem(key)) {
+                    console.log(`Removing ${key} from localStorage`);
+                    localStorage.removeItem(key);
+                }
+            });
+            
+            // Clear user data
+            const userDataKeys = [
+                'user', 'userData', 'currentUser', 'userInfo', 'authUser', 'userProfile'
+            ];
+            
+            userDataKeys.forEach(key => {
+                if (localStorage.getItem(key)) {
+                    console.log(`Removing ${key} from localStorage`);
+                    localStorage.removeItem(key);
+                }
+            });
+            
+            // Clear auth error flags
+            localStorage.removeItem('auth_error');
+            localStorage.removeItem('auth_error_time');
+            
+            // Clear any cached role data
+            Object.keys(localStorage).forEach(key => {
+                if (key.startsWith('user_role_') || key.startsWith('chat_endpoint_')) {
+                    console.log(`Removing cached data: ${key}`);
+                    localStorage.removeItem(key);
+                }
+            });
+            
+            // Clear session storage as well
+            sessionStorage.clear();
+            
+            console.log('All authentication data cleared');
+            
+            // Show success message
+            document.getElementById('successMessage').style.display = 'block';
+            
+            // Update debug info if it's visible
+            const debugDiv = document.getElementById('debugInfo');
+            if (debugDiv.style.display === 'block') {
+                showDebugInfo();
+            }
+        }
+
+        function goToLogin() {
+            window.location.href = '/login';
+        }
+
+        function goToHome() {
+            window.location.href = '/';
+        }
+    </script>
+</body>
+</html>

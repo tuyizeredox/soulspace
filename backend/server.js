@@ -34,6 +34,26 @@ const morgan = require('morgan');
 const hospitalRegistrationRoutes = require('./routes/hospitalRegistrationRoutes');
 
 dotenv.config();
+
+// Verify critical environment variables
+if (!process.env.JWT_SECRET) {
+  console.error('CRITICAL ERROR: JWT_SECRET environment variable is not set!');
+  console.error('Please check your .env file and ensure JWT_SECRET is properly configured.');
+  process.exit(1);
+}
+
+if (!process.env.MONGO_URI) {
+  console.error('CRITICAL ERROR: MONGO_URI environment variable is not set!');
+  console.error('Please check your .env file and ensure MONGO_URI is properly configured.');
+  process.exit(1);
+}
+
+console.log('Environment variables loaded successfully:');
+console.log('- JWT_SECRET:', process.env.JWT_SECRET ? `SET (length: ${process.env.JWT_SECRET.length})` : 'NOT SET');
+console.log('- MONGO_URI:', process.env.MONGO_URI ? 'SET' : 'NOT SET');
+console.log('- PORT:', process.env.PORT || '5000');
+console.log('- FRONTEND_URL:', process.env.FRONTEND_URL || 'http://localhost:3000');
+
 const app = express();
 app.use(express.json());
 
@@ -66,7 +86,15 @@ app.use(morgan('dev'));
 // Test endpoint to verify API is accessible
 app.get('/api/test', (_, res) => {
   console.log('Root test endpoint hit');
-  res.json({ message: 'API is working!' });
+  res.json({
+    message: 'API is working!',
+    jwtSecretLength: process.env.JWT_SECRET ? process.env.JWT_SECRET.length : 0,
+    timestamp: new Date().toISOString(),
+    environment: {
+      nodeEnv: process.env.NODE_ENV || 'development',
+      port: process.env.PORT || '5000'
+    }
+  });
 });
 
 // Initialize the server with database connection

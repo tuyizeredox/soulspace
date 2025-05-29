@@ -1,39 +1,15 @@
 import axios from 'axios';
 import { setupMockInterceptor } from './mockApiService';
 import { setupRequestBlocker } from './requestBlocker';
+import { getStoredToken, clearAllTokens } from './tokenManager';
 
 // Helper functions to avoid circular dependencies
 const getTokenFromStorage = () => {
-  // Check all possible token storage locations
-  const commonToken = localStorage.getItem('token');
-  const userToken = localStorage.getItem('userToken');
-  const doctorToken = localStorage.getItem('doctorToken');
-  const persistentToken = localStorage.getItem('persistentToken');
-
-  // Use the first available token, with priority
-  const bestToken = commonToken || userToken || doctorToken || persistentToken || null;
-
-  // If we found a token, save it to all locations for redundancy
-  if (bestToken) {
-    localStorage.setItem('token', bestToken);
-    localStorage.setItem('userToken', bestToken);
-    localStorage.setItem('doctorToken', bestToken);
-    localStorage.setItem('persistentToken', bestToken);
-  }
-
-  return bestToken;
+  return getStoredToken();
 };
 
 const clearTokensFromStorage = () => {
-  localStorage.removeItem('token');
-  localStorage.removeItem('userToken');
-  localStorage.removeItem('doctorToken');
-  localStorage.removeItem('persistentToken');
-  localStorage.removeItem('reduxToken');
-  localStorage.removeItem('user');
-  localStorage.removeItem('userData');
-  localStorage.removeItem('doctorId');
-  localStorage.removeItem('doctorName');
+  clearAllTokens();
 };
 
 // Configure axios defaults

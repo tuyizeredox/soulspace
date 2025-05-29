@@ -49,14 +49,28 @@ const PatientDashboardRouter = () => {
           console.log('PatientDashboardRouter: Has primaryDoctor?', !!assignmentResponse.data?.primaryDoctor);
           console.log('PatientDashboardRouter: Has hospital?', !!assignmentResponse.data?.hospital);
 
-          // The API doesn't return an 'assigned' property, it returns the full assignment object
-          // If we got a response, it means the patient has an assignment
-          if (assignmentResponse.data) {
+          // Check if the response has the assigned property and it's true
+          if (assignmentResponse.data && assignmentResponse.data.assigned === true) {
             console.log('PatientDashboardRouter: Assignment found:', assignmentResponse.data);
 
             // Check if the response has the required data
             if (assignmentResponse.data.primaryDoctor && assignmentResponse.data.hospital) {
-              // Add an assigned property for consistency with our code
+              // The assignment already has the assigned property set to true
+              setPatientAssignment(assignmentResponse.data);
+              console.log('PatientDashboardRouter: Valid assignment with doctor and hospital:', assignmentResponse.data);
+            } else {
+              console.warn('PatientDashboardRouter: Assignment missing primaryDoctor or hospital');
+              setPatientAssignment(null);
+            }
+          } else if (assignmentResponse.data && assignmentResponse.data.assigned === false) {
+            // The API explicitly returned assigned: false
+            console.log('PatientDashboardRouter: API confirmed no assignment');
+            setPatientAssignment(null);
+          } else if (assignmentResponse.data && !assignmentResponse.data.hasOwnProperty('assigned')) {
+            // The API returned data but without an assigned property
+            // Check if it has the required fields to be considered a valid assignment
+            if (assignmentResponse.data.primaryDoctor && assignmentResponse.data.hospital) {
+              // Add an assigned property for consistency
               const enhancedAssignment = {
                 ...assignmentResponse.data,
                 assigned: true
@@ -64,27 +78,28 @@ const PatientDashboardRouter = () => {
               setPatientAssignment(enhancedAssignment);
               console.log('PatientDashboardRouter: Enhanced assignment:', enhancedAssignment);
             } else {
-              console.warn('PatientDashboardRouter: Assignment missing primaryDoctor or hospital');
+              console.warn('PatientDashboardRouter: Response missing required fields');
               setPatientAssignment(null);
             }
           } else {
-            console.log('PatientDashboardRouter: No assignment found');
+            console.log('PatientDashboardRouter: No valid assignment found');
             setPatientAssignment(null);
           }
         } catch (error) {
-          console.log('API endpoint for patient assignment not available, using mock data');
-          // For testing, we'll set a mock assignment
-          // In a real app, you might want to check localStorage or other sources
-
-          // Randomly decide if the patient has an assignment (for demo purposes)
-          const hasAssignment = Math.random() > 0.5;
-
-          if (hasAssignment) {
+          console.error('Error fetching patient assignment:', error);
+          
+          // For production, we should just set to null on error
+          setPatientAssignment(null);
+          
+          // For development/testing only - create mock data
+          if (process.env.NODE_ENV === 'development') {
+            console.log('Development mode: Using mock assignment data');
+            
             // Create mock data that matches the expected format
             setPatientAssignment({
               _id: 'pa1',
               assigned: true,
-              patientId: user?._id || 'p1',
+              patientId: user?._id || user?.id || 'p1',
               primaryDoctor: {
                 _id: 'd1',
                 name: 'Dr. Jane Smith',
@@ -103,10 +118,6 @@ const PatientDashboardRouter = () => {
               assignmentDate: new Date().toISOString(),
               status: 'active'
             });
-            console.log('PatientDashboardRouter: Using mock assignment data');
-          } else {
-            setPatientAssignment(null);
-            console.log('PatientDashboardRouter: No mock assignment data');
           }
         }
 
@@ -156,16 +167,31 @@ const PatientDashboardRouter = () => {
   }
 
   // Routing logic:
-  // 1. If patient has a hospital assignment OR has an online appointment OR forceHospitalDashboard is true,
+  // 1. If patient has a valid hospital assignment with a primary doctor OR has an online appointment OR forceHospitalDashboard is true,
   //    show PatientWithHospitalDashboard
   // 2. Otherwise, show regular PatientDashboard
 
   // Check if the patient has a valid assignment with doctor and hospital
-  if ((patientAssignment && patientAssignment.primaryDoctor && patientAssignment.hospital) || forceHospitalDashboard) {
+  // Make sure both primaryDoctor and hospital exist and have the required fields
+  const hasValidAssignment = patientAssignment && 
+                            patientAssignment.primaryDoctor && 
+                            patientAssignment.hospital &&
+                            patientAssignment.primaryDoctor._id && // Make sure doctor has an ID
+                            patientAssignment.primaryDoctor.name && // Make sure doctor has a name
+                            patientAssignment.hospital._id; // Make sure hospital has an ID
+  
+  if (hasValidAssignment || forceHospitalDashboard) {
     console.log('PatientDashboardRouter: Showing PatientWithHospitalDashboard');
+    console.log('PatientDashboardRouter: Assignment details:', {
+      hasAssignment: !!patientAssignment,
+      hasDoctor: patientAssignment ? !!patientAssignment.primaryDoctor : false,
+      doctorName: patientAssignment && patientAssignment.primaryDoctor ? patientAssignment.primaryDoctor.name : 'None',
+      hasHospital: patientAssignment ? !!patientAssignment.hospital : false,
+      hospitalName: patientAssignment && patientAssignment.hospital ? patientAssignment.hospital.name : 'None'
+    });
 
     // Use real data if available, otherwise use mock data
-    const doctor = (patientAssignment && patientAssignment.primaryDoctor) || {
+    const doctor = (hasValidAssignment && patientAssignment.primaryDoctor) || {
       _id: 'force-doctor-id',
       name: 'Dr. John Doe',
       profile: {
@@ -174,7 +200,7 @@ const PatientDashboardRouter = () => {
       email: 'john.doe@hospital.com'
     };
 
-    const hospitalData = (patientAssignment && patientAssignment.hospital) || {
+    const hospitalData = (hasValidAssignment && patientAssignment.hospital) || {
       _id: 'force-hospital-id',
       name: 'SoulSpace Medical Center',
       address: '456 Health Avenue, Medical District',
@@ -211,7 +237,7 @@ const PatientDashboardRouter = () => {
       hospital={mockHospital}
     />;
   } else {
-    console.log('PatientDashboardRouter: Showing regular PatientDashboard');
+    console.log('PatientDashboardRouter: Patient has no valid doctor assignment, showing regular PatientDashboard');
     return <PatientDashboard />;
   }
 };

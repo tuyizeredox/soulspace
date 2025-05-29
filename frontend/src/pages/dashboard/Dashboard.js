@@ -180,10 +180,44 @@ const Dashboard = () => {
           };
 
           const response = await axios.get('/api/patient-assignments/my-assignment', config);
-          setPatientAssignment(response.data);
+          
+          // Log the response for debugging
+          console.log('Dashboard: Patient assignment response:', response.data);
+          
+          // Check if the response indicates an assignment
+          if (response.data && response.data.assigned === true) {
+            // Verify that the assignment has the required data
+            if (response.data.primaryDoctor && response.data.hospital) {
+              console.log('Dashboard: Valid patient assignment found with doctor and hospital');
+              setPatientAssignment(response.data);
+            } else {
+              console.warn('Dashboard: Assignment missing primaryDoctor or hospital');
+              setPatientAssignment(null);
+            }
+          } else if (response.data && !response.data.hasOwnProperty('assigned')) {
+            // The API returned data but without an assigned property
+            // Check if it has the required fields to be considered a valid assignment
+            if (response.data.primaryDoctor && response.data.hospital) {
+              // Add an assigned property for consistency
+              const enhancedAssignment = {
+                ...response.data,
+                assigned: true
+              };
+              console.log('Dashboard: Enhanced assignment with assigned property');
+              setPatientAssignment(enhancedAssignment);
+            } else {
+              console.warn('Dashboard: Response missing required fields');
+              setPatientAssignment(null);
+            }
+          } else {
+            // No assignment or assigned is false
+            console.log('Dashboard: No valid patient assignment found');
+            setPatientAssignment(null);
+          }
         } catch (error) {
           console.error('Error fetching patient assignment:', error);
           // If there's an error or no assignment found, patientAssignment will remain null
+          setPatientAssignment(null);
         } finally {
           setLoading(false);
         }
@@ -1617,12 +1651,28 @@ const Dashboard = () => {
           </Box>
         );
       case 'patient':
-        // Use the PatientDashboardRouter to determine which dashboard to show
+        // Check if the patient has a valid assignment with a doctor
+        if (loading) {
+          return (
+            <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '50vh' }}>
+              <CircularProgress />
+            </Box>
+          );
+        }
+        
+        // If patientAssignment is null or doesn't have a primaryDoctor, show NoHospitalDashboard
+        if (!patientAssignment || !patientAssignment.primaryDoctor || !patientAssignment.hospital) {
+          console.log('Dashboard: Patient has no valid assignment, showing NoHospitalDashboard');
+          return <NoHospitalDashboard user={user} />;
+        }
+        
+        // Otherwise, use the PatientDashboardRouter to determine which dashboard to show
+        console.log('Dashboard: Patient has valid assignment, using PatientDashboardRouter');
         return <PatientDashboardRouter />;
       default:
         return <Typography>Welcome to SoulSpace Health</Typography>;
     }
-  }, [user, renderAdminDashboard, renderDoctorDashboard, renderPatientDashboard, navigate]);
+  }, [user, patientAssignment, loading, navigate]);
 
   if (loading) {
     return (

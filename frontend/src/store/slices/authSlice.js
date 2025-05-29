@@ -1,5 +1,6 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import axios from '../../utils/axiosConfig';
+import { storeTokenPermanently, clearAllTokens, getStoredToken, getStoredUserData } from '../../utils/tokenManager';
 import { toast } from 'react-toastify';
 
 export const login = createAsyncThunk(
@@ -32,14 +33,8 @@ export const login = createAsyncThunk(
                 // Set the token in axios headers for future requests
                 axios.defaults.headers.common['Authorization'] = `Bearer ${response.data.token}`;
 
-                // Store token and user data in localStorage with multiple backups
-                localStorage.setItem('token', response.data.token);
-                localStorage.setItem('userToken', response.data.token); // Backup in userToken
-                localStorage.setItem('doctorToken', response.data.token); // Specific for doctor role
-                localStorage.setItem('persistentToken', response.data.token); // Extra backup
-
-                // Store user data
-                localStorage.setItem('user', JSON.stringify(response.data.user));
+                // Store token and user data permanently using token manager
+                storeTokenPermanently(response.data.token, response.data.user);
 
                 // Store role-specific data
                 if (response.data.user.role === 'doctor') {
@@ -73,14 +68,8 @@ export const login = createAsyncThunk(
                 // Set the token in axios headers for future requests
                 axios.defaults.headers.common['Authorization'] = `Bearer ${response.data.token}`;
 
-                // Store token and user data in localStorage with multiple backups
-                localStorage.setItem('token', response.data.token);
-                localStorage.setItem('userToken', response.data.token); // Backup in userToken
-                localStorage.setItem('doctorToken', response.data.token); // Specific for doctor role
-                localStorage.setItem('persistentToken', response.data.token); // Extra backup
-
-                // Store user data
-                localStorage.setItem('user', JSON.stringify(response.data.user));
+                // Store token and user data permanently using token manager
+                storeTokenPermanently(response.data.token, response.data.user);
 
                 // Store role-specific data
                 if (response.data.user.role === 'doctor') {
@@ -138,28 +127,16 @@ export const login = createAsyncThunk(
 );
 
 export const logout = createAsyncThunk('auth/logout', async () => {
-  console.log('Logging out and clearing all tokens');
+  console.log('Logging out and clearing all tokens using token manager');
 
-  // Remove all auth data from localStorage (all possible token locations)
-  localStorage.removeItem('token');
-  localStorage.removeItem('userToken');
-  localStorage.removeItem('doctorToken');
-  localStorage.removeItem('persistentToken');
-  localStorage.removeItem('reduxToken');
-
-  // Remove user data
-  localStorage.removeItem('user');
-  localStorage.removeItem('userData');
-
-  // Remove role-specific data
-  localStorage.removeItem('doctorId');
-  localStorage.removeItem('doctorName');
+  // Clear all authentication data using token manager
+  clearAllTokens();
 
   // Remove auth header from axios
   delete axios.defaults.headers.common['Authorization'];
 
   // Log the logout for debugging
-  console.log('All tokens and user data cleared from localStorage');
+  console.log('All tokens and user data cleared using token manager');
 
   return null;
 });
@@ -190,14 +167,8 @@ export const checkAuthStatus = createAsyncThunk(
       const response = await axios.get('/api/auth/me');
       console.log('User data retrieved successfully:', response.data.user.role);
 
-      // Store token in all locations for redundancy
-      localStorage.setItem('token', token);
-      localStorage.setItem('userToken', token);
-      localStorage.setItem('doctorToken', token);
-      localStorage.setItem('persistentToken', token);
-
-      // Store user data in localStorage
-      localStorage.setItem('user', JSON.stringify(response.data.user));
+      // Store token and user data permanently using token manager
+      storeTokenPermanently(token, response.data.user);
 
       // Store role-specific data
       if (response.data.user.role === 'doctor') {
@@ -242,9 +213,9 @@ export const checkAuthStatus = createAsyncThunk(
 const authSlice = createSlice({
   name: 'auth',
   initialState: {
-    user: JSON.parse(localStorage.getItem('user')) || null,
-    token: localStorage.getItem('token'),
-    isAuthenticated: !!localStorage.getItem('token'),
+    user: getStoredUserData(),
+    token: getStoredToken(),
+    isAuthenticated: !!(getStoredToken() && getStoredUserData()),
     loading: false,
     error: null,
     errorDetails: null,
@@ -265,6 +236,7 @@ const authSlice = createSlice({
     setAuthenticated: (state, action) => {
       state.isAuthenticated = action.payload;
     },
+
   },
   extraReducers: (builder) => {
     builder

@@ -97,8 +97,13 @@ exports.getMyAssignment = async (req, res) => {
     }
 
     // Find the active assignment for this patient
+    // Check both req.user.id and req.user._id to handle different ID formats
+    const patientId = req.user.id || req.user._id;
+    
+    console.log(`Looking for assignment for patient ID: ${patientId}`);
+    
     const assignment = await PatientAssignment.findOne({
-      patient: req.user.id,
+      patient: patientId,
       active: true
     })
       .populate('hospital', 'name location address city state zipCode phone email')
@@ -106,12 +111,31 @@ exports.getMyAssignment = async (req, res) => {
       .populate('primaryDoctor', 'name email profile.specialization profile.phone');
 
     if (!assignment) {
-      return res.status(404).json({ message: 'No active assignment found' });
+      console.log(`No active assignment found for patient ID: ${patientId}`);
+      // Return 200 status with assigned: false to make it easier for frontend to handle
+      return res.status(200).json({ 
+        assigned: false,
+        message: 'No active assignment found' 
+      });
     }
 
-    res.json(assignment);
+    // Add the assigned field to the response
+    const response = assignment.toObject();
+    response.assigned = true;
+    
+    console.log(`Found assignment for patient ID: ${patientId}`, {
+      assignmentId: response._id,
+      hasHospital: !!response.hospital,
+      hasPrimaryDoctor: !!response.primaryDoctor
+    });
+
+    res.json(response);
   } catch (error) {
     console.error('Error fetching patient assignment:', error);
-    res.status(500).json({ message: 'Error fetching assignment', error: error.message });
+    res.status(500).json({ 
+      assigned: false,
+      message: 'Error fetching assignment', 
+      error: error.message 
+    });
   }
 };

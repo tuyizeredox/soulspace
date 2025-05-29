@@ -98,6 +98,9 @@ import LabResultsPage from './pages/patient/LabResultsPage';
 import SettingsPage from './pages/patient/SettingsPage';
 import HelpCenterPage from './pages/patient/HelpCenterPage';
 
+// Debug Pages
+import AuthDebug from './pages/AuthDebug';
+
 // Shop Routes
 import { WearableDevicesPage, ShoppingCartPage } from './pages/shop';
 
@@ -276,6 +279,7 @@ const App = () => {
           {/* Test Routes */}
           <Route path="/test-api" element={<TestApi />} />
           <Route path="/test-login" element={<LoginTest />} />
+          <Route path="/auth-debug" element={<AuthDebug />} />
           <Route path="/register" element={
             <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
               <HomeNavbar />

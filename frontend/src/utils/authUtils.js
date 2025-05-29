@@ -3,6 +3,65 @@
  */
 
 /**
+ * Clear all authentication tokens and user data from storage
+ * This is useful when fixing authentication issues
+ */
+export const clearAllAuthData = () => {
+  console.log('Clearing all authentication data...');
+
+  // Clear all possible token storage locations
+  const tokenKeys = [
+    'token',
+    'userToken',
+    'doctorToken',
+    'persistentToken',
+    'reduxToken',
+    'authToken',
+    'accessToken',
+    'jwt',
+    'jwtToken'
+  ];
+
+  tokenKeys.forEach(key => {
+    if (localStorage.getItem(key)) {
+      console.log(`Removing ${key} from localStorage`);
+      localStorage.removeItem(key);
+    }
+  });
+
+  // Clear user data
+  const userDataKeys = [
+    'user',
+    'userData',
+    'currentUser',
+    'userInfo',
+    'authUser',
+    'userProfile'
+  ];
+
+  userDataKeys.forEach(key => {
+    if (localStorage.getItem(key)) {
+      console.log(`Removing ${key} from localStorage`);
+      localStorage.removeItem(key);
+    }
+  });
+
+  // Clear auth error flags
+  localStorage.removeItem('auth_error');
+  localStorage.removeItem('auth_error_time');
+
+  // Clear any cached role data
+  Object.keys(localStorage).forEach(key => {
+    if (key.startsWith('user_role_') || key.startsWith('chat_endpoint_')) {
+      console.log(`Removing cached data: ${key}`);
+      localStorage.removeItem(key);
+    }
+  });
+
+  console.log('All authentication data cleared');
+};
+
+/**
  * Get the best available authentication token
  * Tries all token storage locations, with priority order
  * @returns {string|null} The authentication token or null if none found

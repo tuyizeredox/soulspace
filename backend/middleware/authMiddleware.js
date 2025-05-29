@@ -10,7 +10,12 @@ exports.verifyToken = async (req, res, next) => {
   const token = authHeader.split(' ')[1];
 
   try {
+    // Log token details for debugging (first 10 characters only)
+    console.log('Verifying token:', token.substring(0, 10) + '...');
+    console.log('JWT_SECRET length:', process.env.JWT_SECRET ? process.env.JWT_SECRET.length : 'NOT SET');
+
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    console.log('Token verified successfully for user:', decoded.id);
 
     // Include all user information from the token
     req.user = {
@@ -38,6 +43,19 @@ exports.verifyToken = async (req, res, next) => {
     next();
   } catch (error) {
     console.error('Token verification error:', error.message);
+    console.error('Error type:', error.name);
+    console.error('Token (first 20 chars):', token.substring(0, 20) + '...');
+    console.error('JWT_SECRET exists:', !!process.env.JWT_SECRET);
+    console.error('JWT_SECRET length:', process.env.JWT_SECRET ? process.env.JWT_SECRET.length : 0);
+
+    if (error.name === 'JsonWebTokenError') {
+      return res.status(401).json({ message: 'Invalid token signature' });
+    } else if (error.name === 'TokenExpiredError') {
+      return res.status(401).json({ message: 'Token expired' });
+    } else if (error.name === 'NotBeforeError') {
+      return res.status(401).json({ message: 'Token not active' });
+    }
+
     return res.status(401).json({ message: 'Invalid token' });
   }
 };

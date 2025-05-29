@@ -187,39 +187,25 @@ exports.processMessage = async (req, res) => {
       console.error('Error sending message to Gemini:', sendError);
       useGeminiResponse = false;
 
-      // If we can't get a response from Gemini, provide a fallback response
+      // Check if this is a quota exceeded error
+      if (sendError.status === 429) {
+        const retryDelay = sendError.errorDetails?.find(d => d['@type'].includes('RetryInfo'))?.retryDelay || '30s';
+        console.log(`API quota exceeded. Retry after: ${retryDelay}`);
+        
+        return res.status(429).json({
+          text: "I'm currently experiencing high demand and need a brief moment to catch up. Please try again in a few seconds.",
+          error: "API quota exceeded",
+          retryAfter: retryDelay,
+          quotaExceeded: true
+        });
+      }
+
+      // If we can't get a response from Gemini for other reasons, provide a fallback response
       if (currentMessage.includes('doctor')) {
         aiResponse = "I'm not a doctor. I'm an AI health assistant designed to provide general health information and guidance. While I can offer information about common health concerns and wellness tips, I cannot provide medical diagnoses or replace professional medical advice. For specific medical concerns, it's always best to consult with a qualified healthcare provider.";
       } else {
         aiResponse = "I apologize, but I'm having trouble processing your request right now. As a health assistant, I can provide general health information, but for specific medical advice, it's always best to consult with a healthcare professional.";
       }
-    }
-
-    // More sophisticated assessment of whether an appointment should be suggested
-    // First check if the AI response already suggests an appointment
-    const appointmentKeywords = ['doctor', 'appointment', 'medical attention', 'healthcare provider', 'consult', 'professional', 'emergency'];
-    let suggestAppointment = appointmentKeywords.some(keyword =>
-      aiResponse.toLowerCase().includes(keyword)
-    );
-
-    // Assess symptom severity based on the user's message
-    const emergencyKeywords = ['severe', 'unbearable', 'worst', 'extreme', 'excruciating', 'can\'t breathe', 'chest pain', 'collapsed', 'unconscious', 'seizure', 'stroke', 'heart attack'];
-    const urgentKeywords = ['fever', 'infection', 'worsening', 'spreading', 'persistent', 'days', 'no improvement', 'getting worse'];
-
-    const hasEmergencySymptoms = emergencyKeywords.some(keyword =>
-      currentMessage.includes(keyword)
-    );
-
-    const hasUrgentSymptoms = urgentKeywords.some(keyword =>
-      currentMessage.includes(keyword)
-    );
-
-    // Override appointment suggestion based on symptom severity
-    if (hasEmergencySymptoms) {
-      suggestAppointment = true; // Always suggest for emergency symptoms
-    } else if (hasUrgentSymptoms && keyTerms.length > 0) {
-      // For urgent symptoms, suggest appointment if medical terms are present
-      suggestAppointment = true;
     }
 
     // Get conversation context from history
@@ -266,6 +252,33 @@ exports.processMessage = async (req, res) => {
 
     const keyTerms = extractKeyTerms(currentMessage);
     const previousKeyTerms = lastUserMessages.flatMap(msg => extractKeyTerms(msg));
+
+    // More sophisticated assessment of whether an appointment should be suggested
+    // First check if the AI response already suggests an appointment
+    const appointmentKeywords = ['doctor', 'appointment', 'medical attention', 'healthcare provider', 'consult', 'professional', 'emergency'];
+    let suggestAppointment = appointmentKeywords.some(keyword =>
+      aiResponse.toLowerCase().includes(keyword)
+    );
+
+    // Assess symptom severity based on the user's message
+    const emergencyKeywords = ['severe', 'unbearable', 'worst', 'extreme', 'excruciating', 'can\'t breathe', 'chest pain', 'collapsed', 'unconscious', 'seizure', 'stroke', 'heart attack'];
+    const urgentKeywords = ['fever', 'infection', 'worsening', 'spreading', 'persistent', 'days', 'no improvement', 'getting worse'];
+
+    const hasEmergencySymptoms = emergencyKeywords.some(keyword =>
+      currentMessage.includes(keyword)
+    );
+
+    const hasUrgentSymptoms = urgentKeywords.some(keyword =>
+      currentMessage.includes(keyword)
+    );
+
+    // Override appointment suggestion based on symptom severity
+    if (hasEmergencySymptoms) {
+      suggestAppointment = true; // Always suggest for emergency symptoms
+    } else if (hasUrgentSymptoms && keyTerms.length > 0) {
+      // For urgent symptoms, suggest appointment if medical terms are present
+      suggestAppointment = true;
+    }
 
     // Assess if self-care is appropriate based on the user's message and profile
     const selfCareAssessment = assessSelfCareAppropriateness(currentMessage, user.profile);

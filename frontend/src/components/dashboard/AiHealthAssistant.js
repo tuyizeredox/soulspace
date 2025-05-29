@@ -459,9 +459,21 @@ const AiHealthAssistant = ({ onBookAppointment }) => {
 
       // Check if it's an authentication error
       let errorMessage = 'I apologize, but I\'m having trouble connecting to my knowledge base right now. Please try again in a moment or contact support if the issue persists.';
+      let retryAfter = null;
 
       if (error.response) {
-        if (error.response.status === 403 || error.response.status === 401) {
+        if (error.response.status === 429) {
+          // API quota exceeded
+          const retryDelay = error.response.data.retryAfter || '30s';
+          retryAfter = parseInt(retryDelay.replace('s', '')) * 1000; // Convert to milliseconds
+          
+          errorMessage = "I'm currently experiencing high demand. I'll be ready to help you again in a few seconds.";
+          
+          // Set up automatic retry
+          setTimeout(() => {
+            handleSendMessage();
+          }, retryAfter);
+        } else if (error.response.status === 403 || error.response.status === 401) {
           errorMessage = 'Your session has expired. Please refresh the page or log in again to continue using the AI assistant.';
 
           // Attempt to refresh the token or redirect to login
@@ -480,16 +492,15 @@ const AiHealthAssistant = ({ onBookAppointment }) => {
         }, 3000);
       }
 
-      // Fallback response in case of error
-      const fallbackResponse = {
+      // Add error message to chat
+      setMessages(prev => [...prev, {
         id: messages.length + 2,
         sender: 'ai',
         text: errorMessage,
         timestamp: new Date(),
-        severity: 'info',
-      };
-
-      setMessages(prev => [...prev, fallbackResponse]);
+        severity: retryAfter ? 'info' : 'error',
+        isRetrying: !!retryAfter
+      }]);
     } finally {
       setIsTyping(false);
     }

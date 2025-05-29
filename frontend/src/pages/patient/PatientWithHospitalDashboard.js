@@ -324,47 +324,85 @@ const PatientWithHospitalDashboard = ({ assignedDoctor: propAssignedDoctor, hosp
           const assignmentResponse = await axios.get('/api/patient-assignments/my-assignment', config);
           console.log('Patient assignment API response:', assignmentResponse.data);
 
-          // The API doesn't return an 'assigned' property, it returns the full assignment object
-          // If we got a response, it means the patient has an assignment
-          if (assignmentResponse.data) {
-            console.log('Patient assignment data:', assignmentResponse.data);
+          // Check if the response has the assigned property and it's true
+          if (assignmentResponse.data && assignmentResponse.data.assigned === true) {
+            console.log('Patient has an assigned doctor and hospital');
 
-            // Check if the response has primaryDoctor and hospital
-            if (assignmentResponse.data.primaryDoctor && assignmentResponse.data.hospital) {
+            // Check if the response has primaryDoctor and hospital with all required fields
+            if (assignmentResponse.data.primaryDoctor && 
+                assignmentResponse.data.hospital && 
+                assignmentResponse.data.primaryDoctor._id && 
+                assignmentResponse.data.primaryDoctor.name) {
+              
               setAssignedDoctor(assignmentResponse.data.primaryDoctor);
               setHospital(assignmentResponse.data.hospital);
-              console.log('Successfully set doctor and hospital from API');
+              console.log('Successfully set doctor and hospital from API:', {
+                doctorId: assignmentResponse.data.primaryDoctor._id,
+                doctorName: assignmentResponse.data.primaryDoctor.name,
+                hospitalId: assignmentResponse.data.hospital._id,
+                hospitalName: assignmentResponse.data.hospital.name
+              });
             } else {
-              console.warn('Assignment response missing primaryDoctor or hospital:', assignmentResponse.data);
-              throw new Error('Incomplete assignment data');
+              console.warn('Assignment response missing primaryDoctor or hospital details:', assignmentResponse.data);
+              throw new Error('Incomplete doctor or hospital data');
+            }
+          } else if (assignmentResponse.data && !assignmentResponse.data.hasOwnProperty('assigned')) {
+            // The API returned data but without an assigned property
+            // Check if it has the required fields to be considered a valid assignment
+            if (assignmentResponse.data.primaryDoctor && 
+                assignmentResponse.data.hospital && 
+                assignmentResponse.data.primaryDoctor._id && 
+                assignmentResponse.data.primaryDoctor.name) {
+              
+              setAssignedDoctor(assignmentResponse.data.primaryDoctor);
+              setHospital(assignmentResponse.data.hospital);
+              console.log('Successfully set doctor and hospital from API (legacy format):', {
+                doctorId: assignmentResponse.data.primaryDoctor._id,
+                doctorName: assignmentResponse.data.primaryDoctor.name,
+                hospitalId: assignmentResponse.data.hospital._id,
+                hospitalName: assignmentResponse.data.hospital.name
+              });
+            } else {
+              console.warn('Assignment response missing required doctor or hospital fields');
+              throw new Error('Incomplete doctor or hospital data');
             }
           } else {
-            console.log('No patient assignment found');
-            throw new Error('No assignment found');
+            console.log('No valid patient assignment found');
+            throw new Error('No assignment found or missing doctor information');
           }
         } catch (error) {
-          console.log('API endpoint for patient assignment not available, using mock data');
-          // Mock data for doctor and hospital
-          const mockDoctor = {
-            _id: 'd1',
-            name: 'Dr. Jennifer Wilson',
-            profile: {
-              specialization: 'Cardiology',
-              phone: '+1 (555) 123-4567'
-            },
-            email: 'jennifer.wilson@soulspace.com'
-          };
+          console.error('Error fetching patient assignment:', error);
+          
+          // For production, we should handle this gracefully
+          if (process.env.NODE_ENV === 'production') {
+            // In production, we might want to redirect to a different page or show an error
+            setError('Unable to load your doctor and hospital information. Please contact support.');
+          } else {
+            // For development/testing, use mock data
+            console.log('Development mode: Using mock doctor and hospital data');
+            
+            // Mock data for doctor and hospital
+            const mockDoctor = {
+              _id: 'd1',
+              name: 'Dr. Jennifer Wilson',
+              profile: {
+                specialization: 'Cardiology',
+                phone: '+1 (555) 123-4567'
+              },
+              email: 'jennifer.wilson@soulspace.com'
+            };
 
-          const mockHospital = {
-            _id: 'h1',
-            name: 'SoulSpace General Hospital',
-            address: '123 Health Avenue, Medical District',
-            phone: '+1 (555) 987-6543',
-            email: 'info@soulspace-general.com'
-          };
+            const mockHospital = {
+              _id: 'h1',
+              name: 'SoulSpace General Hospital',
+              address: '123 Health Avenue, Medical District',
+              phone: '+1 (555) 987-6543',
+              email: 'info@soulspace-general.com'
+            };
 
-          setAssignedDoctor(mockDoctor);
-          setHospital(mockHospital);
+            setAssignedDoctor(mockDoctor);
+            setHospital(mockHospital);
+          }
         }
       }
 
