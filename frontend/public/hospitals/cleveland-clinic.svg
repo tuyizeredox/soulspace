@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 300">
+  <!-- Background -->
+  <rect width="400" height="300" fill="#f8fafc" />
+  
+  <!-- Hospital Building - Modern Design -->
+  <rect x="50" y="100" width="300" height="150" rx="10" fill="#ffffff" stroke="#06b6d4" stroke-width="3" />
+  
+  <!-- Glass Facade -->
+  <rect x="80" y="120" width="240" height="100" fill="#e0f7fa" stroke="#06b6d4" stroke-width="1" />
+  
+  <!-- Vertical Glass Panels -->
+  <line x1="110" y1="120" x2="110" y2="220" stroke="#06b6d4" stroke-width="1" />
+  <line x1="140" y1="120" x2="140" y2="220" stroke="#06b6d4" stroke-width="1" />
+  <line x1="170" y1="120" x2="170" y2="220" stroke="#06b6d4" stroke-width="1" />
+  <line x1="200" y1="120" x2="200" y2="220" stroke="#06b6d4" stroke-width="1" />
+  <line x1="230" y1="120" x2="230" y2="220" stroke="#06b6d4" stroke-width="1" />
+  <line x1="260" y1="120" x2="260" y2="220" stroke="#06b6d4" stroke-width="1" />
+  <line x1="290" y1="120" x2="290" y2="220" stroke="#06b6d4" stroke-width="1" />
+  
+  <!-- Horizontal Glass Panels -->
+  <line x1="80" y1="150" x2="320" y2="150" stroke="#06b6d4" stroke-width="1" />
+  <line x1="80" y1="180" x2="320" y2="180" stroke="#06b6d4" stroke-width="1" />
+  
+  <!-- Hospital Entrance -->
+  <rect x="175" y="220" width="50" height="30" rx="5" fill="#06b6d4" />
+  <rect x="190" y="220" width="20" height="20" fill="#ffffff" />
+  
+  <!-- Modern Roof Element -->
+  <rect x="100" y="70" width="200" height="30" rx="15" fill="#06b6d4" />
+  
+  <!-- Hospital Logo -->
+  <circle cx="200" cy="85" r="15" fill="#ffffff" />
+  <text x="200" y="90" font-family="Arial" font-size="12" text-anchor="middle" fill="#06b6d4" font-weight="bold">CC</text>
+  
+  <!-- Hospital Name -->
+  <text x="200" y="270" font-family="Arial" font-size="18" text-anchor="middle" fill="#06b6d4" font-weight="bold">Cleveland Clinic</text>
+</svg>

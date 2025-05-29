@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 300">
+  <!-- Background -->
+  <rect width="400" height="300" fill="#f8fafc" />
+  
+  <!-- Hospital Building -->
+  <rect x="70" y="100" width="260" height="150" fill="#ffffff" stroke="#06b6d4" stroke-width="3" />
+  
+  <!-- Hospital Roof -->
+  <polygon points="70,100 200,60 330,100" fill="#06b6d4" />
+  
+  <!-- Windows -->
+  <rect x="90" y="120" width="25" height="30" fill="#e0f7fa" stroke="#06b6d4" stroke-width="1" />
+  <rect x="130" y="120" width="25" height="30" fill="#e0f7fa" stroke="#06b6d4" stroke-width="1" />
+  <rect x="170" y="120" width="25" height="30" fill="#e0f7fa" stroke="#06b6d4" stroke-width="1" />
+  <rect x="245" y="120" width="25" height="30" fill="#e0f7fa" stroke="#06b6d4" stroke-width="1" />
+  <rect x="285" y="120" width="25" height="30" fill="#e0f7fa" stroke="#06b6d4" stroke-width="1" />
+  
+  <rect x="90" y="170" width="25" height="30" fill="#e0f7fa" stroke="#06b6d4" stroke-width="1" />
+  <rect x="130" y="170" width="25" height="30" fill="#e0f7fa" stroke="#06b6d4" stroke-width="1" />
+  <rect x="245" y="170" width="25" height="30" fill="#e0f7fa" stroke="#06b6d4" stroke-width="1" />
+  <rect x="285" y="170" width="25" height="30" fill="#e0f7fa" stroke="#06b6d4" stroke-width="1" />
+  
+  <!-- Hospital Entrance -->
+  <rect x="185" y="150" width="30" height="100" fill="#06b6d4" />
+  <rect x="195" y="150" width="10" height="70" fill="#ffffff" />
+  
+  <!-- Hospital Sign -->
+  <rect x="170" y="80" width="60" height="25" rx="5" fill="#ffffff" stroke="#06b6d4" stroke-width="2" />
+  <text x="200" y="97" font-family="Arial" font-size="12" text-anchor="middle" fill="#06b6d4" font-weight="bold">NDH</text>
+  
+  <!-- Hospital Name -->
+  <text x="200" y="270" font-family="Arial" font-size="18" text-anchor="middle" fill="#06b6d4" font-weight="bold">Nyarugenge District Hospital</text>
+  
+  <!-- Medical Cross -->
+  <circle cx="330" cy="60" r="15" fill="#ffffff" stroke="#06b6d4" stroke-width="2" />
+  <rect x="325" y="50" width="10" height="20" fill="#06b6d4" />
+  <rect x="320" y="55" width="20" height="10" fill="#06b6d4" />
+</svg>

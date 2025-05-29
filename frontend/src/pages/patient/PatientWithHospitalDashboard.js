@@ -21,17 +21,10 @@ import {
   IconButton,
   Badge,
   Tooltip,
-  LinearProgress,
   Dialog,
   DialogContent,
-  Stack,
-  Fade,
   Grow,
-  Zoom,
-  Slide,
-  Skeleton,
-  SwipeableDrawer,
-  Backdrop
+  SwipeableDrawer
 } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 import { useSelector } from 'react-redux';
@@ -45,27 +38,18 @@ import {
   Person,
   HealthAndSafety,
   Assignment,
-  Notifications as NotificationsIcon,
-  Dashboard as DashboardIcon,
   AccessTime as AccessTimeIcon,
-  Favorite as FavoriteIcon,
-  Star as StarIcon,
   Refresh as RefreshIcon,
   MarkChatUnread as UnreadIcon,
   MarkEmailRead as ReadIcon,
-  NotificationsActive as AlertIcon,
   ArrowForward as ArrowForwardIcon,
   CheckCircle as CheckCircleIcon,
-  Cancel as CancelIcon,
-  Healing as HealingIcon,
   MonitorHeart as HeartIcon,
   Medication as MedicationIcon,
   WaterDrop as WaterIcon,
   DirectionsWalk as WalkIcon,
-  Bedtime as SleepIcon,
   Watch as WatchIcon,
   ShoppingCart as ShoppingCartIcon,
-  ReceiptLong as ReceiptIcon,
   MedicalInformation as MedicalInfoIcon,
   SmartToy as SmartToyIcon,
   Close as CloseIcon
@@ -123,29 +107,7 @@ const PatientWithHospitalDashboard = ({ assignedDoctor: propAssignedDoctor, hosp
   const [showNotificationDrawer, setShowNotificationDrawer] = useState(false);
   const [notificationLoading, setNotificationLoading] = useState(false);
 
-  // Animation variants
-  const containerVariants = {
-    hidden: { opacity: 0 },
-    visible: {
-      opacity: 1,
-      transition: {
-        staggerChildren: 0.1
-      }
-    }
-  };
-
-  const itemVariants = {
-    hidden: { y: 20, opacity: 0 },
-    visible: {
-      y: 0,
-      opacity: 1,
-      transition: {
-        type: 'spring',
-        stiffness: 100,
-        damping: 10
-      }
-    }
-  };
+  // Animation variants for future use
 
   // Handle refresh
   const handleRefresh = async () => {
@@ -733,7 +695,7 @@ const PatientWithHospitalDashboard = ({ assignedDoctor: propAssignedDoctor, hosp
   // Log debug data when component renders
   useEffect(() => {
     logDebugData();
-  }, [assignedDoctor, hospital]);
+  }, [assignedDoctor, hospital, logDebugData]);
 
   if (loading) {
     return (

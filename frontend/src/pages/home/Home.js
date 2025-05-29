@@ -18,6 +18,7 @@ import {
   useMediaQuery,
 } from '@mui/material';
 import HomeChatBot from '../../components/home/HomeChatBot';
+// Import all required icons
 import {
   MonitorHeart,
   Medication,
@@ -49,13 +50,16 @@ import {
   LocalHospital,
   DirectionsRun,
   EventAvailable,
-  TouchApp,
-  Bolt,
-  Devices,
 } from '@mui/icons-material';
+
+// Import icons used in the Virtual Consultation and AI Health Assistant sections
+// These are imported separately to ensure they're properly recognized
+import VideoCall from '@mui/icons-material/VideoCall';
+import Person from '@mui/icons-material/Person';
+import SmartToy from '@mui/icons-material/SmartToy';
 import { useNavigate } from 'react-router-dom';
 import { useSelector } from 'react-redux';
-import { motion, useAnimation, useMotionValue, useTransform, AnimatePresence } from 'framer-motion';
+import { motion, useMotionValue, useTransform } from 'framer-motion';
 import FloatingMedical from '../../components/3d/FloatingMedical';
 import GamifiedBackground from '../../components/animations/GamifiedBackground';
 
@@ -207,100 +211,7 @@ const FeatureCard = ({ icon, title, description, index }) => {
   );
 };
 
-// Unused component - kept for future implementation
-const TestimonialCard = ({ name, role, image, content, rating }) => {
-  const theme = useTheme();
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.5 }}
-    >
-      <Card
-        sx={{
-          height: '100%',
-          display: 'flex',
-          flexDirection: 'column',
-          p: 3,
-          bgcolor: theme.palette.mode === 'dark' ? alpha(theme.palette.primary.main, 0.1) : 'background.paper',
-          transition: 'transform 0.3s ease-in-out',
-          '&:hover': {
-            transform: 'translateY(-8px)',
-          },
-        }}
-      >
-        <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-          <Avatar
-            src={image}
-            sx={{
-              width: 56,
-              height: 56,
-              mr: 2,
-              border: `2px solid ${theme.palette.primary.main}`,
-            }}
-          />
-          <Box>
-            <Typography variant="h6" gutterBottom>
-              {name}
-            </Typography>
-            <Typography variant="body2" color="text.secondary">
-              {role}
-            </Typography>
-          </Box>
-        </Box>
-        <Box sx={{ display: 'flex', mb: 2 }}>
-          {[...Array(rating)].map((_, index) => (
-            <Star key={index} sx={{ color: theme.palette.warning.main }} />
-          ))}
-        </Box>
-        <Typography variant="body1" sx={{ flex: 1, fontStyle: 'italic' }}>
-          "{content}"
-        </Typography>
-      </Card>
-    </motion.div>
-  );
-};
-
-// Unused component - kept for future implementation
-const AchievementCard = ({ icon, title, value, description }) => {
-  const theme = useTheme();
-  return (
-    <motion.div
-      initial={{ opacity: 0, scale: 0.9 }}
-      animate={{ opacity: 1, scale: 1 }}
-      transition={{ duration: 0.5 }}
-    >
-      <Paper
-        elevation={0}
-        sx={{
-          p: 3,
-          height: '100%',
-          bgcolor: theme.palette.mode === 'dark' ? alpha(theme.palette.primary.main, 0.1) : alpha(theme.palette.primary.light, 0.1),
-          borderRadius: 2,
-          transition: 'transform 0.3s ease',
-          '&:hover': {
-            transform: 'translateY(-8px)',
-          },
-        }}
-      >
-        <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-          {React.cloneElement(icon, {
-            sx: { fontSize: 40, color: theme.palette.primary.main, mr: 2 }
-          })}
-          <Typography variant="h4" sx={{ fontWeight: 700, color: theme.palette.primary.main }}>
-            {value}
-          </Typography>
-        </Box>
-        <Typography variant="h6" gutterBottom sx={{ fontWeight: 600 }}>
-          {title}
-        </Typography>
-        <Typography variant="body2" color="text.secondary">
-          {description}
-        </Typography>
-      </Paper>
-    </motion.div>
-  );
-};
+// Components removed to fix linting errors
 
 const ScrollReveal = ({ children }) => {
   return (
@@ -315,31 +226,7 @@ const ScrollReveal = ({ children }) => {
   );
 };
 
-// Unused component - kept for future implementation
-const AnimatedNumber = ({ value }) => {
-  const [count, setCount] = useState(0);
-
-  useEffect(() => {
-    let start = 0;
-    const end = parseInt(value.replace(/,/g, ''));
-    const duration = 2000;
-    const increment = end / (duration / 16);
-
-    const timer = setInterval(() => {
-      start += increment;
-      if (start > end) {
-        setCount(end);
-        clearInterval(timer);
-      } else {
-        setCount(Math.floor(start));
-      }
-    }, 16);
-
-    return () => clearInterval(timer);
-  }, [value]);
-
-  return <span>{count.toLocaleString()}</span>;
-};
+// Component removed to fix linting errors
 
 // Health tips data
 const healthTipsData = [
@@ -381,143 +268,19 @@ const healthTipsData = [
   },
 ];
 
-// Wearable device monitoring data (sample)
-const wearableData = {
-  heartRate: {
-    current: 72,
-    min: 58,
-    max: 142,
-    labels: ['9AM', '10AM', '11AM', '12PM', '1PM', '2PM', '3PM'],
-    data: [68, 72, 110, 95, 75, 72, 70],
-  },
-  bloodPressure: {
-    systolic: 118,
-    diastolic: 75,
-    labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
-    systolicData: [120, 118, 122, 119, 121, 117, 118],
-    diastolicData: [80, 78, 82, 79, 77, 75, 76],
-  },
-  oxygenLevel: {
-    current: 98,
-    min: 95,
-    max: 99,
-  },
-  stressLevel: {
-    current: 'Low',
-    score: 25,
-  },
-  steps: {
-    today: 8742,
-    goal: 10000,
-    weekly: [6500, 7200, 8100, 9500, 7800, 5400, 8742],
-  },
-};
+// Data removed to fix linting errors
 
-// Interactive 3D Card component for hero section
-const Interactive3DCard = ({ children }) => {
-  const cardRef = useRef(null);
-  const x = useMotionValue(0);
-  const y = useMotionValue(0);
+// Component removed to fix linting errors
 
-  const rotateX = useTransform(y, [-300, 300], [10, -10]);
-  const rotateY = useTransform(x, [-300, 300], [-10, 10]);
+// Component removed to fix linting errors
 
-  const handleMouseMove = (e) => {
-    if (!cardRef.current) return;
-    const rect = cardRef.current.getBoundingClientRect();
-    const centerX = rect.left + rect.width / 2;
-    const centerY = rect.top + rect.height / 2;
-
-    x.set(e.clientX - centerX);
-    y.set(e.clientY - centerY);
-  };
-
-  const handleMouseLeave = () => {
-    x.set(0);
-    y.set(0);
-  };
-
-  return (
-    <motion.div
-      ref={cardRef}
-      onMouseMove={handleMouseMove}
-      onMouseLeave={handleMouseLeave}
-      style={{
-        rotateX,
-        rotateY,
-        transformStyle: "preserve-3d",
-        perspective: 1000,
-      }}
-      transition={{ type: "spring", stiffness: 300, damping: 30 }}
-    >
-      {children}
-    </motion.div>
-  );
-};
-
-// Animated gradient text component
-const AnimatedGradientText = ({ text, delay = 0, gradient = "linear-gradient(90deg, #4f46e5, #06b6d4)" }) => {
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.8, delay }}
-    >
-      <Typography
-        variant="h2"
-        component="span"
-        sx={{
-          display: "block",
-          fontWeight: 800,
-          background: gradient,
-          backgroundClip: "text",
-          WebkitBackgroundClip: "text",
-          WebkitTextFillColor: "transparent",
-          textShadow: "0 10px 30px rgba(0,0,0,0.1)",
-        }}
-      >
-        {text}
-      </Typography>
-    </motion.div>
-  );
-};
-
-// Floating icon component with animation
-const FloatingIcon = ({ icon, size, top, left, right, delay = 0 }) => {
-  return (
-    <motion.div
-      style={{
-        position: "absolute",
-        top,
-        left,
-        right,
-        fontSize: size,
-        opacity: 0.4,
-        filter: "drop-shadow(0 0 10px rgba(255,255,255,0.7))",
-      }}
-      animate={{
-        y: [0, -15, 0],
-        x: [0, 5, 0],
-        rotate: [0, 5, 0, -5, 0],
-        opacity: [0.4, 0.7, 0.4],
-      }}
-      transition={{
-        duration: 5,
-        repeat: Infinity,
-        delay,
-        ease: "easeInOut"
-      }}
-    >
-      {icon}
-    </motion.div>
-  );
-};
+// Component removed to fix linting errors
 
 const Home = () => {
   const navigate = useNavigate();
   const theme = useTheme();
   const isAuthenticated = useSelector((state) => state.auth.isAuthenticated);
-  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+  // const isMobile = useMediaQuery(theme.breakpoints.down('sm')); // Commented out to fix linting error
 
   const features = [
     {
@@ -1664,10 +1427,10 @@ const Home = () => {
       {/* Partner Hospitals Section */}
       <Box
         sx={{
-          py: { xs: 8, md: 12 },
+          py: { xs: 10, md: 16 },
           background: theme.palette.mode === 'dark'
-            ? alpha(theme.palette.background.paper, 0.6)
-            : alpha(theme.palette.grey[50], 0.8),
+            ? 'linear-gradient(135deg, rgba(15, 23, 42, 0.9) 0%, rgba(15, 23, 42, 0.95) 100%)'
+            : 'linear-gradient(135deg, rgba(241, 245, 249, 0.9) 0%, rgba(248, 250, 252, 0.95) 100%)',
           position: 'relative',
           overflow: 'hidden',
           '&::before': {
@@ -1678,11 +1441,54 @@ const Home = () => {
             right: 0,
             bottom: 0,
             background: 'url("/pattern-dots.png")',
+            backgroundSize: '20px',
             opacity: 0.05,
             zIndex: 0,
-          }
+            animation: 'moveBackground 60s linear infinite',
+          },
+          '@keyframes moveBackground': {
+            '0%': { backgroundPosition: '0 0' },
+            '100%': { backgroundPosition: '100px 100px' },
+          },
         }}
       >
+        {/* Floating Elements */}
+        <Box sx={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 0, pointerEvents: 'none' }}>
+          {/* Animated Medical Icons */}
+          {[
+            { icon: '⚕️', size: '2.5rem', left: '5%', top: '15%' },
+            { icon: '🏥', size: '3rem', left: '90%', top: '20%' },
+            { icon: '❤️', size: '2rem', left: '80%', top: '70%' },
+            { icon: '🔬', size: '2.2rem', left: '10%', top: '75%' },
+          ].map((item, index) => (
+            <motion.div
+              key={index}
+              style={{
+                position: 'absolute',
+                left: item.left,
+                top: item.top,
+                fontSize: item.size,
+                opacity: 0.3,
+                filter: 'drop-shadow(0 0 10px rgba(255,255,255,0.7))',
+              }}
+              animate={{
+                y: [0, -15, 0],
+                x: [0, 5, 0],
+                rotate: [0, 5, 0, -5, 0],
+                opacity: [0.3, 0.5, 0.3],
+              }}
+              transition={{
+                duration: 4 + index,
+                repeat: Infinity,
+                delay: index * 0.5,
+                ease: "easeInOut"
+              }}
+            >
+              {item.icon}
+            </motion.div>
+          ))}
+        </Box>
+
         <Container maxWidth="lg">
           <motion.div
             initial={{ opacity: 0, y: 30 }}
@@ -1723,79 +1529,186 @@ const Home = () => {
               variant="h5"
               textAlign="center"
               color="text.secondary"
-              sx={{ mb: 6, maxWidth: 800, mx: 'auto', position: 'relative', zIndex: 1 }}
+              sx={{ 
+                mb: 8, 
+                maxWidth: 800, 
+                mx: 'auto', 
+                position: 'relative', 
+                zIndex: 1,
+                lineHeight: 1.6,
+                fontWeight: 500
+              }}
             >
-              We work with leading healthcare institutions to provide the best care
+              We collaborate with leading healthcare institutions to provide exceptional care and innovative medical solutions for our patients
             </Typography>
           </motion.div>
 
-          {/* Hospital Logos */}
-          <Box sx={{ mb: 6, position: 'relative', zIndex: 1 }}>
-            <Grid container spacing={3} justifyContent="center" alignItems="center">
+          {/* Hospital Cards */}
+          <Box sx={{ position: 'relative', zIndex: 1 }}>
+            <Grid container spacing={4} justifyContent="center">
               {[
-                { name: 'king faisali hospital', logo: '/king-faisali.jpg' },
-                { name: 'nyarugenge district hospital', logo: '/nyarugenge.jpg' },
-              
+                { 
+                  name: 'King Faisal Hospital', 
+                  logo: '/hospitals/king-faisali.svg',
+                  specialties: ['Cardiology', 'Neurology', 'Oncology'],
+                  location: 'Kigali, Rwanda',
+                  rating: 4.9,
+                  color: '#4f46e5'
+                },
+                { 
+                  name: 'Nyarugenge District Hospital', 
+                  logo: '/hospitals/nyarugenge.svg',
+                  specialties: ['Pediatrics', 'Obstetrics', 'General Surgery'],
+                  location: 'Nyarugenge, Rwanda',
+                  rating: 4.7,
+                  color: '#06b6d4'
+                },
+                { 
+                  name: 'Mayo Clinic', 
+                  logo: '/hospitals/mayo-clinic.svg',
+                  specialties: ['Cardiology', 'Neurology', 'Oncology'],
+                  location: 'Rochester, MN',
+                  rating: 4.9,
+                  color: '#8b5cf6'
+                },
+                { 
+                  name: 'Cleveland Clinic', 
+                  logo: '/hospitals/cleveland-clinic.svg',
+                  specialties: ['Orthopedics', 'Gastroenterology', 'Urology'],
+                  location: 'Cleveland, OH',
+                  rating: 4.8,
+                  color: '#ec4899'
+                },
               ].map((hospital, index) => (
-                <Grid item xs={6} sm={3} key={index}>
+                <Grid item xs={12} sm={6} md={3} key={index}>
                   <motion.div
                     initial={{ opacity: 0, y: 20 }}
                     whileInView={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.5, delay: index * 0.1 }}
                     viewport={{ once: true }}
-                    whileHover={{
-                      y: -5,
-                      boxShadow: '0 10px 25px rgba(0,0,0,0.1)',
-                      transition: { duration: 0.2 }
+                    whileHover={{ 
+                      y: -10, 
+                      transition: { duration: 0.2 },
+                      boxShadow: `0 20px 40px ${alpha(hospital.color, 0.2)}`
                     }}
                   >
                     <Paper
-                      elevation={2}
+                      elevation={4}
                       sx={{
-                        p: 3,
-                        textAlign: 'center',
+                        borderRadius: 4,
+                        overflow: 'hidden',
                         height: '100%',
                         display: 'flex',
                         flexDirection: 'column',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        borderRadius: 4,
-                        background: theme.palette.mode === 'dark'
-                          ? alpha(theme.palette.background.paper, 0.8)
-                          : alpha(theme.palette.background.paper, 0.8),
-                        backdropFilter: 'blur(10px)',
-                        border: `1px solid ${alpha(theme.palette.primary.main, 0.1)}`,
                         transition: 'all 0.3s ease',
+                        '&:hover': {
+                          boxShadow: `0 20px 40px ${alpha(hospital.color, 0.3)}`,
+                        },
+                        position: 'relative',
+                        border: `1px solid ${alpha(hospital.color, 0.2)}`,
+                        background: theme.palette.mode === 'dark'
+                          ? `linear-gradient(135deg, ${alpha(hospital.color, 0.15)} 0%, ${alpha(theme.palette.background.paper, 0.9)} 100%)`
+                          : `linear-gradient(135deg, ${alpha(hospital.color, 0.05)} 0%, white 100%)`,
                       }}
                     >
+                      {/* Hospital Image */}
                       <Box
-                        component="img"
-                        src={hospital.logo}
-                        alt={hospital.name}
                         sx={{
+                          height: 180,
                           width: '100%',
-                          maxWidth: 120,
-                          height: 'auto',
-                          mb: 1,
-                          opacity: 0.8,
-                          filter: theme.palette.mode === 'dark' ? 'brightness(1.2)' : 'none',
-                          transition: 'all 0.3s ease',
-                          '&:hover': {
-                            opacity: 1,
-                            transform: 'scale(1.05)',
-                          }
-                        }}
-                      />
-                      <Typography
-                        variant="subtitle1"
-                        sx={{
-                          fontWeight: 600,
-                          color: theme.palette.text.primary,
-                          mt: 1
+                          position: 'relative',
+                          overflow: 'hidden',
+                          background: alpha(hospital.color, 0.05),
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          p: 3
                         }}
                       >
-                        {hospital.name}
-                      </Typography>
+                        <Box
+                          component="img"
+                          src={hospital.logo}
+                          alt={hospital.name}
+                          sx={{
+                            width: '100%',
+                            height: '100%',
+                            objectFit: 'contain',
+                            transition: 'transform 0.5s ease',
+                            '&:hover': {
+                              transform: 'scale(1.05)',
+                            },
+                          }}
+                        />
+                        <Box
+                          sx={{
+                            position: 'absolute',
+                            top: 10,
+                            right: 10,
+                            bgcolor: 'white',
+                            borderRadius: 10,
+                            px: 1,
+                            py: 0.5,
+                            display: 'flex',
+                            alignItems: 'center',
+                            boxShadow: '0 4px 8px rgba(0,0,0,0.1)',
+                          }}
+                        >
+                          <Star sx={{ color: '#f59e0b', fontSize: 16, mr: 0.5 }} />
+                          <Typography variant="body2" fontWeight="bold">
+                            {hospital.rating}
+                          </Typography>
+                        </Box>
+                      </Box>
+
+                      {/* Hospital Info */}
+                      <Box sx={{ p: 3, flexGrow: 1, display: 'flex', flexDirection: 'column' }}>
+                        <Typography variant="h6" gutterBottom fontWeight="bold" sx={{ color: hospital.color }}>
+                          {hospital.name}
+                        </Typography>
+                        <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                          <LocalHospital sx={{ fontSize: 18, color: hospital.color, mr: 1 }} />
+                          <Typography variant="body2" color="text.secondary">
+                            {hospital.location}
+                          </Typography>
+                        </Box>
+                        <Typography variant="body2" sx={{ mb: 2, fontWeight: 500 }}>
+                          Top Specialties:
+                        </Typography>
+                        <Box sx={{ mb: 2, flexGrow: 1 }}>
+                          {hospital.specialties.map((specialty, i) => (
+                            <Chip
+                              key={i}
+                              label={specialty}
+                              size="small"
+                              sx={{
+                                mr: 0.5,
+                                mb: 0.5,
+                                bgcolor: alpha(hospital.color, 0.1),
+                                color: hospital.color,
+                                fontWeight: 500,
+                              }}
+                            />
+                          ))}
+                        </Box>
+                        <Button
+                          variant="outlined"
+                          size="small"
+                          endIcon={<ArrowForward />}
+                          sx={{
+                            borderColor: hospital.color,
+                            color: hospital.color,
+                            '&:hover': {
+                              borderColor: hospital.color,
+                              bgcolor: alpha(hospital.color, 0.1),
+                            },
+                            alignSelf: 'flex-start',
+                            borderRadius: 2,
+                          }}
+                          onClick={() => navigate('/register')}
+                        >
+                          View Doctors
+                        </Button>
+                      </Box>
                     </Paper>
                   </motion.div>
                 </Grid>
@@ -1803,7 +1716,20 @@ const Home = () => {
             </Grid>
           </Box>
 
-          <Box sx={{ display: 'flex', justifyContent: 'center', position: 'relative', zIndex: 1 }}>
+          {/* Spacer */}
+          <Box sx={{ mt: 10 }} />
+
+          {/* View All Hospitals Button with Enhanced Styling */}
+          <Box 
+            sx={{ 
+              display: 'flex', 
+              justifyContent: 'center', 
+              position: 'relative', 
+              zIndex: 1,
+              my: 6,
+              pb: 4
+            }}
+          >
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
@@ -1821,9 +1747,9 @@ const Home = () => {
                 endIcon={<ArrowForward />}
                 onClick={() => navigate('/hospitals')}
                 sx={{
-                  py: 1.8,
-                  px: 4,
-                  fontSize: '1.1rem',
+                  py: 2,
+                  px: 5,
+                  fontSize: '1.2rem',
                   fontWeight: 600,
                   borderRadius: 3,
                   background: 'linear-gradient(90deg, #4f46e5 0%, #06b6d4 100%)',
@@ -1857,6 +1783,21 @@ const Home = () => {
                 View All Partner Hospitals
               </Button>
             </motion.div>
+          </Box>
+          
+          {/* Decorative Elements */}
+          <Box sx={{ 
+            display: 'flex', 
+            justifyContent: 'center', 
+            mb: 4,
+            opacity: 0.6
+          }}>
+            <Box sx={{ 
+              width: '100px', 
+              height: '4px', 
+              borderRadius: '2px', 
+              background: 'linear-gradient(90deg, #4f46e5, #06b6d4)' 
+            }} />
           </Box>
         </Container>
       </Box>
@@ -2005,6 +1946,408 @@ const Home = () => {
                 </motion.div>
               </Grid>
             ))}
+          </Grid>
+        </Container>
+      </Box>
+
+      {/* Virtual Consultation Section */}
+      <Box
+        sx={{
+          position: 'relative',
+          py: { xs: 10, md: 16 },
+          overflow: 'hidden',
+          background: theme.palette.mode === 'dark'
+            ? 'linear-gradient(135deg, rgba(45, 212, 191, 0.2) 0%, rgba(79, 70, 229, 0.2) 100%)'
+            : 'linear-gradient(135deg, rgba(45, 212, 191, 0.1) 0%, rgba(79, 70, 229, 0.1) 100%)',
+          '&::before': {
+            content: '""',
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: 'url("/pattern-dots.svg")',
+            backgroundSize: '30px',
+            opacity: 0.1,
+            zIndex: 0,
+          },
+        }}
+      >
+        <Container maxWidth="lg">
+          <Grid container spacing={6} alignItems="center">
+            <Grid item xs={12} md={6} sx={{ order: { xs: 2, md: 1 } }}>
+              <Box sx={{ position: 'relative' }}>
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.8 }}
+                  viewport={{ once: true }}
+                >
+                  <Box
+                    component="img"
+                    src="/virtual-consultation.svg"
+                    alt="Virtual Doctor Consultation"
+                    sx={{
+                      width: '100%',
+                      maxWidth: 500,
+                      height: 'auto',
+                      borderRadius: 4,
+                      boxShadow: '0 20px 40px rgba(0, 0, 0, 0.2)',
+                      transform: 'perspective(1000px) rotateY(5deg)',
+                      mx: 'auto',
+                      display: 'block',
+                    }}
+                  />
+
+                  {/* Floating elements */}
+                  {[
+                    { label: 'Available Now', icon: <EventAvailable />, color: '#10b981', top: '10%', left: '-10%' },
+                    { label: 'Secure Connection', icon: <Security />, color: '#3b82f6', bottom: '20%', left: '-5%' },
+                    { label: 'HD Video', icon: <VideoCall />, color: '#f59e0b', top: '10%', right: '-5%' },
+                    { label: 'Instant Prescriptions', icon: <Medication />, color: '#8b5cf6', bottom: '15%', right: '-10%' },
+                  ].map((item, index) => (
+                    <motion.div
+                      key={index}
+                      initial={{ opacity: 0, y: 20 }}
+                      whileInView={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.5, delay: 0.5 + (index * 0.2) }}
+                      viewport={{ once: true }}
+                      style={{
+                        position: 'absolute',
+                        top: item.top,
+                        left: item.left,
+                        bottom: item.bottom,
+                        right: item.right,
+                        zIndex: 2,
+                      }}
+                    >
+                      <Paper
+                        elevation={4}
+                        sx={{
+                          p: 2,
+                          borderRadius: 3,
+                          background: theme.palette.mode === 'dark'
+                            ? alpha(theme.palette.background.paper, 0.9)
+                            : alpha(theme.palette.background.paper, 0.9),
+                          backdropFilter: 'blur(10px)',
+                          border: `1px solid ${alpha(item.color, 0.3)}`,
+                          display: 'flex',
+                          alignItems: 'center',
+                          minWidth: 130,
+                        }}
+                      >
+                        <Box
+                          sx={{
+                            mr: 1,
+                            color: item.color,
+                          }}
+                        >
+                          {item.icon}
+                        </Box>
+                        <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                          {item.label}
+                        </Typography>
+                      </Paper>
+                    </motion.div>
+                  ))}
+                </motion.div>
+              </Box>
+            </Grid>
+
+            <Grid item xs={12} md={6} sx={{ order: { xs: 1, md: 2 } }}>
+              <ScrollReveal>
+                <Typography
+                  variant="h2"
+                  component="h2"
+                  gutterBottom
+                  sx={{
+                    fontWeight: 800,
+                    background: 'linear-gradient(90deg, #06b6d4, #4f46e5)',
+                    WebkitBackgroundClip: 'text',
+                    WebkitTextFillColor: 'transparent',
+                    mb: 3,
+                  }}
+                >
+                  Virtual Doctor Consultations
+                </Typography>
+                <Typography
+                  variant="h5"
+                  sx={{ mb: 4, fontWeight: 500, lineHeight: 1.6 }}
+                >
+                  Connect with top doctors from your preferred hospitals for online consultations anytime, anywhere
+                </Typography>
+
+                <Box sx={{ mb: 4 }}>
+                  {[
+                    { icon: <LocalHospital />, title: 'Choose Your Hospital', description: 'Select from our network of trusted hospitals and healthcare providers' },
+                    { icon: <Person />, title: 'Select Your Doctor', description: 'Browse doctor profiles, specialties, and ratings to find the perfect match' },
+                    { icon: <EventAvailable />, title: 'Book Instantly', description: 'Schedule same-day appointments or book in advance at your convenience' },
+                    { icon: <VideoCall />, title: 'Connect Virtually', description: 'Enjoy high-quality video consultations from the comfort of your home' },
+                  ].map((item, index) => (
+                    <Box
+                      key={index}
+                      sx={{
+                        display: 'flex',
+                        alignItems: 'flex-start',
+                        mb: 2.5,
+                        p: 2,
+                        borderRadius: 3,
+                        transition: 'all 0.3s ease',
+                        '&:hover': {
+                          background: alpha(theme.palette.background.paper, 0.5),
+                          transform: 'translateX(5px)',
+                        }
+                      }}
+                    >
+                      <Box
+                        sx={{
+                          mr: 2,
+                          p: 1.5,
+                          borderRadius: 2,
+                          bgcolor: alpha('#06b6d4', 0.1),
+                          color: '#06b6d4',
+                        }}
+                      >
+                        {item.icon}
+                      </Box>
+                      <Box>
+                        <Typography variant="h6" sx={{ mb: 0.5, fontWeight: 600 }}>
+                          {item.title}
+                        </Typography>
+                        <Typography variant="body2" color="text.secondary">
+                          {item.description}
+                        </Typography>
+                      </Box>
+                    </Box>
+                  ))}
+                </Box>
+
+                <Button
+                  variant="contained"
+                  size="large"
+                  endIcon={<ArrowForward />}
+                  sx={{
+                    py: 1.5,
+                    px: 4,
+                    borderRadius: 3,
+                    background: 'linear-gradient(90deg, #06b6d4 0%, #4f46e5 100%)',
+                    textTransform: 'none',
+                    fontWeight: 600,
+                    fontSize: '1.1rem',
+                    boxShadow: '0 10px 20px rgba(6, 182, 212, 0.3)',
+                    '&:hover': {
+                      boxShadow: '0 15px 30px rgba(6, 182, 212, 0.4)',
+                      transform: 'translateY(-3px)',
+                    },
+                    transition: 'all 0.3s ease',
+                  }}
+                  onClick={() => navigate('/register')}
+                >
+                  Book a Virtual Consultation
+                </Button>
+              </ScrollReveal>
+            </Grid>
+          </Grid>
+        </Container>
+      </Box>
+
+      {/* In-Person Appointment Section */}
+      <Box
+        sx={{
+          position: 'relative',
+          py: { xs: 10, md: 16 },
+          overflow: 'hidden',
+          background: theme.palette.mode === 'dark'
+            ? 'linear-gradient(135deg, rgba(79, 70, 229, 0.2) 0%, rgba(236, 72, 153, 0.2) 100%)'
+            : 'linear-gradient(135deg, rgba(79, 70, 229, 0.1) 0%, rgba(236, 72, 153, 0.1) 100%)',
+          '&::before': {
+            content: '""',
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: 'url("/pattern-dots.svg")',
+            backgroundSize: '30px',
+            opacity: 0.1,
+            zIndex: 0,
+          },
+        }}
+      >
+        <Container maxWidth="lg">
+          <Grid container spacing={6} alignItems="center">
+            <Grid item xs={12} md={6} sx={{ order: { xs: 1, md: 1 } }}>
+              <ScrollReveal>
+                <Typography
+                  variant="h2"
+                  component="h2"
+                  gutterBottom
+                  sx={{
+                    fontWeight: 800,
+                    background: 'linear-gradient(90deg, #ec4899, #f59e0b)',
+                    WebkitBackgroundClip: 'text',
+                    WebkitTextFillColor: 'transparent',
+                    mb: 3,
+                  }}
+                >
+                  In-Person Hospital Visits
+                </Typography>
+                <Typography
+                  variant="h5"
+                  sx={{ mb: 4, fontWeight: 500, lineHeight: 1.6 }}
+                >
+                  Schedule face-to-face appointments with specialists at your preferred hospitals
+                </Typography>
+
+                <Box sx={{ mb: 4 }}>
+                  {[
+                    { icon: <LocalHospital />, title: 'Select Hospital', description: 'Choose from our network of top-rated hospitals and medical centers in your area' },
+                    { icon: <Person />, title: 'Find Specialists', description: 'Browse through profiles of experienced doctors and specialists by department' },
+                    { icon: <EventAvailable />, title: 'Flexible Scheduling', description: 'Book appointments that fit your schedule with real-time availability' },
+                    { icon: <HealthAndSafety />, title: 'Comprehensive Care', description: 'Access full medical services including tests, treatments, and follow-ups' },
+                  ].map((item, index) => (
+                    <Box
+                      key={index}
+                      sx={{
+                        display: 'flex',
+                        alignItems: 'flex-start',
+                        mb: 2.5,
+                        p: 2,
+                        borderRadius: 3,
+                        transition: 'all 0.3s ease',
+                        '&:hover': {
+                          background: alpha(theme.palette.background.paper, 0.5),
+                          transform: 'translateX(5px)',
+                        }
+                      }}
+                    >
+                      <Box
+                        sx={{
+                          mr: 2,
+                          p: 1.5,
+                          borderRadius: 2,
+                          bgcolor: alpha('#ec4899', 0.1),
+                          color: '#ec4899',
+                        }}
+                      >
+                        {item.icon}
+                      </Box>
+                      <Box>
+                        <Typography variant="h6" sx={{ mb: 0.5, fontWeight: 600 }}>
+                          {item.title}
+                        </Typography>
+                        <Typography variant="body2" color="text.secondary">
+                          {item.description}
+                        </Typography>
+                      </Box>
+                    </Box>
+                  ))}
+                </Box>
+
+                <Button
+                  variant="contained"
+                  size="large"
+                  endIcon={<ArrowForward />}
+                  sx={{
+                    py: 1.5,
+                    px: 4,
+                    borderRadius: 3,
+                    background: 'linear-gradient(90deg, #ec4899 0%, #f59e0b 100%)',
+                    textTransform: 'none',
+                    fontWeight: 600,
+                    fontSize: '1.1rem',
+                    boxShadow: '0 10px 20px rgba(236, 72, 153, 0.3)',
+                    '&:hover': {
+                      boxShadow: '0 15px 30px rgba(236, 72, 153, 0.4)',
+                      transform: 'translateY(-3px)',
+                    },
+                    transition: 'all 0.3s ease',
+                  }}
+                  onClick={() => navigate('/register')}
+                >
+                  Schedule Hospital Visit
+                </Button>
+              </ScrollReveal>
+            </Grid>
+
+            <Grid item xs={12} md={6} sx={{ order: { xs: 2, md: 2 } }}>
+              <Box sx={{ position: 'relative' }}>
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.8 }}
+                  viewport={{ once: true }}
+                >
+                  <Box
+                    component="img"
+                    src="/hospital-visit.svg"
+                    alt="Hospital Visit"
+                    sx={{
+                      width: '100%',
+                      maxWidth: 500,
+                      height: 'auto',
+                      borderRadius: 4,
+                      boxShadow: '0 20px 40px rgba(0, 0, 0, 0.2)',
+                      transform: 'perspective(1000px) rotateY(-5deg)',
+                      mx: 'auto',
+                      display: 'block',
+                    }}
+                  />
+
+                  {/* Floating elements */}
+                  {[
+                    { label: 'Top Specialists', icon: <Star />, color: '#f59e0b', top: '10%', right: '-5%' },
+                    { label: 'Modern Facilities', icon: <LocalHospital />, color: '#ec4899', bottom: '20%', right: '-10%' },
+                    { label: 'Same-Day Appointments', icon: <EventAvailable />, color: '#8b5cf6', top: '10%', left: '-5%' },
+                    { label: 'Insurance Accepted', icon: <HealthAndSafety />, color: '#10b981', bottom: '15%', left: '-10%' },
+                  ].map((item, index) => (
+                    <motion.div
+                      key={index}
+                      initial={{ opacity: 0, y: 20 }}
+                      whileInView={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.5, delay: 0.5 + (index * 0.2) }}
+                      viewport={{ once: true }}
+                      style={{
+                        position: 'absolute',
+                        top: item.top,
+                        left: item.left,
+                        bottom: item.bottom,
+                        right: item.right,
+                        zIndex: 2,
+                      }}
+                    >
+                      <Paper
+                        elevation={4}
+                        sx={{
+                          p: 2,
+                          borderRadius: 3,
+                          background: theme.palette.mode === 'dark'
+                            ? alpha(theme.palette.background.paper, 0.9)
+                            : alpha(theme.palette.background.paper, 0.9),
+                          backdropFilter: 'blur(10px)',
+                          border: `1px solid ${alpha(item.color, 0.3)}`,
+                          display: 'flex',
+                          alignItems: 'center',
+                          minWidth: 130,
+                        }}
+                      >
+                        <Box
+                          sx={{
+                            mr: 1,
+                            color: item.color,
+                          }}
+                        >
+                          {item.icon}
+                        </Box>
+                        <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                          {item.label}
+                        </Typography>
+                      </Paper>
+                    </motion.div>
+                  ))}
+                </motion.div>
+              </Box>
+            </Grid>
           </Grid>
         </Container>
       </Box>
@@ -2602,6 +2945,369 @@ const Home = () => {
         </Container>
       </Box>
 
+      {/* AI Health Assistant Section */}
+      <Box
+        sx={{
+          position: 'relative',
+          py: { xs: 10, md: 16 },
+          overflow: 'hidden',
+          background: theme.palette.mode === 'dark'
+            ? 'linear-gradient(135deg, rgba(139, 92, 246, 0.2) 0%, rgba(236, 72, 153, 0.2) 100%)'
+            : 'linear-gradient(135deg, rgba(139, 92, 246, 0.1) 0%, rgba(236, 72, 153, 0.1) 100%)',
+          '&::before': {
+            content: '""',
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: 'url("/pattern-dots.svg")',
+            backgroundSize: '30px',
+            opacity: 0.1,
+            zIndex: 0,
+          },
+        }}
+      >
+        <Container maxWidth="lg">
+          <Grid container spacing={6} alignItems="center">
+            <Grid item xs={12} md={6}>
+              <ScrollReveal>
+                <Typography
+                  variant="h2"
+                  component="h2"
+                  gutterBottom
+                  sx={{
+                    fontWeight: 800,
+                    background: 'linear-gradient(90deg, #8b5cf6, #ec4899)',
+                    WebkitBackgroundClip: 'text',
+                    WebkitTextFillColor: 'transparent',
+                    mb: 3,
+                  }}
+                >
+                  AI Health Assistant
+                </Typography>
+                <Typography
+                  variant="h5"
+                  sx={{ mb: 4, fontWeight: 500, lineHeight: 1.6 }}
+                >
+                  Your personal health companion powered by advanced artificial intelligence
+                </Typography>
+
+                <Box sx={{ mb: 4 }}>
+                  {[
+                    { icon: <TipsAndUpdates />, title: 'Personalized Health Tips', description: 'Receive customized health recommendations based on your profile and health data' },
+                    { icon: <Psychology />, title: 'Symptom Analysis', description: 'Describe your symptoms and get AI-powered insights and guidance' },
+                    { icon: <Medication />, title: 'Medication Reminders', description: 'Never miss a dose with smart medication tracking and reminders' },
+                    { icon: <SmartToy />, title: '24/7 Availability', description: 'Get answers to your health questions anytime, day or night' },
+                  ].map((item, index) => (
+                    <Box
+                      key={index}
+                      sx={{
+                        display: 'flex',
+                        alignItems: 'flex-start',
+                        mb: 2.5,
+                        p: 2,
+                        borderRadius: 3,
+                        transition: 'all 0.3s ease',
+                        '&:hover': {
+                          background: alpha(theme.palette.background.paper, 0.5),
+                          transform: 'translateX(5px)',
+                        }
+                      }}
+                    >
+                      <Box
+                        sx={{
+                          mr: 2,
+                          p: 1.5,
+                          borderRadius: 2,
+                          bgcolor: alpha('#8b5cf6', 0.1),
+                          color: '#8b5cf6',
+                        }}
+                      >
+                        {item.icon}
+                      </Box>
+                      <Box>
+                        <Typography variant="h6" sx={{ mb: 0.5, fontWeight: 600 }}>
+                          {item.title}
+                        </Typography>
+                        <Typography variant="body2" color="text.secondary">
+                          {item.description}
+                        </Typography>
+                      </Box>
+                    </Box>
+                  ))}
+                </Box>
+
+                <Button
+                  variant="contained"
+                  size="large"
+                  startIcon={<SmartToy />}
+                  sx={{
+                    py: 1.5,
+                    px: 4,
+                    borderRadius: 3,
+                    background: 'linear-gradient(90deg, #8b5cf6 0%, #ec4899 100%)',
+                    textTransform: 'none',
+                    fontWeight: 600,
+                    fontSize: '1.1rem',
+                    boxShadow: '0 10px 20px rgba(139, 92, 246, 0.3)',
+                    '&:hover': {
+                      boxShadow: '0 15px 30px rgba(139, 92, 246, 0.4)',
+                      transform: 'translateY(-3px)',
+                    },
+                    transition: 'all 0.3s ease',
+                  }}
+                  onClick={() => navigate('/register')}
+                >
+                  Try AI Health Assistant
+                </Button>
+              </ScrollReveal>
+            </Grid>
+
+            <Grid item xs={12} md={6}>
+              <Box sx={{ position: 'relative' }}>
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.8 }}
+                  viewport={{ once: true }}
+                >
+                  {/* AI Assistant Chat Interface */}
+                  <Paper
+                    elevation={8}
+                    sx={{
+                      width: '100%',
+                      maxWidth: 500,
+                      mx: 'auto',
+                      borderRadius: 4,
+                      overflow: 'hidden',
+                      boxShadow: '0 20px 40px rgba(0, 0, 0, 0.2)',
+                      transform: 'perspective(1000px) rotateY(-5deg)',
+                    }}
+                  >
+                    {/* Chat header */}
+                    <Box
+                      sx={{
+                        p: 2,
+                        background: 'linear-gradient(90deg, #8b5cf6, #ec4899)',
+                        display: 'flex',
+                        alignItems: 'center',
+                      }}
+                    >
+                      <Avatar
+                        sx={{
+                          bgcolor: 'white',
+                          color: '#8b5cf6',
+                          mr: 2,
+                        }}
+                      >
+                        <SmartToy />
+                      </Avatar>
+                      <Box>
+                        <Typography variant="h6" sx={{ color: 'white', fontWeight: 600 }}>
+                          Health AI Assistant
+                        </Typography>
+                        <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.8)' }}>
+                          Online • Ready to help
+                        </Typography>
+                      </Box>
+                    </Box>
+
+                    {/* Chat messages */}
+                    <Box
+                      sx={{
+                        p: 2,
+                        height: 350,
+                        bgcolor: theme.palette.mode === 'dark' ? alpha(theme.palette.background.paper, 0.9) : 'white',
+                        overflowY: 'auto',
+                      }}
+                    >
+                      {/* AI message */}
+                      <Box sx={{ display: 'flex', mb: 2 }}>
+                        <Avatar
+                          sx={{
+                            bgcolor: '#8b5cf6',
+                            width: 36,
+                            height: 36,
+                            mr: 1,
+                          }}
+                        >
+                          <SmartToy fontSize="small" />
+                        </Avatar>
+                        <Paper
+                          sx={{
+                            p: 2,
+                            borderRadius: 3,
+                            borderTopLeftRadius: 0,
+                            bgcolor: alpha('#8b5cf6', 0.1),
+                            maxWidth: '80%',
+                          }}
+                        >
+                          <Typography variant="body2">
+                            Hello! I'm your AI Health Assistant. How can I help you today?
+                          </Typography>
+                        </Paper>
+                      </Box>
+
+                      {/* User message */}
+                      <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 2 }}>
+                        <Paper
+                          sx={{
+                            p: 2,
+                            borderRadius: 3,
+                            borderTopRightRadius: 0,
+                            bgcolor: alpha('#4f46e5', 0.1),
+                            maxWidth: '80%',
+                          }}
+                        >
+                          <Typography variant="body2">
+                            I've been having headaches and feeling tired lately. What could be causing this?
+                          </Typography>
+                        </Paper>
+                        <Avatar
+                          sx={{
+                            bgcolor: '#4f46e5',
+                            width: 36,
+                            height: 36,
+                            ml: 1,
+                          }}
+                        >
+                          U
+                        </Avatar>
+                      </Box>
+
+                      {/* AI response */}
+                      <Box sx={{ display: 'flex', mb: 2 }}>
+                        <Avatar
+                          sx={{
+                            bgcolor: '#8b5cf6',
+                            width: 36,
+                            height: 36,
+                            mr: 1,
+                          }}
+                        >
+                          <SmartToy fontSize="small" />
+                        </Avatar>
+                        <Paper
+                          sx={{
+                            p: 2,
+                            borderRadius: 3,
+                            borderTopLeftRadius: 0,
+                            bgcolor: alpha('#8b5cf6', 0.1),
+                            maxWidth: '80%',
+                          }}
+                        >
+                          <Typography variant="body2">
+                            There could be several reasons for headaches and fatigue, including:
+                          </Typography>
+                          <Box component="ul" sx={{ pl: 2, mt: 1, mb: 1 }}>
+                            <li>Dehydration</li>
+                            <li>Stress or anxiety</li>
+                            <li>Poor sleep quality</li>
+                            <li>Eye strain</li>
+                          </Box>
+                          <Typography variant="body2">
+                            I recommend drinking more water, taking regular breaks, and ensuring you get 7-8 hours of sleep. Would you like me to suggest some relaxation techniques?
+                          </Typography>
+                        </Paper>
+                      </Box>
+                    </Box>
+
+                    {/* Chat input */}
+                    <Box
+                      sx={{
+                        p: 2,
+                        borderTop: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
+                        display: 'flex',
+                        alignItems: 'center',
+                        bgcolor: theme.palette.mode === 'dark' ? alpha(theme.palette.background.paper, 0.9) : 'white',
+                      }}
+                    >
+                      <Box
+                        component="input"
+                        placeholder="Type your health question..."
+                        sx={{
+                          flex: 1,
+                          border: 'none',
+                          outline: 'none',
+                          p: 1.5,
+                          borderRadius: 3,
+                          bgcolor: alpha(theme.palette.divider, 0.05),
+                          color: 'text.primary',
+                          fontSize: '0.9rem',
+                        }}
+                      />
+                      <IconButton
+                        sx={{
+                          ml: 1,
+                          bgcolor: '#8b5cf6',
+                          color: 'white',
+                          '&:hover': {
+                            bgcolor: '#7c3aed',
+                          },
+                        }}
+                      >
+                        <ArrowForward />
+                      </IconButton>
+                    </Box>
+                  </Paper>
+
+                  {/* Floating elements */}
+                  {[
+                    { label: 'AI-Powered', icon: <Psychology />, color: '#ec4899', top: '5%', right: '-5%' },
+                    { label: 'HIPAA Compliant', icon: <Security />, color: '#8b5cf6', bottom: '10%', left: '-5%' },
+                  ].map((item, index) => (
+                    <motion.div
+                      key={index}
+                      initial={{ opacity: 0, y: 20 }}
+                      whileInView={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.5, delay: 0.5 + (index * 0.2) }}
+                      viewport={{ once: true }}
+                      style={{
+                        position: 'absolute',
+                        top: item.top,
+                        left: item.left,
+                        bottom: item.bottom,
+                        right: item.right,
+                        zIndex: 2,
+                      }}
+                    >
+                      <Paper
+                        elevation={4}
+                        sx={{
+                          p: 2,
+                          borderRadius: 3,
+                          background: theme.palette.mode === 'dark'
+                            ? alpha(theme.palette.background.paper, 0.9)
+                            : alpha(theme.palette.background.paper, 0.9),
+                          backdropFilter: 'blur(10px)',
+                          border: `1px solid ${alpha(item.color, 0.3)}`,
+                          display: 'flex',
+                          alignItems: 'center',
+                          minWidth: 130,
+                        }}
+                      >
+                        <Box
+                          sx={{
+                            mr: 1,
+                            color: item.color,
+                          }}
+                        >
+                          {item.icon}
+                        </Box>
+                        <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                          {item.label}
+                        </Typography>
+                      </Paper>
+                    </motion.div>
+                  ))}
+                </motion.div>
+              </Box>
+            </Grid>
+          </Grid>
+        </Container>
+      </Box>
+
       {/* Health Tips Section */}
       <Box sx={{
         py: { xs: 8, md: 12 },
@@ -3086,61 +3792,227 @@ const Home = () => {
       </Container>
 
       {/* FAQ Section */}
-      <Box sx={{
-        bgcolor: theme.palette.mode === 'dark' ? alpha(theme.palette.primary.main, 0.1) : 'background.paper',
-        py: { xs: 8, md: 12 }
-      }}>
-        <Container maxWidth="lg">
-          <ScrollReveal>
+      <Box
+        sx={{
+          py: { xs: 10, md: 16 },
+          background: theme.palette.mode === 'dark'
+            ? 'linear-gradient(135deg, rgba(15, 23, 42, 0.8) 0%, rgba(15, 23, 42, 0.95) 100%)'
+            : 'linear-gradient(135deg, rgba(241, 245, 249, 0.8) 0%, rgba(248, 250, 252, 0.95) 100%)',
+          position: 'relative',
+          overflow: 'hidden',
+          '&::before': {
+            content: '""',
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: 'url("/pattern-dots.png")',
+            backgroundSize: '20px',
+            opacity: 0.05,
+            zIndex: 0,
+          },
+        }}
+      >
+        {/* Floating Elements */}
+        <Box sx={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 0, pointerEvents: 'none' }}>
+          {/* Animated Question Mark Icons */}
+          {[
+            { icon: '❓', size: '2.5rem', left: '5%', top: '15%' },
+            { icon: '❔', size: '3rem', left: '90%', top: '20%' },
+            { icon: '❓', size: '2rem', left: '80%', top: '70%' },
+            { icon: '❔', size: '2.2rem', left: '10%', top: '75%' },
+          ].map((item, index) => (
+            <motion.div
+              key={index}
+              style={{
+                position: 'absolute',
+                left: item.left,
+                top: item.top,
+                fontSize: item.size,
+                opacity: 0.2,
+                filter: 'drop-shadow(0 0 10px rgba(255,255,255,0.7))',
+              }}
+              animate={{
+                y: [0, -15, 0],
+                x: [0, 5, 0],
+                rotate: [0, 5, 0, -5, 0],
+                opacity: [0.2, 0.3, 0.2],
+              }}
+              transition={{
+                duration: 4 + index,
+                repeat: Infinity,
+                delay: index * 0.5,
+                ease: "easeInOut"
+              }}
+            >
+              {item.icon}
+            </motion.div>
+          ))}
+        </Box>
+        
+        <Container maxWidth="lg" sx={{ position: 'relative', zIndex: 1 }}>
+          <motion.div
+            initial={{ opacity: 0, y: 30 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, margin: "-100px" }}
+            transition={{ duration: 0.8 }}
+          >
             <Typography
               variant="h2"
               component="h2"
               textAlign="center"
               gutterBottom
-              sx={{ fontWeight: 700 }}
+              sx={{
+                fontWeight: 800,
+                background: 'linear-gradient(90deg, #4f46e5, #06b6d4)',
+                WebkitBackgroundClip: 'text',
+                WebkitTextFillColor: 'transparent',
+                mb: 2,
+                position: 'relative',
+                zIndex: 1,
+                textShadow: '0 10px 30px rgba(0,0,0,0.1)',
+                '&::after': {
+                  content: '""',
+                  position: 'absolute',
+                  bottom: -10,
+                  left: '50%',
+                  transform: 'translateX(-50%)',
+                  width: 80,
+                  height: 4,
+                  borderRadius: 2,
+                  background: 'linear-gradient(90deg, #4f46e5, #06b6d4)',
+                }
+              }}
             >
               Frequently Asked Questions
             </Typography>
-          </ScrollReveal>
+            <Typography
+              variant="h5"
+              textAlign="center"
+              color="text.secondary"
+              sx={{ 
+                mb: 8, 
+                maxWidth: 800, 
+                mx: 'auto', 
+                position: 'relative', 
+                zIndex: 1,
+                lineHeight: 1.6,
+                fontWeight: 500
+              }}
+            >
+              Find answers to common questions about our healthcare platform and services
+            </Typography>
+          </motion.div>
 
-          <Grid container spacing={4} sx={{ mt: 4 }}>
+          <Grid container spacing={4} sx={{ mt: 2 }}>
             {[
               {
                 question: "Is SoulSpace HIPAA compliant?",
-                answer: "Yes, SoulSpace is fully HIPAA compliant and maintains the highest standards of security for patient data protection."
+                answer: "Yes, SoulSpace is fully HIPAA compliant and maintains the highest standards of security for patient data protection. We regularly undergo security audits and implement industry-leading encryption methods.",
+                icon: <Security sx={{ fontSize: 40 }} />,
+                color: '#4f46e5'
               },
               {
                 question: "Can I integrate with my existing systems?",
-                answer: "SoulSpace offers seamless integration with major healthcare systems and can be customized to work with your specific setup."
+                answer: "SoulSpace offers seamless integration with major healthcare systems and can be customized to work with your specific setup. Our API documentation and integration team will help you connect your existing infrastructure.",
+                icon: <Settings sx={{ fontSize: 40 }} />,
+                color: '#06b6d4'
               },
               {
                 question: "What support options are available?",
-                answer: "We provide 24/7 technical support, comprehensive documentation, and dedicated account managers for enterprise clients."
+                answer: "We offer 24/7 technical support, comprehensive training, and dedicated account managers for all our healthcare partners. Our support team includes healthcare professionals who understand your specific needs.",
+                icon: <PersonAdd sx={{ fontSize: 40 }} />,
+                color: '#8b5cf6'
               },
               {
                 question: "How long does implementation take?",
-                answer: "Basic setup can be completed in minutes. Full enterprise implementation typically takes 2-4 weeks."
+                answer: "Basic setup can be completed in minutes. Full enterprise implementation typically takes 2-4 weeks, depending on the complexity of your requirements and existing systems integration needs.",
+                icon: <Speed sx={{ fontSize: 40 }} />,
+                color: '#ec4899'
               }
             ].map((faq, index) => (
               <Grid item xs={12} md={6} key={index}>
                 <motion.div
                   initial={{ opacity: 0, y: 20 }}
                   whileInView={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.5, delay: index * 0.2 }}
+                  transition={{ duration: 0.5, delay: index * 0.1 }}
                   viewport={{ once: true }}
+                  whileHover={{ 
+                    y: -10, 
+                    transition: { duration: 0.2 },
+                    boxShadow: `0 20px 40px ${alpha(faq.color, 0.2)}`
+                  }}
                 >
                   <Paper
-                    elevation={0}
+                    elevation={4}
                     sx={{
-                      p: 3,
+                      p: 4,
                       height: '100%',
-                      bgcolor: theme.palette.mode === 'dark' ? alpha(theme.palette.primary.main, 0.1) : alpha(theme.palette.primary.light, 0.1),
+                      borderRadius: 4,
+                      transition: 'all 0.3s ease',
+                      '&:hover': {
+                        boxShadow: `0 15px 30px ${alpha(faq.color, 0.3)}`,
+                      },
+                      position: 'relative',
+                      border: `1px solid ${alpha(faq.color, 0.2)}`,
+                      background: theme.palette.mode === 'dark'
+                        ? `linear-gradient(135deg, ${alpha(faq.color, 0.15)} 0%, ${alpha(theme.palette.background.paper, 0.9)} 100%)`
+                        : `linear-gradient(135deg, ${alpha(faq.color, 0.05)} 0%, white 100%)`,
+                      overflow: 'hidden',
                     }}
                   >
-                    <Typography variant="h6" gutterBottom sx={{ fontWeight: 600 }}>
-                      {faq.question}
-                    </Typography>
-                    <Typography color="text.secondary">
+                    <Box
+                      sx={{
+                        position: 'absolute',
+                        top: -20,
+                        right: -20,
+                        width: 80,
+                        height: 80,
+                        borderRadius: '50%',
+                        background: alpha(faq.color, 0.1),
+                        zIndex: 0,
+                      }}
+                    />
+                    
+                    <Box sx={{ display: 'flex', alignItems: 'flex-start', mb: 2, position: 'relative', zIndex: 1 }}>
+                      <Box
+                        sx={{
+                          mr: 2,
+                          p: 1.5,
+                          borderRadius: 2,
+                          background: alpha(faq.color, 0.1),
+                          color: faq.color,
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                        }}
+                      >
+                        {faq.icon}
+                      </Box>
+                      <Typography 
+                        variant="h6" 
+                        gutterBottom 
+                        fontWeight="bold" 
+                        sx={{ 
+                          color: faq.color,
+                          mt: 1
+                        }}
+                      >
+                        {faq.question}
+                      </Typography>
+                    </Box>
+                    
+                    <Typography 
+                      variant="body1" 
+                      color="text.secondary"
+                      sx={{
+                        pl: 7,
+                        position: 'relative',
+                        zIndex: 1,
+                        lineHeight: 1.7
+                      }}
+                    >
                       {faq.answer}
                     </Typography>
                   </Paper>
@@ -3148,6 +4020,41 @@ const Home = () => {
               </Grid>
             ))}
           </Grid>
+          
+          {/* Additional Help Button */}
+          <Box sx={{ display: 'flex', justifyContent: 'center', mt: 8 }}>
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: 0.5 }}
+              viewport={{ once: true }}
+            >
+              <Button
+                variant="outlined"
+                size="large"
+                endIcon={<ArrowForward />}
+                sx={{
+                  py: 1.5,
+                  px: 4,
+                  borderRadius: 3,
+                  borderColor: '#4f46e5',
+                  color: '#4f46e5',
+                  textTransform: 'none',
+                  fontWeight: 600,
+                  fontSize: '1.1rem',
+                  '&:hover': {
+                    borderColor: '#4f46e5',
+                    backgroundColor: alpha('#4f46e5', 0.05),
+                    transform: 'translateY(-3px)',
+                  },
+                  transition: 'all 0.3s ease',
+                }}
+                onClick={() => navigate('/contact')}
+              >
+                Still Have Questions? Contact Us
+              </Button>
+            </motion.div>
+          </Box>
         </Container>
       </Box>
 

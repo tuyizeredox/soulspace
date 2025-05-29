@@ -140,32 +140,62 @@ const HomeNavbar = () => {
             </IconButton>
 
             {/* Logo */}
-            <Box sx={{ display: 'flex', alignItems: 'center', mr: 2 }}>
-              <HealthAndSafety
+            <Box 
+              sx={{ 
+                display: 'flex', 
+                alignItems: 'center', 
+                mr: 2,
+                cursor: 'pointer',
+              }}
+              onClick={() => navigate('/')}
+            >
+              <Box
+                component="img"
+                src="/favicon.svg"
+                alt="SoulSpace Health"
                 sx={{
-                  display: { xs: 'flex' },
-                  mr: 1,
-                  fontSize: 32,
-                  color: '#ffffff',
+                  height: 40,
+                  width: 40,
+                  mr: 1.5,
                   filter: 'drop-shadow(0 0 4px rgba(255,255,255,0.3))',
+                  transition: 'transform 0.3s ease',
+                  '&:hover': {
+                    transform: 'scale(1.1)',
+                  }
                 }}
               />
-              <Typography
-                variant="h5"
-                noWrap
-                component="div"
-                sx={{
-                  fontWeight: 700,
-                  letterSpacing: '.1rem',
-                  color: '#ffffff',
-                  textDecoration: 'none',
-                  cursor: 'pointer',
-                  textShadow: '0 0 10px rgba(255,255,255,0.3)',
-                }}
-                onClick={() => navigate('/')}
-              >
-                SoulSpace Health
-              </Typography>
+              <Box>
+                <Typography
+                  variant="h5"
+                  noWrap
+                  component="div"
+                  sx={{
+                    fontWeight: 800,
+                    letterSpacing: '.1rem',
+                    color: '#ffffff',
+                    textDecoration: 'none',
+                    lineHeight: 1.1,
+                    textShadow: '0 0 10px rgba(255,255,255,0.3)',
+                  }}
+                >
+                  SoulSpace
+                </Typography>
+                <Typography
+                  variant="subtitle1"
+                  noWrap
+                  component="div"
+                  sx={{
+                    fontWeight: 600,
+                    color: '#ffffff',
+                    opacity: 0.9,
+                    textDecoration: 'none',
+                    lineHeight: 1,
+                    letterSpacing: '.05rem',
+                  }}
+                >
+                  Health
+                </Typography>
+              </Box>
             </Box>
 
             {/* Desktop menu */}

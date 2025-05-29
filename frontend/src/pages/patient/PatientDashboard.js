@@ -21,7 +21,6 @@ import {
 } from '@mui/material';
 import {
   CalendarMonth as CalendarIcon,
-  Notifications as NotificationsIcon,
   Message as MessageIcon,
   MedicalInformation as MedicalIcon,
   LocalHospital as HospitalIcon,

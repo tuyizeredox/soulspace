@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 300">
+  <!-- Background -->
+  <rect width="400" height="300" fill="#f8fafc" />
+  
+  <!-- Hospital Building - Modern Design -->
+  <rect x="50" y="80" width="300" height="170" rx="5" fill="#ffffff" stroke="#4f46e5" stroke-width="3" />
+  
+  <!-- Hospital Dome -->
+  <ellipse cx="200" cy="80" rx="80" ry="30" fill="#4f46e5" />
+  
+  <!-- Windows -->
+  <rect x="80" y="110" width="30" height="40" rx="2" fill="#e0f2fe" stroke="#4f46e5" stroke-width="1" />
+  <rect x="130" y="110" width="30" height="40" rx="2" fill="#e0f2fe" stroke="#4f46e5" stroke-width="1" />
+  <rect x="180" y="110" width="30" height="40" rx="2" fill="#e0f2fe" stroke="#4f46e5" stroke-width="1" />
+  <rect x="230" y="110" width="30" height="40" rx="2" fill="#e0f2fe" stroke="#4f46e5" stroke-width="1" />
+  <rect x="280" y="110" width="30" height="40" rx="2" fill="#e0f2fe" stroke="#4f46e5" stroke-width="1" />
+  
+  <rect x="80" y="170" width="30" height="40" rx="2" fill="#e0f2fe" stroke="#4f46e5" stroke-width="1" />
+  <rect x="130" y="170" width="30" height="40" rx="2" fill="#e0f2fe" stroke="#4f46e5" stroke-width="1" />
+  <rect x="230" y="170" width="30" height="40" rx="2" fill="#e0f2fe" stroke="#4f46e5" stroke-width="1" />
+  <rect x="280" y="170" width="30" height="40" rx="2" fill="#e0f2fe" stroke="#4f46e5" stroke-width="1" />
+  
+  <!-- Hospital Entrance -->
+  <rect x="175" y="170" width="50" height="80" fill="#4f46e5" />
+  <rect x="185" y="170" width="30" height="50" fill="#ffffff" />
+  
+  <!-- Hospital Sign -->
+  <rect x="160" y="60" width="80" height="30" rx="5" fill="#ffffff" stroke="#4f46e5" stroke-width="2" />
+  <text x="200" y="80" font-family="Arial" font-size="14" text-anchor="middle" fill="#4f46e5" font-weight="bold">KFH</text>
+  
+  <!-- Hospital Name -->
+  <text x="200" y="270" font-family="Arial" font-size="18" text-anchor="middle" fill="#4f46e5" font-weight="bold">King Faisal Hospital</text>
+  
+  <!-- Medical Cross -->
+  <rect x="320" y="40" width="30" height="10" fill="#4f46e5" />
+  <rect x="330" y="30" width="10" height="30" fill="#4f46e5" />
+</svg>

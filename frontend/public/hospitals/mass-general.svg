@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 300">
+  <!-- Background -->
+  <rect width="400" height="300" fill="#f8fafc" />
+  
+  <!-- Main Building - Modern Hospital Tower -->
+  <rect x="120" y="50" width="160" height="200" fill="#ffffff" stroke="#ec4899" stroke-width="3" />
+  
+  <!-- Glass Facade -->
+  <rect x="130" y="60" width="140" height="180" fill="#fce7f3" stroke="#ec4899" stroke-width="1" />
+  
+  <!-- Windows Grid -->
+  <line x1="150" y1="60" x2="150" y2="240" stroke="#ec4899" stroke-width="1" />
+  <line x1="170" y1="60" x2="170" y2="240" stroke="#ec4899" stroke-width="1" />
+  <line x1="190" y1="60" x2="190" y2="240" stroke="#ec4899" stroke-width="1" />
+  <line x1="210" y1="60" x2="210" y2="240" stroke="#ec4899" stroke-width="1" />
+  <line x1="230" y1="60" x2="230" y2="240" stroke="#ec4899" stroke-width="1" />
+  <line x1="250" y1="60" x2="250" y2="240" stroke="#ec4899" stroke-width="1" />
+  
+  <line x1="130" y1="80" x2="270" y2="80" stroke="#ec4899" stroke-width="1" />
+  <line x1="130" y1="100" x2="270" y2="100" stroke="#ec4899" stroke-width="1" />
+  <line x1="130" y1="120" x2="270" y2="120" stroke="#ec4899" stroke-width="1" />
+  <line x1="130" y1="140" x2="270" y2="140" stroke="#ec4899" stroke-width="1" />
+  <line x1="130" y1="160" x2="270" y2="160" stroke="#ec4899" stroke-width="1" />
+  <line x1="130" y1="180" x2="270" y2="180" stroke="#ec4899" stroke-width="1" />
+  <line x1="130" y1="200" x2="270" y2="200" stroke="#ec4899" stroke-width="1" />
+  <line x1="130" y1="220" x2="270" y2="220" stroke="#ec4899" stroke-width="1" />
+  
+  <!-- Helipad -->
+  <circle cx="200" cy="50" r="20" fill="#ec4899" stroke="#ffffff" stroke-width="2" />
+  <text x="200" y="55" font-family="Arial" font-size="15" text-anchor="middle" fill="#ffffff" font-weight="bold">H</text>
+  
+  <!-- Entrance -->
+  <rect x="175" y="230" width="50" height="20" fill="#ec4899" />
+  <rect x="190" y="230" width="20" height="15" fill="#ffffff" />
+  
+  <!-- Side Wing -->
+  <rect x="280" y="150" width="60" height="100" fill="#ffffff" stroke="#ec4899" stroke-width="2" />
+  <rect x="290" y="160" width="40" height="80" fill="#fce7f3" stroke="#ec4899" stroke-width="1" />
+  
+  <!-- Connector -->
+  <rect x="270" y="180" width="20" height="40" fill="#ec4899" />
+  
+  <!-- Hospital Name -->
+  <text x="200" y="270" font-family="Arial" font-size="18" text-anchor="middle" fill="#ec4899" font-weight="bold">Massachusetts General</text>
+</svg>

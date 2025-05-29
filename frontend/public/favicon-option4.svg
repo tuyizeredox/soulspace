@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <!-- Background -->
+  <circle cx="32" cy="32" r="30" fill="#3F51B5" />
+  
+  <!-- Stylized "SS" for SoulSpace -->
+  <path d="M24 20c0-2.2 1.8-4 4-4s4 1.8 4 4-1.8 4-4 4c-1.1 0-2 .9-2 2s.9 2 2 2c2.2 0 4 1.8 4 4s-1.8 4-4 4-4-1.8-4-4" stroke="white" stroke-width="4" fill="none" stroke-linecap="round" />
+  <path d="M40 20c0-2.2 1.8-4 4-4s4 1.8 4 4-1.8 4-4 4c-1.1 0-2 .9-2 2s.9 2 2 2c2.2 0 4 1.8 4 4s-1.8 4-4 4-4-1.8-4-4" stroke="white" stroke-width="4" fill="none" stroke-linecap="round" />
+  
+  <!-- Health cross -->
+  <path d="M32 16v32" stroke="#4CAF50" stroke-width="3" stroke-linecap="round" />
+  <path d="M16 32h32" stroke="#4CAF50" stroke-width="3" stroke-linecap="round" />
+</svg>

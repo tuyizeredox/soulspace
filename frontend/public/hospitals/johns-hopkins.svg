@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 300">
+  <!-- Background -->
+  <rect width="400" height="300" fill="#f8fafc" />
+  
+  <!-- Main Building - Historic Design -->
+  <rect x="100" y="80" width="200" height="170" fill="#ffffff" stroke="#8b5cf6" stroke-width="3" />
+  
+  <!-- Dome -->
+  <ellipse cx="200" cy="80" rx="60" ry="30" fill="#8b5cf6" />
+  <rect x="170" y="50" width="60" height="30" fill="#8b5cf6" />
+  <circle cx="200" cy="50" r="10" fill="#8b5cf6" />
+  
+  <!-- Windows - Arched -->
+  <rect x="120" y="110" width="30" height="50" rx="15" fill="#e0e7ff" stroke="#8b5cf6" stroke-width="1" />
+  <rect x="170" y="110" width="30" height="50" rx="15" fill="#e0e7ff" stroke="#8b5cf6" stroke-width="1" />
+  <rect x="220" y="110" width="30" height="50" rx="15" fill="#e0e7ff" stroke="#8b5cf6" stroke-width="1" />
+  
+  <rect x="120" y="180" width="30" height="50" rx="15" fill="#e0e7ff" stroke="#8b5cf6" stroke-width="1" />
+  <rect x="170" y="180" width="30" height="50" rx="15" fill="#e0e7ff" stroke="#8b5cf6" stroke-width="1" />
+  <rect x="220" y="180" width="30" height="50" rx="15" fill="#e0e7ff" stroke="#8b5cf6" stroke-width="1" />
+  
+  <!-- Entrance -->
+  <rect x="175" y="220" width="50" height="30" fill="#8b5cf6" />
+  <rect x="190" y="220" width="20" height="20" fill="#ffffff" />
+  
+  <!-- Columns -->
+  <rect x="110" y="80" width="10" height="170" fill="#e0e7ff" stroke="#8b5cf6" stroke-width="1" />
+  <rect x="280" y="80" width="10" height="170" fill="#e0e7ff" stroke="#8b5cf6" stroke-width="1" />
+  
+  <!-- Hospital Name -->
+  <text x="200" y="270" font-family="Arial" font-size="18" text-anchor="middle" fill="#8b5cf6" font-weight="bold">Johns Hopkins</text>
+</svg>

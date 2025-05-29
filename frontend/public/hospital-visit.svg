@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 600">
+  <!-- Background -->
+  <rect width="800" height="600" fill="#f8fafc" />
+  
+  <!-- Hospital Building -->
+  <rect x="100" y="150" width="600" height="350" fill="#ffffff" stroke="#ec4899" stroke-width="3" />
+  
+  <!-- Hospital Roof -->
+  <polygon points="100,150 400,50 700,150" fill="#ec4899" />
+  
+  <!-- Hospital Entrance -->
+  <rect x="350" y="400" width="100" height="100" fill="#ffffff" stroke="#ec4899" stroke-width="3" />
+  <rect x="380" y="400" width="40" height="80" fill="#f59e0b" />
+  
+  <!-- Hospital Windows -->
+  <rect x="150" y="200" width="80" height="80" fill="#e0f2fe" stroke="#ec4899" stroke-width="2" />
+  <rect x="270" y="200" width="80" height="80" fill="#e0f2fe" stroke="#ec4899" stroke-width="2" />
+  <rect x="450" y="200" width="80" height="80" fill="#e0f2fe" stroke="#ec4899" stroke-width="2" />
+  <rect x="570" y="200" width="80" height="80" fill="#e0f2fe" stroke="#ec4899" stroke-width="2" />
+  
+  <rect x="150" y="320" width="80" height="80" fill="#e0f2fe" stroke="#ec4899" stroke-width="2" />
+  <rect x="270" y="320" width="80" height="80" fill="#e0f2fe" stroke="#ec4899" stroke-width="2" />
+  <rect x="450" y="320" width="80" height="80" fill="#e0f2fe" stroke="#ec4899" stroke-width="2" />
+  <rect x="570" y="320" width="80" height="80" fill="#e0f2fe" stroke="#ec4899" stroke-width="2" />
+  
+  <!-- Hospital Sign -->
+  <rect x="350" y="120" width="100" height="60" fill="#ffffff" stroke="#ec4899" stroke-width="2" />
+  <text x="400" y="160" font-family="Arial" font-size="30" text-anchor="middle" fill="#ec4899" font-weight="bold">H</text>
+  
+  <!-- Doctor -->
+  <circle cx="250" cy="450" r="30" fill="#4f46e5" />
+  <rect x="235" y="480" width="30" height="50" fill="#4f46e5" />
+  <rect x="235" y="530" width="10" height="20" fill="#4f46e5" />
+  <rect x="255" y="530" width="10" height="20" fill="#4f46e5" />
+  <rect x="220" y="490" width="15" height="30" fill="#4f46e5" />
+  <rect x="265" y="490" width="15" height="30" fill="#4f46e5" />
+  
+  <!-- Patient -->
+  <circle cx="550" cy="450" r="30" fill="#f59e0b" />
+  <rect x="535" y="480" width="30" height="50" fill="#f59e0b" />
+  <rect x="535" y="530" width="10" height="20" fill="#f59e0b" />
+  <rect x="555" y="530" width="10" height="20" fill="#f59e0b" />
+  <rect x="520" y="490" width="15" height="30" fill="#f59e0b" />
+  <rect x="565" y="490" width="15" height="30" fill="#f59e0b" />
+  
+  <!-- Medical Symbols -->
+  <circle cx="180" cy="100" r="25" fill="#ec4899" />
+  <rect x="175" y="75" width="10" height="50" fill="#ffffff" />
+  <rect x="155" y="95" width="50" height="10" fill="#ffffff" />
+  
+  <circle cx="620" cy="100" r="25" fill="#ec4899" />
+  <rect x="615" y="75" width="10" height="50" fill="#ffffff" />
+  <rect x="595" y="95" width="50" height="10" fill="#ffffff" />
+  
+  <!-- Ambulance -->
+  <rect x="50" y="520" width="120" height="50" rx="10" fill="#f59e0b" />
+  <rect x="170" y="540" width="30" height="30" rx="5" fill="#f59e0b" />
+  <rect x="70" y="540" width="80" height="20" fill="#ffffff" />
+  <circle cx="80" cy="570" r="15" fill="#333333" />
+  <circle cx="80" cy="570" r="7" fill="#ffffff" />
+  <circle cx="160" cy="570" r="15" fill="#333333" />
+  <circle cx="160" cy="570" r="7" fill="#ffffff" />
+  <rect x="50" y="530" width="20" height="10" fill="#ec4899" />
+  
+  <!-- Calendar/Appointment -->
+  <rect x="650" y="500" width="100" height="80" fill="#ffffff" stroke="#4f46e5" stroke-width="2" />
+  <rect x="650" y="500" width="100" height="20" fill="#4f46e5" />
+  <line x1="675" y1="520" x2="675" y2="580" stroke="#4f46e5" stroke-width="1" />
+  <line x1="700" y1="520" x2="700" y2="580" stroke="#4f46e5" stroke-width="1" />
+  <line x1="725" y1="520" x2="725" y2="580" stroke="#4f46e5" stroke-width="1" />
+  <line x1="650" y1="540" x2="750" y2="540" stroke="#4f46e5" stroke-width="1" />
+  <line x1="650" y1="560" x2="750" y2="560" stroke="#4f46e5" stroke-width="1" />
+  <circle cx="700" cy="540" r="8" fill="#ec4899" />
+  
+  <!-- Title -->
+  <text x="400" y="40" font-family="Arial" font-size="24" text-anchor="middle" fill="#ec4899" font-weight="bold">In-Person Hospital Visits</text>
+</svg>
