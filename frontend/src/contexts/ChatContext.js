@@ -10,7 +10,7 @@ import { handleSocketErrors } from '../utils/apiErrorHandler';
 
 const ChatContext = createContext();
 
-const ENDPOINT = 'http://localhost:5000'; // Your backend server URL
+const ENDPOINT = 'https://soulspacebackend.onrender.com'; // Your backend server URL
 let socket;
 
 export const ChatProvider = ({ children }) => {

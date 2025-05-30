@@ -6,7 +6,7 @@
 import io from 'socket.io-client';
 
 // Socket server endpoint
-const SOCKET_ENDPOINT = 'http://localhost:5000';
+const SOCKET_ENDPOINT = 'https://soulspacebackend.onrender.com/';
 
 // Global socket instance for reuse
 let globalSocket = null;
