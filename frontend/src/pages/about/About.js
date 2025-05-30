@@ -16,6 +16,7 @@ import {
   LinearProgress,
   Chip,
 } from '@mui/material';
+import SEOMetaTags from '../../components/seo/SEOMetaTags';
 import { motion } from 'framer-motion';
 import {
   MonitorHeart,
@@ -118,6 +119,13 @@ const About = () => {
 
   return (
     <Box sx={{ pb: 8 }}>
+      <SEOMetaTags 
+        title="About SoulSpace Health"
+        description="Learn about SoulSpace Health's mission, values, and team. We're dedicated to transforming healthcare through innovative technology solutions."
+        keywords="healthcare mission, medical technology, healthcare values, SoulSpace team, healthcare innovation, medical solutions"
+        canonicalUrl="/about"
+        ogImage="/favicons/favicon-512x512.png"
+      />
       {/* Hero Section */}
       <Box
         sx={{

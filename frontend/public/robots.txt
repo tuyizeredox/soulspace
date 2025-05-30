@@ -1,3 +1,20 @@
 # https://www.robotstxt.org/robotstxt.html
+# Allow all web crawlers to access all content
 User-agent: *
-Disallow:
+Allow: /
+
+# Disallow access to authentication and private areas
+Disallow: /dashboard/
+Disallow: /admin/
+Disallow: /hospital/
+Disallow: /doctor/
+Disallow: /patient/
+Disallow: /profile/
+Disallow: /settings/
+Disallow: /notifications/
+Disallow: /prescriptions/
+Disallow: /appointments/
+Disallow: /monitoring/
+
+# Sitemap location
+Sitemap: https://soulspace-health.com/sitemap.xml

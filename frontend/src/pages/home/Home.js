@@ -17,6 +17,7 @@ import {
   IconButton,
   useMediaQuery,
 } from '@mui/material';
+import SEOMetaTags from '../../components/seo/SEOMetaTags';
 import HomeChatBot from '../../components/home/HomeChatBot';
 // Import all required icons
 import {
@@ -373,6 +374,13 @@ const Home = () => {
       position: 'relative',
       overflow: 'hidden'
     }}>
+      <SEOMetaTags 
+        title="SoulSpace Health - Advanced Healthcare Management System"
+        description="SoulSpace Health provides comprehensive healthcare management solutions with AI-powered insights, patient monitoring, and secure medical records."
+        keywords="healthcare, medical management, patient monitoring, health records, AI healthcare, medical system, healthcare platform"
+        canonicalUrl="/"
+        ogImage="/favicons/favicon-512x512.png"
+      />
       <GamifiedBackground />
 
       {/* AI Chatbot */}
