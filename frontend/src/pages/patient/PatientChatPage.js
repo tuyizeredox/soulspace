@@ -38,7 +38,7 @@ const PatientChatPage = () => {
            localStorage.getItem('persistentToken');
   };
 
-  // Fetch doctor details with enhanced name handling
+  // Fetch doctor details with enhanced name handling and better error handling
   const fetchDoctorDetails = useCallback(async (id) => {
     try {
       setLoading(true);
@@ -58,19 +58,32 @@ const PatientChatPage = () => {
       // Try to load cached doctor details first
       const cachedDoctorKey = `doctor_${id}`;
       const cachedDoctor = localStorage.getItem(cachedDoctorKey);
+      let usedCachedData = false;
 
       if (cachedDoctor) {
         try {
           const parsedDoctor = JSON.parse(cachedDoctor);
           setSelectedDoctor(parsedDoctor);
+          usedCachedData = true;
+          console.log('Using cached doctor data:', parsedDoctor.name);
         } catch (e) {
           console.error('Error parsing cached doctor:', e);
         }
       }
 
-      // Fetch doctor details from API
+      // Create a controller to abort the request if it takes too long
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 8000); // 8 second timeout
+
       try {
-        const response = await axios.get(`/api/doctors/${id}`);
+        // Fetch doctor details from API with timeout
+        const response = await axios.get(`/api/doctors/${id}`, {
+          signal: controller.signal,
+          timeout: 8000 // 8 second timeout
+        });
+
+        // Clear the timeout since the request completed
+        clearTimeout(timeoutId);
 
         if (response.data) {
           // Process the doctor data
@@ -129,10 +142,20 @@ const PatientChatPage = () => {
           localStorage.setItem(cachedDoctorKey, JSON.stringify(processedDoctor));
         }
       } catch (error) {
+        // Clear the timeout if there was an error
+        clearTimeout(timeoutId);
+        
         console.error('Error fetching doctor details:', error);
+
+        // If we already used cached data, don't show an error
+        if (usedCachedData) {
+          console.log('Using cached doctor data due to API error');
+          return;
+        }
 
         // If we don't have cached data, create a minimal doctor object
         if (!selectedDoctor) {
+          console.log('Creating minimal doctor object due to API error');
           const minimalDoctor = {
             _id: id,
             id: id,
@@ -141,7 +164,8 @@ const PatientChatPage = () => {
             profile: {
               specialization: 'General Medicine'
             },
-            specialization: 'General Medicine'
+            specialization: 'General Medicine',
+            avatar: null
           };
 
           setSelectedDoctor(minimalDoctor);
@@ -150,7 +174,10 @@ const PatientChatPage = () => {
       }
     } catch (error) {
       console.error('Error in fetchDoctorDetails:', error);
-      setError('Error loading doctor information. Please try again.');
+      // Only set error if we don't have a doctor object yet
+      if (!selectedDoctor) {
+        setError('Error loading doctor information. Please try again.');
+      }
     } finally {
       setLoading(false);
     }

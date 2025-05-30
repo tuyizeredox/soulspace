@@ -5,6 +5,7 @@ import { Box, Snackbar, Alert } from '@mui/material';
 import { ThemeProviderWrapper } from './theme/ThemeContext';
 import { checkAuthStatus } from './store/slices/authSlice';
 import { setAuthState } from './store/slices/userAuthSlice';
+import { resetNotificationState } from './store/slices/notificationSlice';
 import axios from './utils/axiosConfig';
 import useResizeObserverErrorHandler from './hooks/useResizeObserverErrorHandler';
 import ErrorBoundary from './components/common/ErrorBoundary';
@@ -110,6 +111,11 @@ const App = () => {
 
   // Use the custom hook to handle ResizeObserver errors globally
   useResizeObserverErrorHandler();
+  
+  // Initialize notification state
+  useEffect(() => {
+    dispatch(resetNotificationState());
+  }, [dispatch]);
 
   // Initialize auth state from localStorage for the new auth system
   useEffect(() => {

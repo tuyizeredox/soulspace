@@ -46,7 +46,7 @@ const NotificationCenter = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
   
-  const { notifications, unreadCount, loading } = useSelector((state) => state.notifications);
+  const { notifications = [], unreadCount = 0, loading = false } = useSelector((state) => state.notifications || {});
   
   const [anchorEl, setAnchorEl] = useState(null);
   const open = Boolean(anchorEl);
@@ -206,7 +206,7 @@ const NotificationCenter = () => {
           <Box sx={{ display: 'flex', justifyContent: 'center', p: 3 }}>
             <CircularProgress size={24} />
           </Box>
-        ) : notifications.length === 0 ? (
+        ) : !notifications || notifications.length === 0 ? (
           <Box sx={{ p: 3, textAlign: 'center' }}>
             <Typography variant="body2" color="text.secondary">
               No notifications
@@ -214,7 +214,7 @@ const NotificationCenter = () => {
           </Box>
         ) : (
           <List sx={{ p: 0 }}>
-            {notifications.map((notification) => (
+            {Array.isArray(notifications) && notifications.map((notification) => (
               <ListItem
                 key={notification._id}
                 button

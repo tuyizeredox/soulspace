@@ -6,6 +6,7 @@ import { checkAuthStatus } from './store/slices/authSlice';
 import App from './App';
 import { suppressResizeObserverErrors } from './utils/errorHandlers';
 import './utils/axiosConfig'; // Import axios configuration
+import { initNetworkDetection } from './utils/networkDetector';
 import './index.css';
 import '@fontsource/roboto/300.css';
 import '@fontsource/roboto/400.css';

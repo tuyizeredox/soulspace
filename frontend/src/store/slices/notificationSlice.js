@@ -138,11 +138,22 @@ const notificationSlice = createSlice({
       .addCase(fetchUserNotifications.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload?.message || 'Failed to fetch notifications';
+        // Ensure notifications is always an array even on error
+        if (!state.notifications) {
+          state.notifications = [];
+        }
       })
       
       // Fetch unread count
+      .addCase(fetchUnreadCount.pending, (state) => {
+        // No need to set loading state for this quick operation
+      })
       .addCase(fetchUnreadCount.fulfilled, (state, action) => {
-        state.unreadCount = action.payload;
+        state.unreadCount = action.payload || 0;
+      })
+      .addCase(fetchUnreadCount.rejected, (state) => {
+        // If fetching unread count fails, default to 0
+        state.unreadCount = 0;
       })
       
       // Mark as read
