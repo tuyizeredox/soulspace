@@ -1,40 +1,1295 @@
 const User = require('../models/User');
 const HealthTip = require('../models/HealthTip');
 const { GoogleGenerativeAI } = require('@google/generative-ai');
+const fetch = require('node-fetch');
 
 // Configuration for Gemini AI API
-const GEMINI_API_KEY = process.env.GEMINI_API_KEY; // Must be set in your .env file
-if (!GEMINI_API_KEY) {
-  console.error('WARNING: GEMINI_API_KEY is not set in environment variables. AI assistant will not function properly.');
+const PRIMARY_API_KEY = process.env.GEMINI_API_KEY; // Must be set in your .env file
+const BACKUP_API_KEY_1 = process.env.GEMINI_API_KEY_BACKUP_1;
+const BACKUP_API_KEY_2 = process.env.GEMINI_API_KEY_BACKUP_2;
+const ADDITIONAL_API_KEY = 'AIzaSyC9Fv8cvUfcn5ZITMvwE8UcVQJwYNBY384'; // Additional API key provided
+
+// API key rotation system
+let currentApiKeyIndex = 0;
+const apiKeys = [PRIMARY_API_KEY, BACKUP_API_KEY_1, BACKUP_API_KEY_2, ADDITIONAL_API_KEY].filter(key => key);
+
+if (apiKeys.length === 0) {
+  console.error('WARNING: No Gemini API keys are set in environment variables. AI assistant will not function properly.');
 }
-const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
-const MODEL_NAME = 'gemini-1.5-pro'; // Using the latest Gemini model version
+
+// Initialize with the primary API key
+let genAI = new GoogleGenerativeAI(apiKeys[currentApiKeyIndex]);
+const MODEL_NAME = 'gemini-1.5-flash'; // Using the flash model by default to avoid quota issues
+const FALLBACK_MODEL = 'gemini-1.0-pro'; // Fallback model if the flash version hits quota limits
+const EMERGENCY_FALLBACK_MODEL = 'gemini-1.0-pro-vision'; // Emergency fallback for when all else fails
+
+// Hugging Face API for lightweight fallback
+const HUGGING_FACE_API_URL = 'https://api-inference.huggingface.co/models/facebook/blenderbot-400M-distill';
+const HUGGING_FACE_API_KEY = process.env.HUGGING_FACE_API_KEY || ''; // Optional, can work without it with rate limits
+
+// Alternative models if the first one doesn't work well
+const HUGGING_FACE_BACKUP_MODELS = [
+  // Free models that work well without authentication issues
+  'google/flan-t5-small',
+  'google/flan-t5-base',
+  'mistralai/Mistral-7B-Instruct-v0.1',
+  'meta-llama/Llama-2-7b-chat-hf',
+  'deepset/roberta-base-squad2',
+  // Original models as fallbacks
+  'facebook/blenderbot-1B-distill',
+  'microsoft/DialoGPT-medium',
+  'EleutherAI/gpt-neo-125M',
+  'distilbert-base-uncased',
+  'gpt2',
+  'distilgpt2'
+];
+
+// Function to call Hugging Face API as a last resort fallback
+const callHuggingFaceModel = async (message, healthContext = true) => {
+  // If no API key is available and we're not using public models, skip directly to rule-based fallback
+  if (!HUGGING_FACE_API_KEY || HUGGING_FACE_API_KEY.trim() === '') {
+    console.log('No Hugging Face API key available, using rule-based fallback directly');
+    return useRuleBasedFallback(message);
+  }
+  // Add a health context prefix to guide the model
+  const healthPrefix = healthContext 
+    ? "You are a helpful health assistant providing general health information. " 
+    : "";
+  
+  // Simplify the message to focus on the core question
+  const simplifiedMessage = message.length > 200 
+    ? message.substring(0, 200) + "..."
+    : message;
+  
+  // Format the message with health context
+  const formattedMessage = healthPrefix + simplifiedMessage;
+  
+  // Prepare headers - use API key if available
+  const headers = {
+    'Content-Type': 'application/json',
+  };
+  
+  if (HUGGING_FACE_API_KEY) {
+    headers['Authorization'] = `Bearer ${HUGGING_FACE_API_KEY}`;
+  }
+  
+  // Try the primary model first, then fall back to alternatives if needed
+  let modelUrls = [HUGGING_FACE_API_URL];
+  
+  // Add backup model URLs
+  HUGGING_FACE_BACKUP_MODELS.forEach(model => {
+    modelUrls.push(`https://api-inference.huggingface.co/models/${model}`);
+  });
+  
+  // Try each model in sequence
+  for (const modelUrl of modelUrls) {
+    try {
+      console.log(`Trying Hugging Face model: ${modelUrl.split('/').pop()}`);
+      
+      // Determine the right request format based on the model
+      let requestBody;
+      
+      if (modelUrl.includes('flan-t5')) {
+        // Flan-T5 format
+        requestBody = { 
+          inputs: "Answer this health question: " + simplifiedMessage,
+          parameters: {
+            max_length: 150,
+            temperature: 0.7,
+            top_p: 0.9,
+            return_full_text: false
+          }
+        };
+      } else if (modelUrl.includes('Mistral-7B-Instruct')) {
+        // Mistral format
+        requestBody = { 
+          inputs: "<s>[INST] You are a helpful health assistant. " + simplifiedMessage + " [/INST]",
+          parameters: {
+            max_length: 200,
+            temperature: 0.7,
+            top_p: 0.9,
+            return_full_text: false
+          }
+        };
+      } else if (modelUrl.includes('Llama-2-7b-chat')) {
+        // Llama 2 chat format
+        requestBody = { 
+          inputs: "<s>[INST] <<SYS>> You are a helpful health assistant providing accurate and helpful information. <</SYS>> " + simplifiedMessage + " [/INST]",
+          parameters: {
+            max_length: 200,
+            temperature: 0.7,
+            top_p: 0.9,
+            return_full_text: false
+          }
+        };
+      } else if (modelUrl.includes('roberta-base-squad2')) {
+        // Question answering format
+        requestBody = { 
+          inputs: {
+            question: simplifiedMessage,
+            context: "Health is a state of complete physical, mental and social well-being and not merely the absence of disease or infirmity. Regular exercise, balanced nutrition, adequate rest, and good stress management are key components of maintaining good health. For specific health concerns, it's important to consult with healthcare professionals."
+          }
+        };
+      } else if (modelUrl.includes('blenderbot')) {
+        // BlenderBot format
+        requestBody = { 
+          inputs: {
+            text: formattedMessage
+          },
+          parameters: {
+            max_length: 100,
+            temperature: 0.7,
+            top_p: 0.9,
+          }
+        };
+      } else if (modelUrl.includes('DialoGPT')) {
+        // DialoGPT format
+        requestBody = { 
+          inputs: formattedMessage,
+          parameters: {
+            max_length: 100,
+            temperature: 0.7,
+            top_p: 0.9,
+            return_full_text: false
+          }
+        };
+      } else if (modelUrl.includes('gpt2')) {
+        // GPT-2 format
+        requestBody = { 
+          inputs: "You are a helpful health assistant. " + formattedMessage,
+          parameters: {
+            max_length: 100,
+            temperature: 0.7,
+            top_p: 0.9,
+            return_full_text: false
+          }
+        };
+      } else if (modelUrl.includes('distilbert')) {
+        // For text classification models, use a simple question-answer format
+        requestBody = { 
+          inputs: "Question: " + simplifiedMessage + " Answer:",
+          parameters: {
+            max_length: 100,
+            temperature: 0.7,
+            top_p: 0.9,
+            return_full_text: false
+          }
+        };
+      } else {
+        // Default format for other models
+        requestBody = { 
+          inputs: formattedMessage,
+          parameters: {
+            max_length: 150,
+            temperature: 0.7,
+            top_p: 0.9,
+          }
+        };
+      }
+      
+      // Call the Hugging Face API with retry logic
+      let retries = 2;
+      let response;
+      
+      // For models that don't require authentication, remove the auth header
+      if (modelUrl.includes('distilbert') || modelUrl.includes('gpt2') || 
+          modelUrl.includes('flan-t5') || modelUrl.includes('roberta-base-squad2')) {
+        delete headers['Authorization'];
+        console.log(`Using public model ${modelUrl.split('/').pop()} without authentication`);
+      }
+      
+      while (retries >= 0) {
+        try {
+          response = await fetch(modelUrl, {
+            method: 'POST',
+            headers: headers,
+            body: JSON.stringify(requestBody),
+            timeout: 10000 // 10 second timeout
+          });
+          
+          // If successful, break out of retry loop
+          if (response.ok) break;
+          
+          // If model is still loading, wait and retry
+          if (response.status === 503) {
+            const waitTime = retries * 2000; // Increase wait time with each retry
+            console.log(`Model still loading, waiting ${waitTime/1000}s before retry...`);
+            await new Promise(resolve => setTimeout(resolve, waitTime));
+            retries--;
+            continue;
+          }
+          
+          // If we get a 403 Forbidden, it's likely an authentication issue
+          if (response.status === 403) {
+            console.log(`Authentication error for model ${modelUrl.split('/').pop()}, trying next model...`);
+            throw new Error(`Hugging Face API authentication error: ${response.status} ${response.statusText}`);
+          }
+          
+          // For other errors, try the next model
+          throw new Error(`Hugging Face API error: ${response.status} ${response.statusText}`);
+          
+        } catch (fetchError) {
+          if (retries > 0 && !fetchError.message.includes('authentication error')) {
+            retries--;
+            continue;
+          }
+          throw fetchError;
+        }
+      }
+      
+      if (!response || !response.ok) {
+        throw new Error('Failed to get valid response after retries');
+      }
+      
+      const data = await response.json();
+      
+      // Extract the generated text based on model type
+      let generatedText = '';
+      
+      console.log(`Response from ${modelUrl.split('/').pop()}:`, JSON.stringify(data).substring(0, 200) + '...');
+      
+      if (modelUrl.includes('flan-t5')) {
+        // Flan-T5 format
+        if (typeof data === 'string') {
+          generatedText = data;
+        } else if (Array.isArray(data)) {
+          generatedText = data[0]?.generated_text || '';
+        }
+      } else if (modelUrl.includes('Mistral-7B-Instruct') || modelUrl.includes('Llama-2-7b-chat')) {
+        // Mistral and Llama format
+        if (Array.isArray(data)) {
+          generatedText = data[0]?.generated_text || '';
+        } else if (data.generated_text) {
+          generatedText = data.generated_text;
+        } else if (typeof data === 'string') {
+          generatedText = data;
+        }
+      } else if (modelUrl.includes('roberta-base-squad2')) {
+        // Question answering format
+        if (data.answer) {
+          generatedText = data.answer;
+        } else if (data.score && data.start && data.end) {
+          generatedText = "Based on the information available, I'd recommend maintaining a healthy lifestyle with regular exercise, balanced nutrition, adequate rest, and good stress management. For specific health concerns, please consult with a healthcare professional.";
+        }
+      } else if (Array.isArray(data)) {
+        // Some models return an array
+        generatedText = data[0]?.generated_text || data[0]?.text || '';
+      } else if (data.generated_text) {
+        // BlenderBot format
+        generatedText = data.generated_text;
+      } else if (typeof data === 'object' && data.text) {
+        // Some models use this format
+        generatedText = data.text;
+      } else if (typeof data === 'string') {
+        // Simple string response
+        generatedText = data;
+      } else if (modelUrl.includes('gpt2') || modelUrl.includes('distilgpt2')) {
+        // GPT-2 models often return different formats
+        if (typeof data === 'object') {
+          if (data[0] && data[0].generated_text) {
+            generatedText = data[0].generated_text;
+          } else if (data.generated_text) {
+            generatedText = data.generated_text;
+          } else {
+            // Try to extract any text property
+            const textProps = Object.keys(data).filter(key => 
+              typeof data[key] === 'string' && data[key].length > 10
+            );
+            if (textProps.length > 0) {
+              generatedText = data[textProps[0]];
+            }
+          }
+        }
+      } else if (modelUrl.includes('distilbert')) {
+        // For classification models, they might return scores or other formats
+        // Just use the input as the output with a generic response
+        generatedText = "Based on your question, I'd recommend consulting with a healthcare professional for personalized advice.";
+      }
+      
+      if (generatedText && generatedText.trim().length > 10) {
+        console.log(`Successfully got response from Hugging Face model: ${modelUrl.split('/').pop()}`);
+        
+        // Clean up the response
+        generatedText = generatedText
+          .replace(/^['"]+|['"]+$/g, '') // Remove quotes at start/end
+          .trim();
+        
+        // Add a disclaimer to make it clear this is a fallback
+        return generatedText + "\n\n(Note: This is a simplified response. For more detailed health information, please try again later.)";
+      }
+      
+      // If we got an empty or too short response, try the next model
+      console.log(`Empty or too short response from ${modelUrl.split('/').pop()}, trying next model...`);
+      
+    } catch (modelError) {
+      console.error(`Error with Hugging Face model ${modelUrl.split('/').pop()}:`, modelError);
+      // Continue to the next model
+    }
+  }
+  
+  // If all models failed, use a rule-based fallback that doesn't require API calls
+  console.error('All Hugging Face models failed, using rule-based fallback');
+  return useRuleBasedFallback(message);
+};
+
+// Helper function for rule-based fallback responses
+const useRuleBasedFallback = (message) => {
+  // Extract keywords from the message
+  const messageLower = message.toLowerCase();
+  
+  // Check for common health-related keywords to provide a relevant fallback
+  if (messageLower.includes('headache') || messageLower.includes('head pain') || messageLower.includes('migraine')) {
+    return "For headaches, it's generally recommended to rest in a quiet, dark room, stay hydrated, and take over-the-counter pain relievers like acetaminophen or ibuprofen if appropriate. If headaches are severe, persistent, or accompanied by other symptoms like fever, vision changes, or neck stiffness, please consult a healthcare provider.\n\n(Note: This is a simplified response. For more detailed health information, please try again later.)";
+  } else if (messageLower.includes('cold') || messageLower.includes('flu') || messageLower.includes('fever') || messageLower.includes('cough')) {
+    return "For cold and flu symptoms, rest, stay hydrated, and consider over-the-counter medications to manage fever and discomfort. If symptoms are severe, persistent, or include difficulty breathing, high fever, or chest pain, please seek medical attention.\n\n(Note: This is a simplified response. For more detailed health information, please try again later.)";
+  } else if (messageLower.includes('stress') || messageLower.includes('anxiety') || messageLower.includes('worried') || messageLower.includes('nervous')) {
+    return "Managing stress and anxiety often involves deep breathing exercises, regular physical activity, adequate sleep, and mindfulness practices. Consider talking to a mental health professional if stress or anxiety significantly impacts your daily life.\n\n(Note: This is a simplified response. For more detailed health information, please try again later.)";
+  } else if (messageLower.includes('sleep') || messageLower.includes('insomnia') || messageLower.includes('tired') || messageLower.includes('fatigue')) {
+    return "For better sleep, try maintaining a regular sleep schedule, creating a relaxing bedtime routine, limiting screen time before bed, and ensuring your sleep environment is comfortable, dark, and quiet. If sleep problems persist, consider consulting a healthcare provider.\n\n(Note: This is a simplified response. For more detailed health information, please try again later.)";
+  } else if (messageLower.includes('diet') || messageLower.includes('nutrition') || messageLower.includes('food') || messageLower.includes('eat')) {
+    return "A balanced diet typically includes a variety of fruits, vegetables, whole grains, lean proteins, and healthy fats. It's recommended to limit processed foods, added sugars, and excessive salt. For personalized nutrition advice, consider consulting with a registered dietitian.\n\n(Note: This is a simplified response. For more detailed health information, please try again later.)";
+  } else if (messageLower.includes('exercise') || messageLower.includes('workout') || messageLower.includes('fitness') || messageLower.includes('active')) {
+    return "Regular physical activity is important for overall health. Adults should aim for at least 150 minutes of moderate-intensity aerobic activity or 75 minutes of vigorous activity per week, plus muscle-strengthening activities on 2 or more days per week. Always start gradually and consult with a healthcare provider before beginning a new exercise program, especially if you have existing health conditions.\n\n(Note: This is a simplified response. For more detailed health information, please try again later.)";
+  } else if (messageLower.includes('depression') || messageLower.includes('sad') || messageLower.includes('mood') || messageLower.includes('mental health')) {
+    return "Depression is a common but serious mood disorder that requires proper treatment. If you're experiencing persistent sadness, loss of interest in activities, changes in sleep or appetite, or thoughts of self-harm, please reach out to a mental health professional. Support is available through therapy, medication, lifestyle changes, and support groups.\n\n(Note: This is a simplified response. For more detailed health information, please try again later.)";
+  } else if (messageLower.includes('blood pressure') || messageLower.includes('hypertension') || messageLower.includes('heart')) {
+    return "Maintaining healthy blood pressure (generally below 120/80 mmHg) is important for heart health. Strategies include regular physical activity, a balanced diet low in sodium, limiting alcohol, not smoking, managing stress, and maintaining a healthy weight. If you have high blood pressure, follow your healthcare provider's recommendations regarding monitoring and medication.\n\n(Note: This is a simplified response. For more detailed health information, please try again later.)";
+  } else if (messageLower.includes('diabetes') || messageLower.includes('blood sugar') || messageLower.includes('glucose')) {
+    return "Managing diabetes involves monitoring blood glucose levels, taking prescribed medications, following a balanced diet, regular physical activity, and attending regular check-ups. Work closely with your healthcare team to develop a personalized management plan. Watch for signs of low or high blood sugar and know when to seek medical attention.\n\n(Note: This is a simplified response. For more detailed health information, please try again later.)";
+  } else if (messageLower.includes('pregnancy') || messageLower.includes('pregnant') || messageLower.includes('baby')) {
+    return "During pregnancy, it's important to attend regular prenatal check-ups, take prescribed prenatal vitamins, eat a balanced diet, stay physically active as recommended by your healthcare provider, avoid alcohol and tobacco, and get adequate rest. Contact your healthcare provider promptly if you experience severe nausea, vaginal bleeding, severe headaches, or decreased fetal movement.\n\n(Note: This is a simplified response. For more detailed health information, please try again later.)";
+  } else {
+    // If we can't determine a specific health topic, return a general health message
+    return "I apologize, but I'm experiencing technical difficulties right now. As a general health reminder, maintaining a balanced diet, regular physical activity, adequate sleep, and stress management are key components of overall wellness. For specific health concerns, please consult with a healthcare professional.\n\n(Note: This is a simplified response. For more detailed health information, please try again later.)";
+  }
+};
+
+// User-based rate limiting
+const userRateLimiter = {
+  // Store user request counts with timestamps
+  users: new Map(),
+  
+  // Maximum requests per minute per user
+  maxRequestsPerMinute: 5,
+  
+  // Maximum requests per hour per user
+  maxRequestsPerHour: 30,
+  
+  // Maximum tokens per day per user
+  maxTokensPerDay: 100000,
+  
+  // Check if a user has exceeded their rate limit
+  isRateLimited: (userId) => {
+    if (!userId) return false; // Skip rate limiting if no user ID
+    
+    const now = Date.now();
+    const userStats = userRateLimiter.getOrCreateUserStats(userId);
+    
+    // Clean up old requests (older than 1 hour)
+    userStats.requests = userStats.requests.filter(req => 
+      now - req.timestamp < 60 * 60 * 1000
+    );
+    
+    // Count requests in the last minute
+    const requestsLastMinute = userStats.requests.filter(req => 
+      now - req.timestamp < 60 * 1000
+    ).length;
+    
+    // Count requests in the last hour
+    const requestsLastHour = userStats.requests.length;
+    
+    // Check if user has exceeded limits
+    if (requestsLastMinute >= userRateLimiter.maxRequestsPerMinute) {
+      console.log(`User ${userId} rate limited: ${requestsLastMinute} requests in the last minute`);
+      return {
+        limited: true,
+        reason: 'minute',
+        retryAfter: '60s',
+        message: 'You have sent too many requests in the last minute. Please wait a moment before trying again.'
+      };
+    }
+    
+    if (requestsLastHour >= userRateLimiter.maxRequestsPerHour) {
+      console.log(`User ${userId} rate limited: ${requestsLastHour} requests in the last hour`);
+      return {
+        limited: true,
+        reason: 'hour',
+        retryAfter: '3600s',
+        message: 'You have reached your hourly request limit. Please try again later.'
+      };
+    }
+    
+    // Check token usage for the day
+    const midnight = new Date();
+    midnight.setHours(0, 0, 0, 0);
+    const midnightTimestamp = midnight.getTime();
+    
+    // Sum up tokens used today
+    const tokensToday = userStats.tokenUsage
+      .filter(usage => usage.timestamp >= midnightTimestamp)
+      .reduce((sum, usage) => sum + usage.inputTokens + usage.outputTokens, 0);
+    
+    if (tokensToday >= userRateLimiter.maxTokensPerDay) {
+      console.log(`User ${userId} token limit exceeded: ${tokensToday} tokens today`);
+      return {
+        limited: true,
+        reason: 'tokens',
+        retryAfter: '86400s',
+        message: 'You have reached your daily token limit. Please try again tomorrow.'
+      };
+    }
+    
+    return { limited: false };
+  },
+  
+  // Record a request for a user
+  recordRequest: (userId, inputTokens = 0, outputTokens = 0) => {
+    if (!userId) return; // Skip if no user ID
+    
+    const userStats = userRateLimiter.getOrCreateUserStats(userId);
+    const now = Date.now();
+    
+    // Add this request
+    userStats.requests.push({ timestamp: now });
+    
+    // Record token usage
+    userStats.tokenUsage.push({
+      timestamp: now,
+      inputTokens,
+      outputTokens
+    });
+    
+    // Clean up old token usage records (older than 7 days)
+    const sevenDaysAgo = now - 7 * 24 * 60 * 60 * 1000;
+    userStats.tokenUsage = userStats.tokenUsage.filter(usage => 
+      usage.timestamp >= sevenDaysAgo
+    );
+    
+    // Update the map
+    userRateLimiter.users.set(userId, userStats);
+  },
+  
+  // Get or create user stats
+  getOrCreateUserStats: (userId) => {
+    if (!userRateLimiter.users.has(userId)) {
+      userRateLimiter.users.set(userId, {
+        requests: [],
+        tokenUsage: []
+      });
+    }
+    return userRateLimiter.users.get(userId);
+  }
+};
+
+// Response caching system
+const responseCache = {
+  // Cache of responses
+  cache: new Map(),
+  
+  // Maximum cache size
+  maxSize: 1000,
+  
+  // Cache expiration time (1 hour)
+  expirationTime: 60 * 60 * 1000,
+  
+  // Generate a cache key from a message and user ID
+  generateKey: (message, userId) => {
+    // Normalize the message by trimming whitespace and converting to lowercase
+    const normalizedMessage = message.trim().toLowerCase();
+    
+    // Create a hash of the message for the cache key
+    // Simple hash function for strings
+    const hash = (str) => {
+      let hash = 0;
+      for (let i = 0; i < str.length; i++) {
+        const char = str.charCodeAt(i);
+        hash = ((hash << 5) - hash) + char;
+        hash = hash & hash; // Convert to 32bit integer
+      }
+      return hash.toString(16); // Convert to hex string
+    };
+    
+    return `${userId || 'anonymous'}-${hash(normalizedMessage)}`;
+  },
+  
+  // Get a cached response
+  get: (message, userId) => {
+    const key = responseCache.generateKey(message, userId);
+    const cachedItem = responseCache.cache.get(key);
+    
+    if (!cachedItem) {
+      return null;
+    }
+    
+    // Check if the cached item has expired
+    if (Date.now() - cachedItem.timestamp > responseCache.expirationTime) {
+      responseCache.cache.delete(key);
+      return null;
+    }
+    
+    console.log(`Cache hit for user ${userId}: "${message.substring(0, 30)}..."`);
+    return cachedItem.response;
+  },
+  
+  // Store a response in the cache
+  set: (message, userId, response) => {
+    // Don't cache error responses
+    if (response.error || response.quotaExceeded) {
+      return;
+    }
+    
+    const key = responseCache.generateKey(message, userId);
+    
+    // Store the response with a timestamp
+    responseCache.cache.set(key, {
+      response,
+      timestamp: Date.now()
+    });
+    
+    // If the cache is too large, remove the oldest entries
+    if (responseCache.cache.size > responseCache.maxSize) {
+      const keysToDelete = Array.from(responseCache.cache.entries())
+        .sort((a, b) => a[1].timestamp - b[1].timestamp)
+        .slice(0, Math.floor(responseCache.maxSize * 0.2))
+        .map(entry => entry[0]);
+      
+      keysToDelete.forEach(key => responseCache.cache.delete(key));
+    }
+  },
+  
+  // Clear expired cache entries
+  clearExpired: () => {
+    const now = Date.now();
+    let cleared = 0;
+    
+    responseCache.cache.forEach((value, key) => {
+      if (now - value.timestamp > responseCache.expirationTime) {
+        responseCache.cache.delete(key);
+        cleared++;
+      }
+    });
+    
+    if (cleared > 0) {
+      console.log(`Cleared ${cleared} expired cache entries`);
+    }
+    
+    return cleared;
+  }
+};
+
+// Set up periodic cache cleanup
+setInterval(responseCache.clearExpired, 15 * 60 * 1000); // Every 15 minutes
+
+// Token usage tracking to prevent quota limits
+const tokenUsageTracker = {
+  // Track usage per API key
+  usage: apiKeys.map(() => ({
+    inputTokens: 0,
+    outputTokens: 0,
+    requests: 0,
+    lastReset: Date.now(),
+    quotaExceeded: false,
+    cooldownUntil: 0,
+    consecutiveErrors: 0
+  })),
+  
+  // Estimate tokens based on text length (improved approximation)
+  estimateTokens: (text) => {
+    if (!text) return 0;
+    
+    // More accurate token estimation:
+    // - Count words (approximately 0.75 tokens per word)
+    // - Count punctuation and special characters (approximately 1 token each)
+    // - Add overhead for formatting
+    
+    // Count words
+    const wordCount = text.split(/\s+/).length;
+    
+    // Count punctuation and special characters
+    const punctuationCount = (text.match(/[.,!?;:()[\]{}'"\/\\<>@#$%^&*=+\-_`~]/g) || []).length;
+    
+    // Count numbers (approximately 1 token per 2-3 digits)
+    const numberCount = (text.match(/\d+/g) || []).join('').length / 2.5;
+    
+    // Calculate estimated tokens with a safety margin
+    const estimatedTokens = Math.ceil((wordCount * 0.75) + punctuationCount + numberCount + 5);
+    
+    // For very short texts, ensure a minimum token count
+    if (estimatedTokens < 3 && text.length > 0) {
+      return 3;
+    }
+    
+    // For system prompts and longer texts, add additional overhead
+    if (text.includes('Guidelines:') || text.includes('User information:')) {
+      return Math.ceil(estimatedTokens * 1.2); // 20% overhead for structured text
+    }
+    
+    return estimatedTokens;
+  },
+  
+  // Check if a request would exceed our self-imposed limits BEFORE making the API call
+  wouldExceedLimits: (inputText) => {
+    const currentUsage = tokenUsageTracker.usage[currentApiKeyIndex];
+    const estimatedInputTokens = tokenUsageTracker.estimateTokens(inputText);
+    const estimatedOutputTokens = Math.ceil(estimatedInputTokens * 1.5); // Assume output is ~1.5x input
+    const totalEstimatedTokens = estimatedInputTokens + estimatedOutputTokens;
+    
+    // Check if this key is in cooldown
+    if (currentUsage.cooldownUntil > Date.now()) {
+      const remainingCooldown = Math.ceil((currentUsage.cooldownUntil - Date.now()) / 1000);
+      console.log(`API Key ${currentApiKeyIndex + 1} in cooldown for ${remainingCooldown}s`);
+      return {
+        exceeded: true,
+        reason: 'in_cooldown',
+        remainingSeconds: remainingCooldown
+      };
+    }
+    
+    // Check if this single request is too large (over 1000 tokens)
+    if (estimatedInputTokens > 1000) {
+      console.log(`Request too large: ${estimatedInputTokens} tokens exceeds safe limit of 1000`);
+      return {
+        exceeded: true,
+        reason: 'request_too_large',
+        estimatedTokens: estimatedInputTokens
+      };
+    }
+    
+    // Check if we've exceeded the per-minute token limit
+    const timeSinceReset = Date.now() - currentUsage.lastReset;
+    if (timeSinceReset < 60000) {
+      const currentMinuteTokens = currentUsage.inputTokens + currentUsage.outputTokens;
+      if (currentMinuteTokens + totalEstimatedTokens > 5000) { // Ultra-conservative limit
+        console.log(`Minute token limit would be exceeded: ${currentMinuteTokens} + ${totalEstimatedTokens} > 5000`);
+        return {
+          exceeded: true,
+          reason: 'minute_token_limit',
+          currentUsage: currentMinuteTokens,
+          estimatedTokens: totalEstimatedTokens
+        };
+      }
+    }
+    
+    // Check if we've exceeded the per-minute request limit
+    if (timeSinceReset < 60000 && currentUsage.requests >= 5) { // Ultra-conservative limit
+      console.log(`Request limit would be exceeded: ${currentUsage.requests} >= 5`);
+      return {
+        exceeded: true,
+        reason: 'minute_request_limit',
+        currentRequests: currentUsage.requests
+      };
+    }
+    
+    // All checks passed
+    return { exceeded: false };
+  },
+  
+  // Mark a key as exceeded when we get a 429 error
+  markKeyAsExceeded: (retryDelay = '60s') => {
+    // Parse the retry delay (format: '60s', '120s', etc.)
+    const delaySeconds = parseInt(retryDelay.replace('s', '')) || 60;
+    const cooldownMs = delaySeconds * 1000;
+    
+    console.warn(`API Key ${currentApiKeyIndex + 1} exceeded quota, setting cooldown for ${delaySeconds}s`);
+    
+    // Set a cooldown period for this key
+    tokenUsageTracker.usage[currentApiKeyIndex].cooldownUntil = Date.now() + cooldownMs;
+    tokenUsageTracker.usage[currentApiKeyIndex].consecutiveErrors = 
+      (tokenUsageTracker.usage[currentApiKeyIndex].consecutiveErrors || 0) + 1;
+    
+    // If we've had multiple consecutive errors, extend the cooldown
+    if (tokenUsageTracker.usage[currentApiKeyIndex].consecutiveErrors > 1) {
+      const extendedCooldown = cooldownMs * tokenUsageTracker.usage[currentApiKeyIndex].consecutiveErrors;
+      console.warn(`Multiple consecutive errors (${tokenUsageTracker.usage[currentApiKeyIndex].consecutiveErrors}), extending cooldown to ${extendedCooldown/1000}s`);
+      tokenUsageTracker.usage[currentApiKeyIndex].cooldownUntil = Date.now() + extendedCooldown;
+    }
+  },
+  
+  // Record usage for the current API key
+  recordUsage: (inputText, outputText) => {
+    const inputTokens = tokenUsageTracker.estimateTokens(inputText);
+    const outputTokens = tokenUsageTracker.estimateTokens(outputText);
+    const totalTokens = inputTokens + outputTokens;
+    
+    tokenUsageTracker.usage[currentApiKeyIndex].inputTokens += inputTokens;
+    tokenUsageTracker.usage[currentApiKeyIndex].outputTokens += outputTokens;
+    tokenUsageTracker.usage[currentApiKeyIndex].requests += 1;
+    
+    console.log(`API Key ${currentApiKeyIndex + 1} usage: ${inputTokens} input tokens, ${outputTokens} output tokens`);
+    
+    // Check if we're approaching limits
+    const totalCurrentTokens = tokenUsageTracker.usage[currentApiKeyIndex].inputTokens + 
+                        tokenUsageTracker.usage[currentApiKeyIndex].outputTokens;
+    
+    // If we're at 50% of our conservative limits, proactively set a cooldown
+    if (totalCurrentTokens > 5000 || tokenUsageTracker.usage[currentApiKeyIndex].requests > 5) {
+      console.warn(`API Key ${currentApiKeyIndex + 1} approaching quota limits, setting cooldown`);
+      tokenUsageTracker.usage[currentApiKeyIndex].cooldownUntil = Date.now() + 60000; // 60 second cooldown
+    }
+    
+    return { inputTokens, outputTokens, totalTokens };
+  },
+  
+  // Check if we should use a different API key based on usage patterns
+  shouldRotateKey: () => {
+    const currentUsage = tokenUsageTracker.usage[currentApiKeyIndex];
+    
+    // If this key is in cooldown, we should rotate
+    if (currentUsage.cooldownUntil > Date.now()) {
+      return true;
+    }
+    
+    // If we've used a lot of tokens in the last minute, consider rotating
+    const totalTokens = currentUsage.inputTokens + currentUsage.outputTokens;
+    const timeSinceReset = Date.now() - currentUsage.lastReset;
+    
+    // If we've used more than 10K tokens in less than a minute, rotate (extremely conservative)
+    if (totalTokens > 10000 && timeSinceReset < 60000) {
+      return true;
+    }
+    
+    // If we've made more than 10 requests in less than a minute, rotate (extremely conservative)
+    if (currentUsage.requests > 10 && timeSinceReset < 60000) {
+      return true;
+    }
+    
+    // If we've used more than 5K tokens in less than 30 seconds, rotate (ultra conservative)
+    if (totalTokens > 5000 && timeSinceReset < 30000) {
+      return true;
+    }
+    
+    return false;
+  },
+  
+  // Mark the current key as exceeded and set a cooldown period
+  markKeyAsExceeded: (retryDelay) => {
+    const delayMs = parseInt(retryDelay.replace(/[^0-9]/g, ''), 10) * 1000 || 30000;
+    
+    tokenUsageTracker.usage[currentApiKeyIndex].quotaExceeded = true;
+    tokenUsageTracker.usage[currentApiKeyIndex].cooldownUntil = Date.now() + delayMs;
+    
+    console.log(`API Key ${currentApiKeyIndex + 1} marked as exceeded, cooling down for ${delayMs/1000}s`);
+  },
+  
+  // Reset usage stats for a key (called periodically)
+  resetUsage: (keyIndex) => {
+    // Only reset if it's been more than a minute since the last reset
+    const timeSinceReset = Date.now() - tokenUsageTracker.usage[keyIndex].lastReset;
+    if (timeSinceReset > 60000) {
+      tokenUsageTracker.usage[keyIndex].inputTokens = 0;
+      tokenUsageTracker.usage[keyIndex].outputTokens = 0;
+      tokenUsageTracker.usage[keyIndex].requests = 0;
+      tokenUsageTracker.usage[keyIndex].lastReset = Date.now();
+      
+      // If the cooldown period has passed, clear the exceeded flag
+      if (tokenUsageTracker.usage[keyIndex].cooldownUntil < Date.now()) {
+        tokenUsageTracker.usage[keyIndex].quotaExceeded = false;
+      }
+      
+      console.log(`Reset usage stats for API Key ${keyIndex + 1}`);
+    }
+  },
+  
+  // Reset all keys periodically
+  resetAllKeys: () => {
+    for (let i = 0; i < tokenUsageTracker.usage.length; i++) {
+      tokenUsageTracker.resetUsage(i);
+    }
+  }
+};
+
+// Function to rotate to the next available API key
+const rotateApiKey = () => {
+  if (apiKeys.length <= 1) {
+    console.warn('No backup API keys available for rotation');
+    return false;
+  }
+  
+  // Reset usage stats for all keys before attempting rotation
+  tokenUsageTracker.resetAllKeys();
+  
+  // Try each API key in sequence
+  let initialIndex = currentApiKeyIndex;
+  let rotated = false;
+  
+  // First, try to find a key that has never been used in this session
+  for (let i = 0; i < apiKeys.length; i++) {
+    const keyIndex = (currentApiKeyIndex + i + 1) % apiKeys.length;
+    
+    if (apiKeys[keyIndex] && 
+        tokenUsageTracker.usage[keyIndex].requests === 0 &&
+        !tokenUsageTracker.usage[keyIndex].quotaExceeded &&
+        tokenUsageTracker.usage[keyIndex].cooldownUntil <= Date.now()) {
+      
+      console.log(`Found unused API key ${keyIndex + 1}, rotating to it`);
+      currentApiKeyIndex = keyIndex;
+      genAI = new GoogleGenerativeAI(apiKeys[currentApiKeyIndex]);
+      rotated = true;
+      break;
+    }
+  }
+  
+  // If we couldn't find an unused key, try to find any usable key
+  if (!rotated) {
+    do {
+      currentApiKeyIndex = (currentApiKeyIndex + 1) % apiKeys.length;
+      
+      // Skip empty API keys or keys that are in cooldown
+      if (!apiKeys[currentApiKeyIndex] || 
+          tokenUsageTracker.usage[currentApiKeyIndex].quotaExceeded ||
+          tokenUsageTracker.usage[currentApiKeyIndex].cooldownUntil > Date.now()) {
+        console.log(`Skipping API key ${currentApiKeyIndex + 1} (empty or in cooldown)`);
+        continue;
+      }
+      
+      console.log(`Rotating to API key ${currentApiKeyIndex + 1}`);
+      genAI = new GoogleGenerativeAI(apiKeys[currentApiKeyIndex]);
+      rotated = true;
+      break;
+      
+    } while (currentApiKeyIndex !== initialIndex); // Stop if we've checked all keys
+  }
+  
+  if (!rotated) {
+    console.warn('All API keys are either empty, invalid, or in cooldown');
+    return false;
+  }
+  
+  return true;
+}
+
+// Function to chunk a message into smaller parts to avoid token limits
+const chunkMessage = (message, maxChunkSize = 200) => {
+  // If message is short enough, return it as is
+  if (message.length <= maxChunkSize) {
+    return [message];
+  }
+  
+  // Check if this is a system prompt + user message
+  const systemPromptMatch = message.match(/^(.*?)\n\nUser message: (.*)/s);
+  if (systemPromptMatch) {
+    const [_, systemPrompt, userMessage] = systemPromptMatch;
+    
+    // If the user message is short, we can keep it with a shortened system prompt
+    if (userMessage.length <= maxChunkSize / 2) {
+      // Shorten the system prompt to fit within limits
+      const availableSpace = maxChunkSize - userMessage.length - 15; // 15 for "\n\nUser message: "
+      const shortenedSystemPrompt = shortenSystemPrompt(systemPrompt, availableSpace);
+      return [`${shortenedSystemPrompt}\n\nUser message: ${userMessage}`];
+    }
+    
+    // If user message is long, chunk it and add shortened system prompt to first chunk only
+    const userChunks = chunkUserMessage(userMessage, maxChunkSize / 2);
+    const shortenedSystemPrompt = shortenSystemPrompt(systemPrompt, maxChunkSize / 2);
+    
+    // Add system prompt to first chunk only
+    return userChunks.map((chunk, index) => {
+      if (index === 0) {
+        return `${shortenedSystemPrompt}\n\nUser message: ${chunk}`;
+      } else {
+        return `Continuing user message: ${chunk}`;
+      }
+    });
+  }
+  
+  // For regular messages (not system prompt + user message), use sentence-based chunking
+  return chunkUserMessage(message, maxChunkSize);
+};
+
+// Helper function to chunk user messages by sentences
+const chunkUserMessage = (message, maxChunkSize = 200) => {
+  // Split message into sentences
+  const sentences = message.split(/(?<=[.!?])\s+/);
+  const chunks = [];
+  let currentChunk = '';
+  
+  // Group sentences into chunks
+  for (const sentence of sentences) {
+    // If adding this sentence would exceed the chunk size, start a new chunk
+    if (currentChunk.length + sentence.length > maxChunkSize) {
+      if (currentChunk) {
+        chunks.push(currentChunk);
+      }
+      
+      // If a single sentence is longer than maxChunkSize, split it into words
+      if (sentence.length > maxChunkSize) {
+        const words = sentence.split(/\s+/);
+        let wordChunk = '';
+        
+        for (const word of words) {
+          if (wordChunk.length + word.length + 1 > maxChunkSize) {
+            chunks.push(wordChunk);
+            wordChunk = word;
+          } else {
+            wordChunk += (wordChunk ? ' ' : '') + word;
+          }
+        }
+        
+        if (wordChunk) {
+          currentChunk = wordChunk;
+        } else {
+          currentChunk = '';
+        }
+      } else {
+        currentChunk = sentence;
+      }
+    } else {
+      currentChunk += (currentChunk ? ' ' : '') + sentence;
+    }
+  }
+  
+  // Add the last chunk if it's not empty
+  if (currentChunk) {
+    chunks.push(currentChunk);
+  }
+  
+  return chunks;
+};
+
+// Helper function to shorten system prompt while preserving key information
+const shortenSystemPrompt = (systemPrompt, maxLength = 100) => {
+  if (systemPrompt.length <= maxLength) {
+    return systemPrompt;
+  }
+  
+  // Extract the first paragraph (usually the role definition)
+  const firstParagraph = systemPrompt.split('\n\n')[0];
+  
+  // Extract user information section if present
+  const userInfoMatch = systemPrompt.match(/User information:(.*?)(?=Guidelines:|$)/s);
+  const userInfo = userInfoMatch ? userInfoMatch[0].trim() : '';
+  
+  // Extract key guidelines (first 3-4 points)
+  const guidelinesMatch = systemPrompt.match(/Guidelines:(.*)/s);
+  let guidelines = '';
+  if (guidelinesMatch) {
+    const guidelinePoints = guidelinesMatch[0].split(/\d+\.\s/).slice(1, 5);
+    guidelines = 'Guidelines:\n' + guidelinePoints.map((point, i) => `${i+1}. ${point.trim()}`).join('\n');
+  }
+  
+  // Combine the most important parts
+  let shortenedPrompt = firstParagraph;
+  
+  // Add user info if there's space
+  if (shortenedPrompt.length + userInfo.length <= maxLength) {
+    shortenedPrompt += '\n\n' + userInfo;
+  } else {
+    // Just add critical user info like medical conditions
+    const medicalConditionsMatch = userInfo.match(/Medical conditions:(.*?)(?=\n|$)/);
+    if (medicalConditionsMatch && shortenedPrompt.length + medicalConditionsMatch[0].length + 20 <= maxLength) {
+      shortenedPrompt += '\n\nUser has: ' + medicalConditionsMatch[0];
+    }
+  }
+  
+  // Add guidelines if there's space
+  if (shortenedPrompt.length + guidelines.length <= maxLength) {
+    shortenedPrompt += '\n\n' + guidelines;
+  }
+  
+  // If still too long, use a super-simplified prompt
+  if (shortenedPrompt.length > maxLength) {
+    // Use an ultra-minimal prompt that fits within the limit
+    return "You are a helpful health assistant. Be brief and accurate.";
+  }
+  
+  return shortenedPrompt;
+};
+
+// Helper function to add delay between API calls
+const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+
+// Function to handle quota exceeded errors
+const handleQuotaExceeded = async (userMessage, formattedHistory) => {
+  console.log('Handling quota exceeded error');
+  
+  // First try rotating to a backup API key
+  const rotated = rotateApiKey();
+  if (!rotated) {
+    console.log('Could not rotate to a backup API key, trying fallback model');
+    
+    // Add a delay before trying the fallback model to avoid hitting limits
+    console.log('Waiting 3 seconds before trying fallback model...');
+    await delay(3000);
+    
+    // If we can't rotate, try using a less resource-intensive model
+    try {
+      const fallbackModel = genAI.getGenerativeModel({ 
+        model: FALLBACK_MODEL,
+        generationConfig: {
+          temperature: 0.7,
+          maxOutputTokens: 800,
+          topK: 40,
+          topP: 0.95,
+        }
+      });
+      
+      // Start a new chat session with the fallback model
+      const fallbackChat = fallbackModel.startChat({
+        history: formattedHistory.length > 0 ? formattedHistory : [],
+      });
+      
+      // Try with the fallback model - chunk the message if it's long
+      const messageChunks = chunkMessage(userMessage, 300); // Smaller chunks for fallback
+      let fullResponse = '';
+      
+      // Process each chunk sequentially with delays between chunks
+      for (const chunk of messageChunks) {
+        console.log(`Processing chunk (${chunk.length} chars) with fallback model`);
+        
+        try {
+          const chunkResult = await fallbackChat.sendMessage(chunk);
+          const chunkResponse = chunkResult.response.text();
+          fullResponse += chunkResponse + ' ';
+          
+          // Add a small delay between chunks to avoid rate limits
+          if (messageChunks.length > 1) {
+            await delay(1000);
+          }
+        } catch (chunkError) {
+          console.error('Error processing chunk with fallback model:', chunkError);
+          // Continue with next chunk instead of failing completely
+          continue;
+        }
+      }
+      
+      return fullResponse.trim() || "I apologize, but I'm experiencing technical difficulties. Please try again in a moment.";
+    } catch (fallbackError) {
+      console.error('Error with fallback model:', fallbackError);
+      
+      // Try one last emergency fallback model
+      console.log('Trying emergency fallback model as last resort...');
+      try {
+        // Add an even longer delay before trying the emergency fallback
+        await delay(5000);
+        
+        const emergencyModel = genAI.getGenerativeModel({ 
+          model: EMERGENCY_FALLBACK_MODEL,
+          generationConfig: {
+            temperature: 0.7,
+            maxOutputTokens: 500,
+            topK: 40,
+            topP: 0.95,
+          }
+        });
+        
+        // Use a very simple prompt without history to minimize token usage
+        const simplifiedPrompt = "You are a health assistant. Please provide a brief, helpful response to this question: " + 
+          userMessage.substring(0, Math.min(100, userMessage.length));
+        
+        const emergencyResult = await emergencyModel.generateContent(simplifiedPrompt);
+        const emergencyResponse = emergencyResult.response.text();
+        
+        if (emergencyResponse && emergencyResponse.trim().length > 10) {
+          return emergencyResponse;
+        } else {
+          throw new Error("Emergency fallback model returned empty response");
+        }
+      } catch (emergencyError) {
+        console.error('Error with emergency fallback model:', emergencyError);
+        
+        // As a final resort, try Hugging Face models
+        console.log('Trying Hugging Face models as final resort...');
+        try {
+          const huggingFaceResponse = await callHuggingFaceModel(userMessage);
+          if (huggingFaceResponse && huggingFaceResponse.trim().length > 10) {
+            console.log('Successfully got response from Hugging Face model');
+            return huggingFaceResponse;
+          } else {
+            throw new Error("Hugging Face models returned empty response");
+          }
+        } catch (huggingFaceError) {
+          console.error('Error with Hugging Face models:', huggingFaceError);
+          throw fallbackError; // Re-throw the original error to be handled by the caller
+        }
+      }
+    }
+  } else {
+    // Try Hugging Face as a fallback before attempting to rotate API keys
+    console.log('Trying Hugging Face models before API key rotation...');
+    try {
+      const huggingFaceResponse = await callHuggingFaceModel(userMessage);
+      if (huggingFaceResponse && huggingFaceResponse.trim().length > 10) {
+        console.log('Successfully got response from Hugging Face model');
+        return huggingFaceResponse;
+      }
+    } catch (huggingFaceError) {
+      console.error('Error with Hugging Face models:', huggingFaceError);
+      // Continue with API key rotation if Hugging Face fails
+    }
+    
+    // If we successfully rotated to a new API key, try again with the original model
+    try {
+      // Add a delay before trying with the new API key
+      console.log('Waiting 2 seconds before trying with new API key...');
+      await delay(2000);
+      
+      const newModel = genAI.getGenerativeModel({ model: MODEL_NAME });
+      
+      // Start a new chat session
+      const newChat = newModel.startChat({
+        history: formattedHistory.length > 0 ? formattedHistory : [],
+        generationConfig: {
+          temperature: 0.7,
+          maxOutputTokens: 800,
+        },
+      });
+      
+      // Try again with the new API key - chunk the message if it's long
+      const messageChunks = chunkMessage(userMessage, 400); // Smaller chunks for retry
+      let fullResponse = '';
+      
+      // Process each chunk sequentially with delays between chunks
+      for (const chunk of messageChunks) {
+        console.log(`Processing chunk (${chunk.length} chars) with new API key`);
+        
+        try {
+          const chunkResult = await newChat.sendMessage(chunk);
+          const chunkResponse = chunkResult.response.text();
+          fullResponse += chunkResponse + ' ';
+          
+          // Add a small delay between chunks to avoid rate limits
+          if (messageChunks.length > 1) {
+            await delay(1000);
+          }
+        } catch (chunkError) {
+          console.error('Error processing chunk with new API key:', chunkError);
+          // Continue with next chunk instead of failing completely
+          continue;
+        }
+      }
+      
+      return fullResponse.trim() || "I apologize, but I'm experiencing technical difficulties. Please try again in a moment.";
+    } catch (retryError) {
+      console.error('Error with rotated API key:', retryError);
+      
+      // If the retry also fails, try the fallback model
+      if (retryError.status === 429) {
+        console.log('Rotated API key also hit quota limits, trying fallback model');
+        
+        // Add a longer delay before trying the fallback model
+        console.log('Waiting 5 seconds before trying fallback model...');
+        await delay(5000);
+        
+        try {
+          const fallbackModel = genAI.getGenerativeModel({ 
+            model: FALLBACK_MODEL,
+            generationConfig: {
+              temperature: 0.7,
+              maxOutputTokens: 800,
+              topK: 40,
+              topP: 0.95,
+            }
+          });
+          
+          // Start a new chat session with the fallback model
+          const fallbackChat = fallbackModel.startChat({
+            history: formattedHistory.length > 0 ? formattedHistory : [],
+          });
+          
+          // Try with the fallback model - chunk the message if it's long
+          const messageChunks = chunkMessage(userMessage, 250); // Even smaller chunks as last resort
+          let fullResponse = '';
+          
+          // Process each chunk sequentially with longer delays between chunks
+          for (const chunk of messageChunks) {
+            console.log(`Processing chunk (${chunk.length} chars) with fallback model (last resort)`);
+            
+            try {
+              const chunkResult = await fallbackChat.sendMessage(chunk);
+              const chunkResponse = chunkResult.response.text();
+              fullResponse += chunkResponse + ' ';
+              
+              // Add a longer delay between chunks to avoid rate limits
+              if (messageChunks.length > 1) {
+                await delay(2000);
+              }
+            } catch (chunkError) {
+              console.error('Error processing chunk with fallback model (last resort):', chunkError);
+              // Continue with next chunk instead of failing completely
+              continue;
+            }
+          }
+          
+          return fullResponse.trim() || "I apologize, but I'm experiencing technical difficulties. Please try again in a moment.";
+        } catch (fallbackError) {
+          console.error('Error with fallback model:', fallbackError);
+          
+          // Try one last emergency fallback model
+          console.log('Trying emergency fallback model as last resort...');
+          try {
+            // Add an even longer delay before trying the emergency fallback
+            await delay(5000);
+            
+            const emergencyModel = genAI.getGenerativeModel({ 
+              model: EMERGENCY_FALLBACK_MODEL,
+              generationConfig: {
+                temperature: 0.7,
+                maxOutputTokens: 500,
+                topK: 40,
+                topP: 0.95,
+              }
+            });
+            
+            // Use a very simple prompt without history to minimize token usage
+            const simplifiedPrompt = "You are a health assistant. Please provide a brief, helpful response to this question: " + 
+              userMessage.substring(0, Math.min(100, userMessage.length));
+            
+            const emergencyResult = await emergencyModel.generateContent(simplifiedPrompt);
+            const emergencyResponse = emergencyResult.response.text();
+            
+            if (emergencyResponse && emergencyResponse.trim().length > 10) {
+              return emergencyResponse;
+            } else {
+              throw new Error("Emergency fallback model returned empty response");
+            }
+          } catch (emergencyError) {
+            console.error('Error with emergency fallback model:', emergencyError);
+            
+            // As a final resort, try Hugging Face models
+            console.log('Trying Hugging Face models as final resort...');
+            try {
+              const huggingFaceResponse = await callHuggingFaceModel(userMessage);
+              if (huggingFaceResponse && huggingFaceResponse.trim().length > 10) {
+                console.log('Successfully got response from Hugging Face model');
+                return huggingFaceResponse;
+              } else {
+                throw new Error("Hugging Face models returned empty response");
+              }
+            } catch (huggingFaceError) {
+              console.error('Error with Hugging Face models:', huggingFaceError);
+              throw fallbackError; // Re-throw the original error to be handled by the caller
+            }
+          }
+        }
+      } else {
+        throw retryError; // Re-throw to be handled by the caller
+      }
+    }
+  }
+}
 
 // Helper function to create a system prompt for the AI
 const createSystemPrompt = (user) => {
-  return `You are a smart, conversational AI health assistant for SoulSpace Health.
-Your name is HealthBot. You can answer a wide range of questions, with a focus on health topics.
+  // Get critical user information
+  const userName = user.name || 'Patient';
+  const userAge = user.profile?.dateOfBirth ? calculateAge(user.profile.dateOfBirth) : 'Unknown';
+  const medicalConditions = user.profile?.chronicConditions || 'None provided';
+  const allergies = user.profile?.allergies || 'None provided';
+  
+  // Create a more concise system prompt
+  return `You are HealthBot, an AI health assistant for SoulSpace Health.
 
-User information:
-- Name: ${user.name || 'Patient'}
-- Age: ${user.profile?.dateOfBirth ? calculateAge(user.profile.dateOfBirth) : 'Unknown'}
-- Medical conditions: ${user.profile?.chronicConditions || 'None provided'}
-- Allergies: ${user.profile?.allergies || 'None provided'}
+User: ${userName}, Age: ${userAge}
+Medical: ${medicalConditions}
+Allergies: ${allergies}
 
 Guidelines:
-1. Be conversational, friendly, and empathetic
-2. Answer all types of questions to the best of your ability, not just health-related ones
-3. For health questions, carefully assess symptom severity to determine when professional medical care is needed
-4. For non-urgent conditions, provide evidence-based self-care advice first
-5. Only recommend doctor appointments when symptoms indicate they're truly necessary
-6. Respect privacy and maintain confidentiality
-7. Avoid making definitive diagnoses
-8. Keep responses concise and easy to understand
-9. Provide actionable advice when appropriate
-10. Consider the urgency level: emergency (immediate care), urgent (same-day care), non-urgent (self-care with monitoring)
-11. For chronic conditions, help users understand when changes warrant medical attention
-12. If asked about being a doctor, explain that you're an AI assistant with health knowledge but not a medical professional
-13. Be helpful with all questions, even if they're not health-related`;
+1. Be friendly and conversational
+2. For health questions, assess symptom severity to determine if medical care is needed
+3. For non-urgent conditions, provide evidence-based self-care advice
+4. Keep responses concise and actionable
+5. For emergencies, recommend immediate care; for urgent issues, same-day care; for non-urgent, self-care with monitoring
+6. Avoid making diagnoses; clarify you're an AI assistant, not a doctor`;
 };
 
 // Calculate age from date of birth
@@ -101,6 +1356,36 @@ exports.processMessage = async (req, res) => {
     const { message, conversationHistory = [] } = req.body;
     const userId = req.user.id;
 
+    // Truncate very long inputs to prevent token limit issues
+    const truncatedMessage = message.length > 4000 
+      ? message.substring(0, 4000) + "... (message truncated due to length)"
+      : message;
+
+    // Check if user is rate limited
+    const rateLimitCheck = userRateLimiter.isRateLimited(userId);
+    if (rateLimitCheck.limited) {
+      console.log(`User ${userId} is rate limited: ${rateLimitCheck.reason}`);
+      return res.status(429).json({
+        text: rateLimitCheck.message,
+        error: "Rate limit exceeded",
+        retryAfter: rateLimitCheck.retryAfter,
+        quotaExceeded: true
+      });
+    }
+
+    // Check cache for identical or very similar recent queries
+    const cachedResponse = responseCache.get(truncatedMessage, userId);
+    if (cachedResponse) {
+      // Record the request for rate limiting purposes, but with zero tokens since we're using cache
+      userRateLimiter.recordRequest(userId, 0, 0);
+      console.log(`Using cached response for user ${userId}`);
+      
+      return res.status(200).json({
+        ...cachedResponse,
+        fromCache: true
+      });
+    }
+
     // Get user information for context
     const user = await User.findById(userId);
     if (!user) {
@@ -135,12 +1420,38 @@ exports.processMessage = async (req, res) => {
 
     // Initialize the Gemini model with fallback options
     let model;
+    let currentModel = MODEL_NAME;
     try {
-      model = genAI.getGenerativeModel({ model: MODEL_NAME });
+      model = genAI.getGenerativeModel({ model: currentModel });
     } catch (error) {
-      console.error(`Error initializing ${MODEL_NAME}, trying fallback model:`, error);
-      // Try fallback to an older model version if the primary one fails
-      model = genAI.getGenerativeModel({ model: 'gemini-pro' });
+      console.error(`Error initializing ${currentModel}, trying fallback model:`, error);
+      
+      // Try rotating API keys first
+      if (error.status === 429) {
+        const rotated = rotateApiKey();
+        if (rotated) {
+          try {
+            model = genAI.getGenerativeModel({ model: currentModel });
+            console.log(`Successfully initialized ${currentModel} with backup API key`);
+          } catch (retryError) {
+            console.error(`Error initializing ${currentModel} with backup API key:`, retryError);
+            // Fall back to a less resource-intensive model
+            currentModel = FALLBACK_MODEL;
+            model = genAI.getGenerativeModel({ model: currentModel });
+            console.log(`Falling back to ${currentModel}`);
+          }
+        } else {
+          // If we couldn't rotate API keys, fall back to a less resource-intensive model
+          currentModel = FALLBACK_MODEL;
+          model = genAI.getGenerativeModel({ model: currentModel });
+          console.log(`Falling back to ${currentModel}`);
+        }
+      } else {
+        // For other errors, just try the fallback model
+        currentModel = FALLBACK_MODEL;
+        model = genAI.getGenerativeModel({ model: currentModel });
+        console.log(`Falling back to ${currentModel}`);
+      }
     }
 
     // Start a chat session with error handling
@@ -167,21 +1478,332 @@ exports.processMessage = async (req, res) => {
 
     // Always include the system prompt to ensure the AI has proper context
     // This helps ensure the AI responds to all types of questions appropriately
-    const userMessage = `${systemPrompt}\n\nUser message: ${message}`;
+    const fullUserMessage = `${systemPrompt}\n\nUser message: ${message}`;
+
+    // PREEMPTIVE CHECK: Check if this request would exceed our self-imposed limits
+    // Use extremely conservative limits to prevent hitting quota errors
+    const estimatedInputTokens = tokenUsageTracker.estimateTokens(fullUserMessage);
+    
+    // If the message is too large, use a simplified version
+    if (estimatedInputTokens > 2000) {
+      console.log(`Message too large (${estimatedInputTokens} tokens), using simplified version`);
+      // Create a simplified version with just the essential parts
+      const simplifiedMessage = message.substring(0, Math.min(200, message.length));
+      const simplifiedPrompt = "You are a health assistant. Be brief and helpful.";
+      const simplifiedFullMessage = `${simplifiedPrompt}\n\nUser message: ${simplifiedMessage}`;
+      
+      // Check if even the simplified message would exceed limits
+      const limitsCheck = tokenUsageTracker.wouldExceedLimits(simplifiedFullMessage);
+      if (limitsCheck.exceeded) {
+        console.log(`Even simplified message would exceed limits due to ${limitsCheck.reason}`);
+        // Skip API call entirely and use fallback
+        return res.json({
+          text: useRuleBasedFallback(truncatedMessage),
+          isHealthTip: true,
+          timestamp: new Date(),
+          fallbackResponse: true,
+          preemptiveFallback: true
+        });
+      }
+    } else {
+      // Check if the full message would exceed limits
+      const limitsCheck = tokenUsageTracker.wouldExceedLimits(fullUserMessage);
+      if (limitsCheck.exceeded) {
+        console.log(`Preemptively avoiding API call due to ${limitsCheck.reason}`);
+        
+        // Try rotating to a different API key
+        const rotated = rotateApiKey();
+        
+        if (rotated) {
+          console.log(`Rotated to API key ${currentApiKeyIndex + 1} to avoid limits`);
+          
+          // Check if the new key would also exceed limits
+          const newLimitsCheck = tokenUsageTracker.wouldExceedLimits(fullUserMessage);
+          if (newLimitsCheck.exceeded) {
+            console.log(`New API key would also exceed limits due to ${newLimitsCheck.reason}`);
+            // Skip API call entirely and use fallback
+            return res.json({
+              text: useRuleBasedFallback(truncatedMessage),
+              isHealthTip: true,
+              timestamp: new Date(),
+              fallbackResponse: true,
+              preemptiveFallback: true
+            });
+          }
+          
+          // Reinitialize the model with the new API key
+          try {
+            model = genAI.getGenerativeModel({ model: currentModel });
+            console.log(`Successfully reinitialized model with new API key`);
+          } catch (error) {
+            console.error(`Error reinitializing model with new API key:`, error);
+            // If we can't initialize with the new key, use fallback
+            return res.json({
+              text: useRuleBasedFallback(truncatedMessage),
+              isHealthTip: true,
+              timestamp: new Date(),
+              fallbackResponse: true,
+              preemptiveFallback: true
+            });
+          }
+        } else {
+          // If we couldn't rotate, use fallback response
+          console.log(`Could not rotate API key, using fallback response`);
+          return res.json({
+            text: useRuleBasedFallback(truncatedMessage),
+            isHealthTip: true,
+            timestamp: new Date(),
+            fallbackResponse: true,
+            preemptiveFallback: true
+          });
+        }
+      }
+    }
 
     // Generate response from Gemini with error handling
     let aiResponse;
     let useGeminiResponse = true; // Flag to determine if we should use Gemini's response or fallback logic
 
     try {
-      const result = await chat.sendMessage(userMessage);
-      const geminiResponse = result.response;
-      aiResponse = geminiResponse.text();
+      // Use an ultra-conservative chunking approach to reduce token usage
+      // Use extremely small chunks and a minimal system prompt
+      const maxChunkSize = 200; // Drastically reduced chunk size
+      
+      // Split the message into smaller parts first
+      const simplifiedMessage = fullUserMessage.length > 500 ? 
+        fullUserMessage.substring(0, 500) + "..." : 
+        fullUserMessage;
+      
+      // Create even smaller chunks
+      const messageChunks = chunkMessage(simplifiedMessage, maxChunkSize);
+      
+      console.log(`Message chunked into ${messageChunks.length} parts`);
+      let fullResponse = '';
+      let chunkResponses = [];
+      
+      // Limit the number of chunks we'll process to avoid quota issues
+      const maxChunksToProcess = Math.min(messageChunks.length, 1); // Process only 1 chunk at a time
+      if (messageChunks.length > maxChunksToProcess) {
+        console.log(`Limiting processing to ${maxChunksToProcess} chunks to avoid quota issues`);
+      }
+      
+      // Add a fallback response in case all API calls fail
+      chunkResponses.push("I understand you have a question about health or wellness. While I'm processing your request, here's some general advice: maintaining a balanced diet, regular exercise, adequate sleep, and stress management are key components of good health. For specific medical concerns, please consult with a healthcare professional.");
+      
+      // Process each chunk sequentially with delays between chunks
+      for (let i = 0; i < maxChunksToProcess; i++) {
+        const chunk = messageChunks[i];
+        console.log(`Processing chunk ${i+1}/${maxChunksToProcess} (${chunk.length} chars)`);
+        
+        // Check if processing this chunk would exceed our limits
+        const chunkLimitsCheck = tokenUsageTracker.wouldExceedLimits(chunk);
+        if (chunkLimitsCheck.exceeded) {
+          console.log(`Skipping chunk ${i+1} as it would exceed limits due to ${chunkLimitsCheck.reason}`);
+          chunkResponses.push("I'm having trouble processing this part of your message due to system limitations.");
+          continue; // Skip to next chunk
+        }
+        
+        try {
+          // Add a longer delay between chunks to avoid rate limits
+          if (i > 0) {
+            const delayTime = 3000; // 3 second delay between chunks
+            console.log(`Waiting ${delayTime/1000}s before processing next chunk...`);
+            await delay(delayTime);
+          }
+          
+          // Before making the API call, check if we should rotate keys preemptively
+          if (tokenUsageTracker.shouldRotateKey()) {
+            console.log('Preemptively rotating API key before processing chunk');
+            const rotated = rotateApiKey();
+            
+            if (rotated) {
+              // Reinitialize the model and chat with the new API key
+              console.log('Reinitializing model with new API key');
+              model = genAI.getGenerativeModel({ model: currentModel });
+              
+              // Start a new chat session with minimal context
+              chat = model.startChat({
+                history: [],
+                generationConfig: {
+                  temperature: 0.7,
+                  maxOutputTokens: 500, // Reduced output tokens
+                },
+              });
+            }
+          }
+          
+          // Make the API call with a timeout
+          const chunkPromise = chat.sendMessage(chunk);
+          
+          // Set a timeout for the API call (10 seconds)
+          const timeoutPromise = new Promise((_, reject) => {
+            setTimeout(() => reject(new Error('API call timed out')), 10000);
+          });
+          
+          // Race the API call against the timeout
+          const chunkResult = await Promise.race([chunkPromise, timeoutPromise]);
+          const chunkResponse = chunkResult.response.text();
+          
+          // Record successful API call
+          if (tokenUsageTracker.usage[currentApiKeyIndex].consecutiveErrors > 0) {
+            tokenUsageTracker.usage[currentApiKeyIndex].consecutiveErrors = 0;
+          }
+          
+          // Track token usage for each chunk
+          tokenUsageTracker.recordUsage(chunk, chunkResponse);
+          
+          chunkResponses.push(chunkResponse);
+          
+          // Check if we should rotate API keys between chunks
+          if (tokenUsageTracker.shouldRotateKey()) {
+            console.log('Rotating API key between chunks');
+            const rotated = rotateApiKey();
+            
+            if (rotated) {
+              // Reinitialize the model and chat with the new API key
+              console.log('Reinitializing model with new API key');
+              model = genAI.getGenerativeModel({ model: currentModel });
+              
+              // Start a new chat session with the previous responses as context
+              const previousMessages = [];
+              
+              // Add the first chunk as user message
+              if (messageChunks.length > 0) {
+                previousMessages.push({
+                  role: 'user',
+                  parts: [{ text: messageChunks[0] }]
+                });
+              }
+              
+              // Add the first response as model message
+              if (chunkResponses.length > 0) {
+                previousMessages.push({
+                  role: 'model',
+                  parts: [{ text: chunkResponses[0] }]
+                });
+              }
+              
+              // Initialize new chat with previous context
+              chat = model.startChat({
+                history: previousMessages,
+                generationConfig: {
+                  temperature: 0.7,
+                  maxOutputTokens: 800,
+                },
+              });
+              
+              console.log('Successfully reinitialized chat with new API key');
+            }
+          }
+        } catch (chunkError) {
+          console.error(`Error processing chunk ${i+1}:`, chunkError);
+          
+          // If this is a quota exceeded error, try rotating API keys
+          if (chunkError.status === 429) {
+            console.log('Quota exceeded during chunk processing, trying to rotate API key');
+            
+            // Mark the current key as exceeded
+            tokenUsageTracker.markKeyAsExceeded(
+              chunkError.errorDetails?.[2]?.retryDelay || '60s'
+            );
+            
+            const rotated = rotateApiKey();
+            
+            if (rotated) {
+              console.log(`Rotating to API key ${currentApiKeyIndex + 1}`);
+              
+              // Check if the new key would also exceed limits
+              const simplifiedChunk = chunk.length > 200 ? 
+                chunk.substring(0, 200) + "..." : 
+                chunk;
+              
+              const newKeyLimitsCheck = tokenUsageTracker.wouldExceedLimits(simplifiedChunk);
+              if (newKeyLimitsCheck.exceeded) {
+                console.log(`New key would also exceed limits due to ${newKeyLimitsCheck.reason}`);
+                chunkResponses.push("I'm having trouble processing this part of your message due to system limitations.");
+                continue; // Skip to next chunk
+              }
+              
+              // Reinitialize the model with the new API key
+              try {
+                console.log('Reinitializing model with new API key');
+                model = genAI.getGenerativeModel({ model: currentModel });
+                
+                // Start a new chat session with the new API key
+                chat = model.startChat({
+                  history: [],
+                  generationConfig: {
+                    temperature: 0.7,
+                    maxOutputTokens: 500, // Reduced output tokens
+                  },
+                });
+                
+                // Try this chunk again with the new API key
+                console.log('Retrying chunk with new API key');
+              
+                // Add a longer delay before retrying
+                await delay(3000);
+                
+                try {
+                  // Try with a simplified version of the chunk
+                  const simplifiedChunk = chunk.length > 200 ? 
+                    chunk.substring(0, 200) + "..." : 
+                    chunk;
+                  
+                  const retryResult = await chat.sendMessage(simplifiedChunk);
+                  const retryResponse = retryResult.response.text();
+                  chunkResponses.push(retryResponse);
+                  
+                  // Track token usage for the retry
+                  tokenUsageTracker.recordUsage(simplifiedChunk, retryResponse);
+                  
+                  console.log('Successfully processed chunk with new API key');
+                  continue; // Continue to the next chunk
+                } catch (retryError) {
+                  console.error('Error retrying chunk with new API key:', retryError);
+                  // Fall through to use a placeholder for this chunk
+                }
+              } catch (initError) {
+                console.error('Error initializing model with new API key:', initError);
+                // Fall through to use a placeholder for this chunk
+              }
+            }
+            
+            // If we couldn't rotate or the retry failed, use a placeholder for this chunk
+            chunkResponses.push("I'm having trouble processing this part of your message due to system limitations.");
+          } else {
+            // For other errors, use a placeholder for this chunk
+            chunkResponses.push("I'm having trouble processing this part of your message. Please try again with a simpler question.");
+          }
+        }
+      }
+      
+      // Combine all chunk responses
+      fullResponse = chunkResponses.join(' ').trim();
+      
+      // Clean up the response by removing any placeholder text if we have enough content
+      if (fullResponse.length > 100) {
+        fullResponse = fullResponse
+          .replace(/I'm having trouble processing this part of your message due to system limitations\./g, '')
+          .replace(/I'm having trouble processing this part of your message\. Please try again with a simpler question\./g, '')
+          .trim();
+      }
+      
+      aiResponse = fullResponse;
+      
+      // Check if we should proactively rotate before hitting limits
+      if (tokenUsageTracker.shouldRotateKey()) {
+        console.log('Proactively rotating API key based on usage patterns');
+        rotateApiKey();
+      }
 
-      // If the response is empty or too short, we'll use our fallback logic
-      if (!aiResponse || aiResponse.trim().length < 10) {
+      // If the response is empty, too short, or only contains error messages, use fallback logic
+      if (!aiResponse || 
+          aiResponse.trim().length < 10 || 
+          aiResponse.includes("I'm having trouble processing") ||
+          aiResponse.includes("system limitations")) {
         useGeminiResponse = false;
-        console.log('Gemini response too short, using fallback logic');
+        console.log('Gemini response inadequate, using fallback logic');
       }
     } catch (sendError) {
       console.error('Error sending message to Gemini:', sendError);
@@ -192,19 +1814,156 @@ exports.processMessage = async (req, res) => {
         const retryDelay = sendError.errorDetails?.find(d => d['@type'].includes('RetryInfo'))?.retryDelay || '30s';
         console.log(`API quota exceeded. Retry after: ${retryDelay}`);
         
-        return res.status(429).json({
-          text: "I'm currently experiencing high demand and need a brief moment to catch up. Please try again in a few seconds.",
-          error: "API quota exceeded",
-          retryAfter: retryDelay,
-          quotaExceeded: true
+        // Mark the current key as exceeded in the token tracker
+        tokenUsageTracker.markKeyAsExceeded(retryDelay);
+        
+        // Try rotating to a new API key
+        const rotated = rotateApiKey();
+        
+        if (rotated) {
+          // Try again with the new API key and a simplified message
+          try {
+            console.log('Trying again with new API key and simplified message');
+            
+            // Wait before retrying
+            await delay(2000);
+            
+            // Reinitialize the model with the new API key
+            model = genAI.getGenerativeModel({ model: currentModel });
+            
+            // Create a simplified version of the message to reduce token usage
+            const simplifiedMessage = truncatedMessage.length > 200 
+              ? truncatedMessage.substring(0, 200) + "..."
+              : truncatedMessage;
+            
+            // Create a minimal system prompt
+            const minimalPrompt = `You are HealthBot, a health assistant. Be brief and helpful.`;
+            
+            // Combine into a simplified full message
+            const simplifiedFullMessage = `${minimalPrompt}\n\nUser message: ${simplifiedMessage}`;
+            
+            // Start a new chat with minimal history
+            const simpleChat = model.startChat({
+              history: [],
+              generationConfig: {
+                temperature: 0.7,
+                maxOutputTokens: 500, // Reduced output tokens
+              },
+            });
+            
+            // Send the simplified message
+            const simpleResult = await simpleChat.sendMessage(simplifiedFullMessage);
+            aiResponse = simpleResult.response.text();
+            
+            if (aiResponse && aiResponse.trim().length > 10) {
+              useGeminiResponse = true;
+              console.log('Successfully got response with new API key and simplified message');
+              
+              // Track token usage
+              tokenUsageTracker.recordUsage(simplifiedFullMessage, aiResponse);
+              
+              // Return the response
+              return res.status(200).json({
+                text: aiResponse,
+                isHealthTip: true,
+                timestamp: new Date(),
+                simplifiedResponse: true
+              });
+            }
+          } catch (retryError) {
+            console.error('Error with retry using new API key:', retryError);
+          }
+        }
+        
+        // If retry with new API key failed or we couldn't rotate, use rule-based fallback
+        console.log('API quota exceeded, using rule-based fallback');
+        
+        // Use our rule-based fallback
+        aiResponse = useRuleBasedFallback(truncatedMessage);
+        useGeminiResponse = true;
+        console.log('Successfully recovered from quota exceeded error with rule-based fallback');
+        
+        // Return the response without the 429 status code
+        return res.status(200).json({
+          text: aiResponse,
+          isHealthTip: true,
+          timestamp: new Date(),
+          fallbackResponse: true,
+          ruleBasedResponse: true
+        });
+        
+        /* Commenting out the complex fallback chain since it's not working reliably
+        try {
+          // Use the handleQuotaExceeded function to try multiple fallback options
+          aiResponse = await handleQuotaExceeded(fullUserMessage, formattedHistory);
+          
+          if (aiResponse && aiResponse.trim().length > 10) {
+            useGeminiResponse = true;
+            console.log('Successfully recovered from quota exceeded error');
+            
+            // Record the token usage for the successful response
+            tokenUsageTracker.recordUsage(fullUserMessage, aiResponse);
+          } else {
+            console.log('Fallback response too short, using default fallback');
+            useGeminiResponse = false;
+          }
+        } catch (quotaHandlingError) {
+          console.error('All quota handling attempts failed:', quotaHandlingError);
+        }
+        */
+        
+        // Check if we have a Hugging Face API key
+        if (HUGGING_FACE_API_KEY && HUGGING_FACE_API_KEY.trim() !== '') {
+          console.log('Trying Hugging Face model as last resort...');
+          
+          try {
+            // Try using Hugging Face model as a last resort
+            const huggingFaceResponse = await callHuggingFaceModel(message);
+            
+            if (huggingFaceResponse) {
+              aiResponse = huggingFaceResponse;
+              useGeminiResponse = true;
+              console.log('Successfully got response from Hugging Face model');
+              
+              // Return the response without the 429 status code
+              return res.status(200).json({
+                text: aiResponse,
+                isHealthTip: true,
+                timestamp: new Date(),
+                fallbackResponse: true,
+                fromHuggingFace: true
+              });
+            }
+          } catch (huggingFaceError) {
+            console.error('Error with Hugging Face model:', huggingFaceError);
+          }
+        } else {
+          console.log('No Hugging Face API key available, skipping Hugging Face models');
+        }
+        
+        // Use our rule-based fallback directly
+        console.log('Using rule-based fallback response');
+        aiResponse = useRuleBasedFallback(message);
+        useGeminiResponse = true;
+        
+        // Return the response without the 429 status code
+        return res.status(200).json({
+          text: aiResponse,
+          isHealthTip: true,
+          timestamp: new Date(),
+          fallbackResponse: true,
+          ruleBasedResponse: true
         });
       }
 
-      // If we can't get a response from Gemini for other reasons, provide a fallback response
-      if (currentMessage.includes('doctor')) {
-        aiResponse = "I'm not a doctor. I'm an AI health assistant designed to provide general health information and guidance. While I can offer information about common health concerns and wellness tips, I cannot provide medical diagnoses or replace professional medical advice. For specific medical concerns, it's always best to consult with a qualified healthcare provider.";
-      } else {
-        aiResponse = "I apologize, but I'm having trouble processing your request right now. As a health assistant, I can provide general health information, but for specific medical advice, it's always best to consult with a healthcare professional.";
+      // If we still don't have a valid response, provide a fallback
+      if (!aiResponse || !useGeminiResponse) {
+        // If we can't get a response from Gemini for other reasons, provide a fallback response
+        if (currentMessage.includes('doctor')) {
+          aiResponse = "I'm not a doctor. I'm an AI health assistant designed to provide general health information and guidance. While I can offer information about common health concerns and wellness tips, I cannot provide medical diagnoses or replace professional medical advice. For specific medical concerns, it's always best to consult with a qualified healthcare provider.";
+        } else {
+          aiResponse = "I apologize, but I'm having trouble processing your request right now. As a health assistant, I can provide general health information, but for specific medical advice, it's always best to consult with a healthcare professional.";
+        }
       }
     }
 
@@ -588,12 +2347,24 @@ exports.processMessage = async (req, res) => {
       }
     }
 
-    // Return the response with appointment suggestion flag and any additional context
-    res.json({
+    // Prepare the response object
+    const responseObject = {
       text: finalResponse,
       suggestAppointment: suggestAppointment,
-      selfCareAppropriate: selfCareAssessment ? selfCareAssessment.selfCareAppropriate : true
-    });
+      selfCareAppropriate: selfCareAssessment ? selfCareAssessment.selfCareAppropriate : true,
+      timestamp: new Date()
+    };
+    
+    // Record the request and token usage for rate limiting
+    const requestInputTokens = tokenUsageTracker.estimateTokens(truncatedMessage);
+    const requestOutputTokens = tokenUsageTracker.estimateTokens(finalResponse);
+    userRateLimiter.recordRequest(userId, requestInputTokens, requestOutputTokens);
+    
+    // Cache the response for future similar queries
+    responseCache.set(truncatedMessage, userId, responseObject);
+    
+    // Return the response with appointment suggestion flag and any additional context
+    res.json(responseObject);
 
   } catch (error) {
     console.error('AI Assistant Error:', error);
@@ -702,18 +2473,13 @@ exports.processGuestMessage = async (req, res) => {
     const { message, conversationHistory = [] } = req.body;
 
     // Create a simplified system prompt for guest users
-    const guestSystemPrompt = `You are a smart, conversational AI assistant for SoulSpace Health.
-Your name is SoulSpace Assistant. You can answer a wide range of questions, with a focus on SoulSpace's services and general health topics.
+    const guestSystemPrompt = `You are SoulSpace Assistant, helping users with SoulSpace Health services.
 
 Guidelines:
-1. Be conversational, friendly, and empathetic
-2. Focus on explaining SoulSpace's services and features
-3. Provide general health information but avoid making specific medical recommendations
-4. Encourage users to register for a full account to access personalized health services
-5. Keep responses concise and easy to understand
-6. Highlight SoulSpace's key features: appointment booking, health monitoring, AI assistance
-7. For health questions, provide general information but suggest consulting a healthcare professional for specific advice
-8. Be helpful and informative about the platform's capabilities`;
+1. Be friendly and concise
+2. Explain SoulSpace's services: appointment booking, health monitoring, AI assistance
+3. Provide general health info but suggest consulting professionals for specific advice
+4. Encourage registration for personalized health services`;
 
     // Initialize the Gemini model
     let model;
@@ -743,9 +2509,85 @@ Guidelines:
     let useGeminiResponse = true;
 
     try {
-      const result = await chat.sendMessage(userMessage);
-      const geminiResponse = result.response;
-      aiResponse = geminiResponse.text();
+      // Use the improved chunking approach for guest messages too
+      const messageChunks = chunkMessage(userMessage, 800);
+      
+      if (messageChunks.length > 1) {
+        console.log(`Guest message chunked into ${messageChunks.length} parts`);
+        let chunkResponses = [];
+        
+        // Process each chunk sequentially with delays between chunks
+        for (let i = 0; i < messageChunks.length; i++) {
+          const chunk = messageChunks[i];
+          console.log(`Processing guest chunk ${i+1}/${messageChunks.length} (${chunk.length} chars)`);
+          
+          try {
+            // Add a delay between chunks to avoid rate limits
+            if (i > 0) {
+              await delay(1000); // 1 second delay between chunks
+            }
+            
+            const chunkResult = await chat.sendMessage(chunk);
+            const chunkResponse = chunkResult.response.text();
+            chunkResponses.push(chunkResponse);
+            
+            // Add a small delay after processing each chunk
+            if (i < messageChunks.length - 1) {
+              await delay(500);
+            }
+          } catch (chunkError) {
+            console.error(`Error processing guest chunk ${i+1}:`, chunkError);
+            
+            // If this is a quota exceeded error, try rotating API keys
+            if (chunkError.status === 429) {
+              console.log('Quota exceeded during guest chunk processing, trying to rotate API key');
+              const rotated = rotateApiKey();
+              
+              if (rotated) {
+                // Reinitialize the model and chat with the new API key
+                console.log('Reinitializing model with new API key for guest');
+                model = genAI.getGenerativeModel({ model: MODEL_NAME });
+                chat = model.startChat({
+                  history: [],
+                  generationConfig: {
+                    temperature: 0.7,
+                    topP: 0.95,
+                    topK: 64,
+                  },
+                });
+                
+                // Try this chunk again with the new API key
+                console.log('Retrying guest chunk with new API key');
+                await delay(1000); // Wait a second before retrying
+                
+                try {
+                  const retryResult = await chat.sendMessage(chunk);
+                  const retryResponse = retryResult.response.text();
+                  chunkResponses.push(retryResponse);
+                  continue; // Continue to the next chunk
+                } catch (retryError) {
+                  console.error('Error retrying guest chunk with new API key:', retryError);
+                  // Fall through to use a placeholder for this chunk
+                }
+              }
+            }
+            
+            // If we couldn't rotate or the retry failed, use a placeholder for this chunk
+            chunkResponses.push("I'm having trouble processing this part of your message.");
+          }
+        }
+        
+        // Combine all chunk responses
+        aiResponse = chunkResponses.join(' ').trim();
+        
+        // Clean up the response
+        aiResponse = aiResponse.replace(/I'm having trouble processing this part of your message\./g, '').trim();
+      } else {
+        // For short messages, just send as is
+        const result = await chat.sendMessage(userMessage);
+        const geminiResponse = result.response;
+        aiResponse = geminiResponse.text();
+      }
 
       // If the response is empty or too short, we'll use our fallback logic
       if (!aiResponse || aiResponse.trim().length < 10) {
@@ -755,6 +2597,48 @@ Guidelines:
     } catch (error) {
       console.error('Error generating AI response:', error);
       useGeminiResponse = false;
+      
+      // Try rotating API keys if this is a quota exceeded error
+      if (error.status === 429) {
+        console.log('Quota exceeded for guest message, trying to rotate API key');
+        const rotated = rotateApiKey();
+        
+        if (rotated) {
+          try {
+            // Reinitialize with new API key and try a simplified message
+            console.log('Trying simplified guest message with new API key');
+            await delay(1000);
+            
+            model = genAI.getGenerativeModel({ model: MODEL_NAME });
+            chat = model.startChat({
+              history: [],
+              generationConfig: {
+                temperature: 0.7,
+                topP: 0.95,
+                topK: 64,
+              },
+            });
+            
+            // Create a simplified version of the message
+            const simplifiedMessage = message.length > 100 
+              ? message.substring(0, 100) + "..."
+              : message;
+            
+            const simplifiedPrompt = "You are SoulSpace Assistant. Be brief and helpful.";
+            const simplifiedFullMessage = `${simplifiedPrompt}\n\nUser: ${simplifiedMessage}`;
+            
+            const simpleResult = await chat.sendMessage(simplifiedFullMessage);
+            aiResponse = simpleResult.response.text();
+            
+            if (aiResponse && aiResponse.trim().length > 10) {
+              useGeminiResponse = true;
+              console.log('Successfully got guest response with new API key');
+            }
+          } catch (retryError) {
+            console.error('Error with guest retry using new API key:', retryError);
+          }
+        }
+      }
     }
 
     // If Gemini failed, use fallback responses

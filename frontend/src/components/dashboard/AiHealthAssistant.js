@@ -24,6 +24,7 @@ import {
   ListItemIcon,
   ListItemText,
   Slider,
+  CircularProgress,
 } from '@mui/material';
 import {
   SmartToy,
@@ -54,9 +55,11 @@ import {
   HealthAndSafety,
   Spa as SpaIcon,
   Healing,
+  ErrorOutline,
 }  from '@mui/icons-material';
 import { motion } from 'framer-motion';
 import axios from '../../utils/axios';
+import QuotaExceededMessage from '../common/QuotaExceededMessage';
 
 const AiHealthAssistant = ({ onBookAppointment }) => {
   const theme = useTheme();
@@ -99,6 +102,9 @@ const AiHealthAssistant = ({ onBookAppointment }) => {
   const [voicePersonality, setVoicePersonality] = useState('professional'); // 'friendly', 'professional', 'calm'
   const [, setAvailableVoices] = useState([]);
   const [selectedVoice, setSelectedVoice] = useState(null);
+  const [quotaExceeded, setQuotaExceeded] = useState(false);
+  const [retryAfter, setRetryAfter] = useState(null);
+  const [isRetrying, setIsRetrying] = useState(false);
   const mediaRecorderRef = useRef(null);
   const speechSynthesisRef = useRef(null);
 
@@ -464,15 +470,16 @@ const AiHealthAssistant = ({ onBookAppointment }) => {
       if (error.response) {
         if (error.response.status === 429) {
           // API quota exceeded
-          const retryDelay = error.response.data.retryAfter || '30s';
-          retryAfter = parseInt(retryDelay.replace('s', '')) * 1000; // Convert to milliseconds
+          const retryDelayStr = error.response.data.retryAfter || '30s';
+          const retrySeconds = parseInt(retryDelayStr.replace(/[^0-9]/g, ''), 10) || 30;
           
-          errorMessage = "I'm currently experiencing high demand. I'll be ready to help you again in a few seconds.";
+          // Set quota exceeded state
+          setQuotaExceeded(true);
+          setRetryAfter(retryDelayStr);
           
-          // Set up automatic retry
-          setTimeout(() => {
-            handleSendMessage();
-          }, retryAfter);
+          // Don't add an error message to the chat, we'll show the QuotaExceededMessage component instead
+          setIsTyping(false);
+          return; // Exit early to prevent adding the error message
         } else if (error.response.status === 403 || error.response.status === 401) {
           errorMessage = 'Your session has expired. Please refresh the page or log in again to continue using the AI assistant.';
 
@@ -1071,6 +1078,31 @@ const AiHealthAssistant = ({ onBookAppointment }) => {
             }
           }}
         >
+          {/* Show quota exceeded message if needed */}
+          {quotaExceeded && (
+            <Box sx={{ position: 'relative', zIndex: 10, mb: 3 }}>
+              <QuotaExceededMessage 
+                retryAfter={retryAfter}
+                onRetry={() => {
+                  setQuotaExceeded(false);
+                  setIsRetrying(true);
+                  // Retry the last message
+                  const lastUserMessage = messages.filter(m => m.sender === 'user').pop();
+                  if (lastUserMessage) {
+                    setUserMessage(lastUserMessage.text);
+                    setTimeout(() => {
+                      handleSendMessage();
+                      setIsRetrying(false);
+                    }, 500);
+                  } else {
+                    setIsRetrying(false);
+                  }
+                }}
+                message="I apologize, but I'm experiencing high demand right now. Please try again in a few moments."
+              />
+            </Box>
+          )}
+          
           {/* Decorative elements */}
           <Box
             sx={{
