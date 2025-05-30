@@ -18,10 +18,13 @@ const clearTokensFromStorage = () => {
 // Only set baseURL in production or if explicitly provided in .env
 const isProduction = process.env.NODE_ENV === 'production';
 if (isProduction || process.env.REACT_APP_API_URL) {
-  axios.defaults.baseURL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+  // For production, use the deployed API URL
+  axios.defaults.baseURL = process.env.REACT_APP_API_URL || 'https://soulspacebackend.onrender.com';
   console.log('Axios baseURL set to:', axios.defaults.baseURL);
 } else {
-  console.log('Using proxy configuration for API requests');
+  // For development, use the local API
+  axios.defaults.baseURL = 'http://localhost:5000';
+  console.log('Using development API URL:', axios.defaults.baseURL);
 }
 
 // Set default headers

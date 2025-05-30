@@ -75,7 +75,7 @@ if (!fs.existsSync(avatarsDir)) {
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 app.use(cors({
-    origin: ['https://soulspacehealth.vercel.app/', 'http://127.0.0.1:3000'],
+    origin: ['https://soulspacehealth.vercel.app', 'http://localhost:3000', 'http://127.0.0.1:3000'],
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
     credentials: true
@@ -158,7 +158,7 @@ startServer();
 const setupSocketIO = (server) => {
     const io = require('socket.io')(server, {
         cors: {
-            origin: ['https://soulspacehealth.vercel.app/', 'http://127.0.0.1:3000'],
+            origin: ['https://soulspacehealth.vercel.app', 'http://localhost:3000', 'http://127.0.0.1:3000'],
             methods: ['GET', 'POST'],
             allowedHeaders: ['Content-Type', 'Authorization'],
             credentials: true
