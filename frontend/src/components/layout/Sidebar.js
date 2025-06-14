@@ -575,7 +575,8 @@ const Sidebar = ({ mobileOpen, onDrawerToggle }) => {
 
   const sidebarTheme = getSidebarTheme();
 
-  const drawer = (
+  // Helper to render sidebar content with a given minimized state
+  const renderDrawerContent = (minimized) => (
     <Box sx={{
       display: 'flex',
       flexDirection: 'column',
@@ -583,7 +584,7 @@ const Sidebar = ({ mobileOpen, onDrawerToggle }) => {
       background: theme.palette.mode === 'dark'
         ? 'linear-gradient(180deg, rgba(30, 41, 59, 0.8) 0%, rgba(15, 23, 42, 0.9) 100%)'
         : 'linear-gradient(180deg, rgba(255, 255, 255, 0.9) 0%, rgba(248, 250, 252, 0.95) 100%)',
-      width: isMinimized ? miniDrawerWidth : drawerWidth,
+      width: minimized ? miniDrawerWidth : drawerWidth,
       transition: theme.transitions.create('width', {
         easing: theme.transitions.easing.sharp,
         duration: theme.transitions.duration.enteringScreen,
@@ -594,13 +595,13 @@ const Sidebar = ({ mobileOpen, onDrawerToggle }) => {
         <Box 
           sx={{ 
             display: 'flex', 
-            justifyContent: isMinimized ? 'center' : 'flex-end',
+            justifyContent: minimized ? 'center' : 'flex-end',
             p: 1,
             borderBottom: '1px solid',
             borderColor: 'divider',
           }}
         >
-          <Tooltip title={isMinimized ? "Expand sidebar" : "Collapse sidebar"}>
+          <Tooltip title={minimized ? "Expand sidebar" : "Collapse sidebar"}>
             <IconButton 
               onClick={toggleMinimized}
               size="small"
@@ -613,7 +614,7 @@ const Sidebar = ({ mobileOpen, onDrawerToggle }) => {
                 transition: 'all 0.2s ease',
               }}
             >
-              {isMinimized ? <ChevronRightIcon /> : <ChevronLeftIcon />}
+              {minimized ? <ChevronRightIcon /> : <ChevronLeftIcon />}
             </IconButton>
           </Tooltip>
         </Box>
@@ -622,7 +623,7 @@ const Sidebar = ({ mobileOpen, onDrawerToggle }) => {
       {/* User Profile Section */}
       <Box
         sx={{
-          p: isMinimized ? 1.5 : 3,
+          p: minimized ? 1.5 : 3,
           display: 'flex',
           flexDirection: 'column',
           alignItems: 'center',
@@ -645,15 +646,15 @@ const Sidebar = ({ mobileOpen, onDrawerToggle }) => {
       >
         <Avatar
           sx={{
-            width: isMinimized ? 50 : 90,
-            height: isMinimized ? 50 : 90,
-            mb: isMinimized ? 0.5 : 1,
+            width: minimized ? 50 : 90,
+            height: minimized ? 50 : 90,
+            mb: minimized ? 0.5 : 1,
             border: '3px solid',
             borderColor: getRoleColor(user?.role),
             boxShadow: `0 0 0 3px ${alpha(getRoleColor(user?.role), 0.2)}, 0 8px 16px ${alpha(theme.palette.common.black, 0.15)}`,
             background: `linear-gradient(135deg, ${alpha(getRoleColor(user?.role), 0.8)} 0%, ${alpha(theme.palette.primary.main, 0.9)} 100%)`,
             color: '#fff',
-            fontSize: isMinimized ? '1.2rem' : '2rem',
+            fontSize: minimized ? '1.2rem' : '2rem',
             fontWeight: 'bold',
             transition: 'all 0.3s ease',
             '&:hover': {
@@ -676,7 +677,7 @@ const Sidebar = ({ mobileOpen, onDrawerToggle }) => {
           {getInitials(user?.name)}
         </Avatar>
         
-        {!isMinimized && (
+        {!minimized && (
           <>
             <Typography variant="h6" sx={{ mt: 1, fontWeight: 700, textAlign: 'center' }}>
               {user?.name || 'User'}
@@ -707,15 +708,15 @@ const Sidebar = ({ mobileOpen, onDrawerToggle }) => {
       <Box sx={{ 
         flexGrow: 1, 
         overflow: 'auto', 
-        px: isMinimized ? 0.5 : 2, 
-        py: isMinimized ? 2 : 3 
+        px: minimized ? 0.5 : 2, 
+        py: minimized ? 2 : 3 
       }}>
         <List component="nav" sx={{ width: '100%' }}>
           {getMenuItems().map((item) => {
             const isActive = location.pathname === item.path;
             return (
               <Tooltip 
-                title={isMinimized ? item.text : ""} 
+                title={minimized ? item.text : ""} 
                 placement="right"
                 key={item.text}
               >
@@ -725,13 +726,13 @@ const Sidebar = ({ mobileOpen, onDrawerToggle }) => {
                   sx={{
                     borderRadius: 2,
                     mb: 1,
-                    px: isMinimized ? 1 : 2,
+                    px: minimized ? 1 : 2,
                     py: 1.2,
-                    justifyContent: isMinimized ? 'center' : 'flex-start',
+                    justifyContent: minimized ? 'center' : 'flex-start',
                     transition: 'all 0.2s ease',
                     position: 'relative',
                     overflow: 'hidden',
-                    minHeight: isMinimized ? '48px' : 'auto',
+                    minHeight: minimized ? '48px' : 'auto',
                     '&.Mui-selected': {
                       bgcolor: alpha(getRoleColor(user?.role), 0.12),
                       '&:hover': {
@@ -750,15 +751,15 @@ const Sidebar = ({ mobileOpen, onDrawerToggle }) => {
                     },
                     '&:hover': {
                       bgcolor: alpha(getRoleColor(user?.role), 0.08),
-                      transform: isMinimized ? 'scale(1.05)' : 'translateX(4px)',
+                      transform: minimized ? 'scale(1.05)' : 'translateX(4px)',
                     },
                   }}
                 >
                   <ListItemIcon
                     sx={{
                       color: isActive ? getRoleColor(user?.role) : 'text.secondary',
-                      minWidth: isMinimized ? 0 : 40,
-                      mr: isMinimized ? 0 : 2,
+                      minWidth: minimized ? 0 : 40,
+                      mr: minimized ? 0 : 2,
                       justifyContent: 'center',
                       transition: 'all 0.2s ease',
                       transform: isActive ? 'scale(1.1)' : 'scale(1)',
@@ -767,7 +768,7 @@ const Sidebar = ({ mobileOpen, onDrawerToggle }) => {
                     {item.icon}
                   </ListItemIcon>
                   
-                  {!isMinimized && (
+                  {!minimized && (
                     <ListItemText
                       primary={item.text}
                       primaryTypographyProps={{
@@ -779,7 +780,7 @@ const Sidebar = ({ mobileOpen, onDrawerToggle }) => {
                     />
                   )}
                   
-                  {!isMinimized && item.badge && (
+                  {!minimized && item.badge && (
                     <Badge
                       badgeContent={item.badge.count}
                       color={item.badge.color}
@@ -797,7 +798,7 @@ const Sidebar = ({ mobileOpen, onDrawerToggle }) => {
                   )}
                   
                   {/* Show badges as dots when minimized */}
-                  {isMinimized && item.badge && (
+                  {minimized && item.badge && (
                     <Box
                       sx={{
                         position: 'absolute',
@@ -821,18 +822,18 @@ const Sidebar = ({ mobileOpen, onDrawerToggle }) => {
       {/* Footer */}
       <Box
         sx={{
-          p: isMinimized ? 1 : 2,
+          p: minimized ? 1 : 2,
           borderTop: '1px solid',
           borderColor: 'divider',
           display: 'flex',
           alignItems: 'center',
-          justifyContent: isMinimized ? 'center' : 'space-between',
+          justifyContent: minimized ? 'center' : 'space-between',
           background: alpha(theme.palette.background.paper, 0.6),
           backdropFilter: 'blur(8px)',
-          flexDirection: isMinimized ? 'column' : 'row',
+          flexDirection: minimized ? 'column' : 'row',
         }}
       >
-        {!isMinimized && (
+        {!minimized && (
           <Box>
             <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.5, fontWeight: 500 }}>
               SoulSpace Health
@@ -843,13 +844,13 @@ const Sidebar = ({ mobileOpen, onDrawerToggle }) => {
           </Box>
         )}
         
-        <Box sx={{ display: 'flex', flexDirection: isMinimized ? 'column' : 'row', gap: isMinimized ? 1 : 0 }}>
+        <Box sx={{ display: 'flex', flexDirection: minimized ? 'column' : 'row', gap: minimized ? 1 : 0 }}>
           <Tooltip title="Settings">
             <IconButton
               size="small"
               onClick={() => navigate('/settings')}
               sx={{
-                mr: isMinimized ? 0 : 1,
+                mr: minimized ? 0 : 1,
                 color: 'text.secondary',
                 '&:hover': {
                   color: getRoleColor(user?.role),
@@ -877,6 +878,29 @@ const Sidebar = ({ mobileOpen, onDrawerToggle }) => {
           </Tooltip>
         </Box>
       </Box>
+    </Box>
+  );
+
+  // Render the sidebar content with forced maximized state on mobile
+  const drawerMobile = (
+    <Box sx={{
+      display: 'flex',
+      flexDirection: 'column',
+      height: '100%',
+      background: theme.palette.mode === 'dark'
+        ? 'linear-gradient(180deg, rgba(30, 41, 59, 0.8) 0%, rgba(15, 23, 42, 0.9) 100%)'
+        : 'linear-gradient(180deg, rgba(255, 255, 255, 0.9) 0%, rgba(248, 250, 252, 0.95) 100%)',
+      width: drawerWidth,
+      transition: theme.transitions.create('width', {
+        easing: theme.transitions.easing.sharp,
+        duration: theme.transitions.duration.enteringScreen,
+      }),
+    }}>
+      {/* Toggle Button - Only visible on desktop */}
+      {/* ...existing code for toggle button, but skip on mobile... */}
+      {/* User Profile Section, Menu Items, Footer ... */}
+      {/* Copy the content of 'drawer' but always use isMinimized = false here */}
+      {/* ...existing code, but set isMinimized = false for all relevant sections... */}
     </Box>
   );
 
@@ -933,7 +957,8 @@ const Sidebar = ({ mobileOpen, onDrawerToggle }) => {
           },
         }}
       >
-        {drawer}
+        {/* Always maximized sidebar on mobile */}
+        {renderDrawerContent(false)}
       </Drawer>
 
       {/* Desktop drawer */}
@@ -974,7 +999,7 @@ const Sidebar = ({ mobileOpen, onDrawerToggle }) => {
         }}
         open
       >
-        {drawer}
+        {renderDrawerContent(isMinimized)}
       </Drawer>
     </Box>
   );

@@ -16,6 +16,7 @@ import {
   Tooltip,
   useTheme,
   alpha,
+  Drawer,
 } from '@mui/material';
 import {
   Dashboard as DashboardIcon,
@@ -35,10 +36,18 @@ import {
 import axios from '../../utils/axiosConfig';
 import { getAvatarUrl, getInitials } from '../../utils/avatarUtils';
 
-const DoctorSidebar = () => {
+const drawerWidth = 300;
+
+const DoctorSidebar = ({ mobileOpen, handleDrawerToggle }) => {
   const theme = useTheme();
   const navigate = useNavigate();
   const location = useLocation();
+  const isMobile = /xs|sm/.test(theme.breakpoints.keys.join(',')) ? window.innerWidth < theme.breakpoints.values.sm : false;
+  // Always maximized on mobile
+  const [isMinimized, setIsMinimized] = useState(false);
+  useEffect(() => {
+    if (mobileOpen && isMobile) setIsMinimized(false);
+  }, [mobileOpen, isMobile]);
 
   // Get user data from Redux store
   const { user: oldAuthUser } = useSelector((state) => state.auth);
@@ -188,8 +197,36 @@ const DoctorSidebar = () => {
     navigate('/login');
   };
 
-  return (
-    <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+  // Sidebar content (always maximized)
+  const sidebarContent = (
+    <Box sx={{
+      width: drawerWidth,
+      minWidth: drawerWidth,
+      maxWidth: drawerWidth,
+      display: 'flex',
+      flexDirection: 'column',
+      height: '100vh',
+      position: { xs: 'relative', sm: 'fixed' },
+      top: 0,
+      left: 0,
+      zIndex: 1402,
+      bgcolor: 'transparent',
+      borderRight: `1px solid ${theme.palette.divider}`,
+      transition: 'all 0.3s cubic-bezier(.4,2,.6,1)',
+      boxShadow: '0 8px 32px 0 rgba(0,0,0,0.18)',
+      background: theme.palette.mode === 'dark'
+        ? 'linear-gradient(135deg, #232b3e 0%, #2e3a59 100%)'
+        : 'linear-gradient(135deg, #f8fafc 0%, #e0e7ef 100%)',
+      borderRadius: '0 28px 28px 0',
+      overflow: 'hidden',
+      backdropFilter: 'blur(18px)',
+      borderLeft: 'none',
+      borderTop: 'none',
+      borderBottom: 'none',
+      borderImage: 'none',
+      borderWidth: 0,
+      outline: `0 0 0 2px ${alpha(theme.palette.primary.main, 0.13)}`,
+    }}>
       {/* User Profile */}
       <Box
         sx={{
@@ -434,6 +471,79 @@ const DoctorSidebar = () => {
         </Box>
       </Box>
     </Box>
+  );
+
+  // Responsive rendering: Drawer for mobile, permanent for sm+
+  return (
+    <>
+      {/* Mobile Drawer - zIndex above header */}
+      <Drawer
+        variant="temporary"
+        open={mobileOpen}
+        onClose={handleDrawerToggle}
+        ModalProps={{ keepMounted: true }}
+        sx={{
+          display: { xs: 'block', sm: 'none' },
+          zIndex: 1402,
+          '& .MuiDrawer-paper': {
+            width: drawerWidth,
+            boxSizing: 'border-box',
+            borderRight: '1px solid',
+            borderColor: 'divider',
+            boxShadow: '0 12px 32px 0 rgba(0,0,0,0.22)',
+            zIndex: 1402,
+            mt: '64px',
+            height: 'calc(100% - 64px)',
+            transition: theme.transitions.create('width', {
+              easing: theme.transitions.easing.sharp,
+              duration: theme.transitions.duration.enteringScreen,
+            }),
+            overflow: 'auto',
+            background: theme.palette.mode === 'dark'
+              ? 'linear-gradient(135deg, #232b3e 0%, #2e3a59 100%)'
+              : 'linear-gradient(135deg, #f8fafc 0%, #e0e7ef 100%)',
+            borderRadius: '0 28px 28px 0',
+            backdropFilter: 'blur(18px)',
+          },
+        }}
+        aria-label="doctor sidebar"
+      >
+        {sidebarContent}
+      </Drawer>
+
+      {/* Desktop/Tablet permanent sidebar - zIndex above header */}
+      <Drawer
+        variant="permanent"
+        sx={{
+          display: { xs: 'none', sm: 'block' },
+          zIndex: 1402,
+          '& .MuiDrawer-paper': {
+            width: drawerWidth,
+            minWidth: drawerWidth,
+            maxWidth: drawerWidth,
+            boxSizing: 'border-box',
+            borderRight: '1px solid',
+            borderColor: 'divider',
+            boxShadow: '0 8px 32px 0 rgba(0,0,0,0.18)',
+            background: theme.palette.mode === 'dark'
+              ? 'linear-gradient(135deg, #232b3e 0%, #2e3a59 100%)'
+              : 'linear-gradient(135deg, #f8fafc 0%, #e0e7ef 100%)',
+            borderRadius: '0 28px 28px 0',
+            transition: theme.transitions.create('width', {
+              easing: theme.transitions.easing.sharp,
+              duration: theme.transitions.duration.enteringScreen,
+            }),
+            overflow: 'auto',
+            backdropFilter: 'blur(18px)',
+          },
+        }}
+        open
+        PaperProps={{ style: { position: 'fixed', height: '100vh', top: 0, left: 0, zIndex: 1402 } }}
+        aria-label="doctor sidebar"
+      >
+        {sidebarContent}
+      </Drawer>
+    </>
   );
 };
 
