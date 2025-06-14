@@ -71,7 +71,12 @@ const PatientWithHospitalSidebar = ({ user, mobileOpen, handleDrawerToggle, assi
   const theme = useTheme();
   const isLaptop = useMediaQuery(theme.breakpoints.between('md', 'lg'));
   const isDesktop = useMediaQuery(theme.breakpoints.up('lg'));
-  const [isMinimized, setIsMinimized] = useState(true); // Sidebar starts minimized
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+  // Always expanded on mobile Drawer
+  const [isMinimized, setIsMinimized] = useState(true);
+  useEffect(() => {
+    if (mobileOpen && isMobile) setIsMinimized(false);
+  }, [mobileOpen, isMobile]);
   const sidebarWidth = isMinimized ? 70 : isDesktop ? 320 : isLaptop ? 260 : 220;
 
   // Fix: define location and navigate using react-router-dom hooks
@@ -620,6 +625,11 @@ const PatientWithHospitalSidebar = ({ user, mobileOpen, handleDrawerToggle, assi
     logDebugData();
   }, [hospitalData, doctorData, hospital, assignedDoctor]);
 
+  // Modern, beautiful sidebar background
+  const sidebarBg = theme.palette.mode === 'dark'
+    ? 'linear-gradient(135deg, rgba(30,41,59,0.95) 0%, rgba(51,65,85,0.92) 100%)'
+    : 'linear-gradient(135deg, rgba(255,255,255,0.85) 0%, rgba(236,245,255,0.95) 100%)';
+
   // Drawer content
   const drawerContent = (
     <Box
@@ -630,61 +640,80 @@ const PatientWithHospitalSidebar = ({ user, mobileOpen, handleDrawerToggle, assi
         display: 'flex',
         flexDirection: 'column',
         height: '100vh',
-        position: 'fixed',
+        position: { xs: 'relative', md: 'fixed' },
         top: 0,
         left: 0,
-        zIndex: 1300, // Higher z-index to ensure above header
-        bgcolor: theme.palette.background.default,
+        zIndex: 1402,
+        bgcolor: 'transparent',
         borderRight: `1px solid ${theme.palette.divider}`,
         transition: 'all 0.3s cubic-bezier(.4,2,.6,1)',
-        boxShadow: isMinimized ? 1 : 3,
+        boxShadow: isMinimized ? '0 4px 24px 0 rgba(0,0,0,0.10)' : '0 8px 32px 0 rgba(0,0,0,0.18)',
+        background: theme.palette.mode === 'dark'
+          ? 'linear-gradient(135deg, #232b3e 0%, #2e3a59 100%)'
+          : 'linear-gradient(135deg, #f8fafc 0%, #e0e7ef 100%)',
+        borderRadius: isMinimized ? '0 18px 18px 0' : '0 28px 28px 0',
+        overflow: 'hidden',
+        backdropFilter: 'blur(18px)',
+        borderLeft: 'none',
+        borderTop: 'none',
+        borderBottom: 'none',
+        borderImage: 'none',
+        borderWidth: 0,
+        outline: isMinimized ? 'none' : `0 0 0 2px ${alpha(theme.palette.primary.main, 0.13)}`,
       }}
     >
-      {/* Minimize/Expand Button - always visible, fixed at top left of sidebar */}
-      <Box sx={{ position: 'fixed', top: 16, left: sidebarWidth - (isMinimized ? 40 : 48), zIndex: 1400 }}>
-        <IconButton size="small" onClick={toggleMinimized} color="primary" sx={{ bgcolor: 'background.paper', boxShadow: 1 }}>
-          {isMinimized ? <ChevronRight fontSize="small" /> : <ChevronLeft fontSize="small" />}
-        </IconButton>
-      </Box>
-
+      {/* Minimize/Expand Button - only visible on md+ */}
+      {!isMobile && (
+        <Box sx={{ position: 'fixed', top: 18, left: sidebarWidth - (isMinimized ? 44 : 52), zIndex: 1403 }}>
+          <IconButton size="small" onClick={() => setIsMinimized((prev) => !prev)} color="primary" sx={{ bgcolor: 'background.paper', boxShadow: 2, borderRadius: 2 }}>
+            {isMinimized ? <ChevronRight fontSize="small" /> : <ChevronLeft fontSize="small" />}
+          </IconButton>
+        </Box>
+      )}
       {/* Sidebar Content Scrollable */}
-      <Box sx={{ flexGrow: 1, overflowY: 'auto', px: isMinimized ? 0.5 : 2, py: 1 }}>
-        <List sx={{ px: 0 }} component="nav">
-          {/* Only show icons and tooltips when minimized */}
+      <Box sx={{ flexGrow: 1, overflowY: 'auto', px: isMinimized ? 0.5 : 2.5, py: isMinimized ? 1.5 : 2.5 }}>
+        <List sx={{ px: 0, gap: isMinimized ? 1.5 : 2 }} component="nav">
+          {/* Section: Dashboard */}
           <ListItemButton
             selected={isActive('/patient/dashboard')}
             onClick={() => navigate('/patient/dashboard')}
             sx={{
-              borderRadius: 2,
-              mb: 0.5,
+              borderRadius: 3,
+              mb: isMinimized ? 1.5 : 2,
               justifyContent: isMinimized ? 'center' : 'flex-start',
-              px: isMinimized ? 0.5 : 2,
-              ...(isMinimized && {
-                flexDirection: 'column',
-                alignItems: 'center',
-                py: 1.5,
-                minHeight: 56,
-                bgcolor: 'background.paper',
-                boxShadow: 1,
-                '&:hover': {
-                  bgcolor: alpha(theme.palette.primary.main, 0.08),
-                  boxShadow: 3,
-                },
-              }),
+              px: isMinimized ? 0.5 : 2.5,
+              py: isMinimized ? 1.5 : 2,
+              minHeight: isMinimized ? 60 : 64,
+              boxShadow: isMinimized ? 2 : 0,
+              bgcolor: isMinimized ? alpha(theme.palette.background.paper, 0.7) : 'transparent',
+              transition: 'all 0.2s',
+              '&:hover, &:focus': {
+                bgcolor: isMinimized
+                  ? alpha(theme.palette.primary.main, 0.10)
+                  : alpha(theme.palette.primary.main, 0.07),
+                boxShadow: isMinimized ? 4 : 2,
+                border: `1.5px solid ${alpha(theme.palette.primary.main, 0.13)}`,
+              },
+              display: 'flex',
+              flexDirection: isMinimized ? 'column' : 'row',
+              alignItems: 'center',
+              gap: isMinimized ? 0.5 : 2,
             }}
           >
             <Tooltip title={isMinimized ? 'Dashboard' : ''} placement="right">
-              <ListItemIcon sx={{ minWidth: 0, justifyContent: 'center', color: isActive('/patient/dashboard') ? theme.palette.primary.main : 'inherit', fontSize: 28 }}>
+              <ListItemIcon sx={{ minWidth: 0, justifyContent: 'center', color: isActive('/patient/dashboard') ? theme.palette.primary.main : 'inherit', fontSize: isMinimized ? 32 : 28, mb: isMinimized ? 0.5 : 0 }}>
                 <DashboardIcon fontSize="medium" />
               </ListItemIcon>
             </Tooltip>
             {!isMinimized && (
               <ListItemText
                 primary="Dashboard"
-                primaryTypographyProps={{ fontSize: '0.9rem', fontWeight: isActive('/patient/dashboard') ? 600 : 500 }}
+                primaryTypographyProps={{ fontSize: '1.05rem', fontWeight: isActive('/patient/dashboard') ? 700 : 500, letterSpacing: 0.2 }}
               />
             )}
           </ListItemButton>
+          {/* Divider between sections */}
+          <Divider sx={{ my: isMinimized ? 1.5 : 2, borderColor: alpha(theme.palette.primary.main, 0.10) }} />
 
           {/* Appointments Section */}
           <Box
@@ -699,22 +728,23 @@ const PatientWithHospitalSidebar = ({ user, mobileOpen, handleDrawerToggle, assi
             <Box
               sx={{
                 width: 4,
-                height: 16,
+                height: 18,
                 borderRadius: 1,
                 bgcolor: theme.palette.primary.main,
                 mr: 1.5,
-                boxShadow: `0 2px 4px ${alpha(theme.palette.primary.main, 0.25)}`
+                boxShadow: `0 2px 8px ${alpha(theme.palette.primary.main, 0.18)}`
               }}
             />
             <Typography
               variant="caption"
               sx={{
-                fontWeight: 700,
+                fontWeight: 800,
                 textTransform: 'uppercase',
-                letterSpacing: '0.5px',
-                fontSize: '0.7rem',
+                letterSpacing: '0.7px',
+                fontSize: isMinimized ? '0.72rem' : '0.8rem',
                 color: theme.palette.primary.main,
-                textShadow: `0 1px 2px ${alpha(theme.palette.primary.main, 0.2)}`
+                textShadow: `0 1px 2px ${alpha(theme.palette.primary.main, 0.18)}`,
+                ml: isMinimized ? 0 : 0.5,
               }}
             >
               Appointments
@@ -728,23 +758,27 @@ const PatientWithHospitalSidebar = ({ user, mobileOpen, handleDrawerToggle, assi
               borderRadius: 2,
               mb: 0.5,
               justifyContent: isMinimized ? 'center' : 'flex-start',
-              px: isMinimized ? 0.5 : 2,
-              ...(isMinimized && {
-                flexDirection: 'column',
-                alignItems: 'center',
-                py: 1.5,
-                minHeight: 56,
-                bgcolor: 'background.paper',
-                boxShadow: 1,
-                '&:hover': {
-                  bgcolor: alpha(theme.palette.primary.main, 0.08),
-                  boxShadow: 3,
-                },
-              }),
+              px: isMinimized ? 0.5 : 2.5,
+              py: isMinimized ? 1.5 : 2,
+              minHeight: isMinimized ? 60 : 64,
+              boxShadow: isMinimized ? 2 : 0,
+              bgcolor: isMinimized ? alpha(theme.palette.background.paper, 0.7) : 'transparent',
+              transition: 'all 0.2s',
+              '&:hover, &:focus': {
+                bgcolor: isMinimized
+                  ? alpha(theme.palette.primary.main, 0.10)
+                  : alpha(theme.palette.primary.main, 0.07),
+                boxShadow: isMinimized ? 4 : 2,
+                border: `1.5px solid ${alpha(theme.palette.primary.main, 0.13)}`,
+              },
+              display: 'flex',
+              flexDirection: isMinimized ? 'column' : 'row',
+              alignItems: 'center',
+              gap: isMinimized ? 0.5 : 2,
             }}
           >
             <Tooltip title={isMinimized ? 'Appointments' : ''} placement="right">
-              <ListItemIcon sx={{ minWidth: 0, justifyContent: 'center', color: isActive('/patient/appointments') ? theme.palette.primary.main : 'inherit', fontSize: 28 }}>
+              <ListItemIcon sx={{ minWidth: 0, justifyContent: 'center', color: isActive('/patient/appointments') ? theme.palette.primary.main : 'inherit', fontSize: isMinimized ? 32 : 28, mb: isMinimized ? 0.5 : 0 }}>
                 <EventIcon fontSize="medium" />
               </ListItemIcon>
             </Tooltip>
@@ -761,23 +795,27 @@ const PatientWithHospitalSidebar = ({ user, mobileOpen, handleDrawerToggle, assi
               borderRadius: 2,
               mb: 0.5,
               justifyContent: isMinimized ? 'center' : 'flex-start',
-              px: isMinimized ? 0.5 : 2,
-              ...(isMinimized && {
-                flexDirection: 'column',
-                alignItems: 'center',
-                py: 1.5,
-                minHeight: 56,
-                bgcolor: 'background.paper',
-                boxShadow: 1,
-                '&:hover': {
-                  bgcolor: alpha(theme.palette.primary.main, 0.08),
-                  boxShadow: 3,
-                },
-              }),
+              px: isMinimized ? 0.5 : 2.5,
+              py: isMinimized ? 1.5 : 2,
+              minHeight: isMinimized ? 60 : 64,
+              boxShadow: isMinimized ? 2 : 0,
+              bgcolor: isMinimized ? alpha(theme.palette.background.paper, 0.7) : 'transparent',
+              transition: 'all 0.2s',
+              '&:hover, &:focus': {
+                bgcolor: isMinimized
+                  ? alpha(theme.palette.primary.main, 0.10)
+                  : alpha(theme.palette.primary.main, 0.07),
+                boxShadow: isMinimized ? 4 : 2,
+                border: `1.5px solid ${alpha(theme.palette.primary.main, 0.13)}`,
+              },
+              display: 'flex',
+              flexDirection: isMinimized ? 'column' : 'row',
+              alignItems: 'center',
+              gap: isMinimized ? 0.5 : 2,
             }}
           >
             <Tooltip title={isMinimized ? 'Virtual Consultations' : ''} placement="right">
-              <ListItemIcon sx={{ minWidth: 0, justifyContent: 'center', color: isActive('/patient/online-appointments') ? theme.palette.primary.main : 'inherit', fontSize: 28 }}>
+              <ListItemIcon sx={{ minWidth: 0, justifyContent: 'center', color: isActive('/patient/online-appointments') ? theme.palette.primary.main : 'inherit', fontSize: isMinimized ? 32 : 28, mb: isMinimized ? 0.5 : 0 }}>
                 <VideoCallIcon fontSize="medium" />
               </ListItemIcon>
             </Tooltip>
@@ -797,22 +835,23 @@ const PatientWithHospitalSidebar = ({ user, mobileOpen, handleDrawerToggle, assi
             <Box
               sx={{
                 width: 4,
-                height: 16,
+                height: 18,
                 borderRadius: 1,
                 bgcolor: theme.palette.secondary.main,
                 mr: 1.5,
-                boxShadow: `0 2px 4px ${alpha(theme.palette.secondary.main, 0.25)}`
+                boxShadow: `0 2px 8px ${alpha(theme.palette.secondary.main, 0.18)}`
               }}
             />
             <Typography
               variant="caption"
               sx={{
-                fontWeight: 700,
+                fontWeight: 800,
                 textTransform: 'uppercase',
-                letterSpacing: '0.5px',
-                fontSize: '0.7rem',
+                letterSpacing: '0.7px',
+                fontSize: isMinimized ? '0.72rem' : '0.8rem',
                 color: theme.palette.secondary.main,
-                textShadow: `0 1px 2px ${alpha(theme.palette.secondary.main, 0.2)}`
+                textShadow: `0 1px 2px ${alpha(theme.palette.secondary.main, 0.18)}`,
+                ml: isMinimized ? 0 : 0.5,
               }}
             >
               Medical Information
@@ -826,23 +865,27 @@ const PatientWithHospitalSidebar = ({ user, mobileOpen, handleDrawerToggle, assi
               borderRadius: 2,
               mb: 0.5,
               justifyContent: isMinimized ? 'center' : 'flex-start',
-              px: isMinimized ? 0.5 : 2,
-              ...(isMinimized && {
-                flexDirection: 'column',
-                alignItems: 'center',
-                py: 1.5,
-                minHeight: 56,
-                bgcolor: 'background.paper',
-                boxShadow: 1,
-                '&:hover': {
-                  bgcolor: alpha(theme.palette.secondary.main, 0.08),
-                  boxShadow: 3,
-                },
-              }),
+              px: isMinimized ? 0.5 : 2.5,
+              py: isMinimized ? 1.5 : 2,
+              minHeight: isMinimized ? 60 : 64,
+              boxShadow: isMinimized ? 2 : 0,
+              bgcolor: isMinimized ? alpha(theme.palette.background.paper, 0.7) : 'transparent',
+              transition: 'all 0.2s',
+              '&:hover, &:focus': {
+                bgcolor: isMinimized
+                  ? alpha(theme.palette.secondary.main, 0.10)
+                  : alpha(theme.palette.secondary.main, 0.07),
+                boxShadow: isMinimized ? 4 : 2,
+                border: `1.5px solid ${alpha(theme.palette.secondary.main, 0.13)}`,
+              },
+              display: 'flex',
+              flexDirection: isMinimized ? 'column' : 'row',
+              alignItems: 'center',
+              gap: isMinimized ? 0.5 : 2,
             }}
           >
             <Tooltip title={isMinimized ? 'Medical Records' : ''} placement="right">
-              <ListItemIcon sx={{ minWidth: 0, justifyContent: 'center', color: isActive('/patient/records') ? theme.palette.primary.main : 'inherit', fontSize: 28 }}>
+              <ListItemIcon sx={{ minWidth: 0, justifyContent: 'center', color: isActive('/patient/records') ? theme.palette.primary.main : 'inherit', fontSize: isMinimized ? 32 : 28, mb: isMinimized ? 0.5 : 0 }}>
                 <FolderSharedIcon fontSize="medium" />
               </ListItemIcon>
             </Tooltip>
@@ -856,23 +899,27 @@ const PatientWithHospitalSidebar = ({ user, mobileOpen, handleDrawerToggle, assi
               borderRadius: 2,
               mb: 0.5,
               justifyContent: isMinimized ? 'center' : 'flex-start',
-              px: isMinimized ? 0.5 : 2,
-              ...(isMinimized && {
-                flexDirection: 'column',
-                alignItems: 'center',
-                py: 1.5,
-                minHeight: 56,
-                bgcolor: 'background.paper',
-                boxShadow: 1,
-                '&:hover': {
-                  bgcolor: alpha(theme.palette.secondary.main, 0.08),
-                  boxShadow: 3,
-                },
-              }),
+              px: isMinimized ? 0.5 : 2.5,
+              py: isMinimized ? 1.5 : 2,
+              minHeight: isMinimized ? 60 : 64,
+              boxShadow: isMinimized ? 2 : 0,
+              bgcolor: isMinimized ? alpha(theme.palette.background.paper, 0.7) : 'transparent',
+              transition: 'all 0.2s',
+              '&:hover, &:focus': {
+                bgcolor: isMinimized
+                  ? alpha(theme.palette.secondary.main, 0.10)
+                  : alpha(theme.palette.secondary.main, 0.07),
+                boxShadow: isMinimized ? 4 : 2,
+                border: `1.5px solid ${alpha(theme.palette.secondary.main, 0.13)}`,
+              },
+              display: 'flex',
+              flexDirection: isMinimized ? 'column' : 'row',
+              alignItems: 'center',
+              gap: isMinimized ? 0.5 : 2,
             }}
           >
             <Tooltip title={isMinimized ? 'Prescriptions' : ''} placement="right">
-              <ListItemIcon sx={{ minWidth: 0, justifyContent: 'center', color: isActive('/patient/prescriptions') ? theme.palette.primary.main : 'inherit', fontSize: 28 }}>
+              <ListItemIcon sx={{ minWidth: 0, justifyContent: 'center', color: isActive('/patient/prescriptions') ? theme.palette.primary.main : 'inherit', fontSize: isMinimized ? 32 : 28, mb: isMinimized ? 0.5 : 0 }}>
                 <MedicationIcon fontSize="medium" />
               </ListItemIcon>
             </Tooltip>
@@ -886,23 +933,27 @@ const PatientWithHospitalSidebar = ({ user, mobileOpen, handleDrawerToggle, assi
               borderRadius: 2,
               mb: 0.5,
               justifyContent: isMinimized ? 'center' : 'flex-start',
-              px: isMinimized ? 0.5 : 2,
-              ...(isMinimized && {
-                flexDirection: 'column',
-                alignItems: 'center',
-                py: 1.5,
-                minHeight: 56,
-                bgcolor: 'background.paper',
-                boxShadow: 1,
-                '&:hover': {
-                  bgcolor: alpha(theme.palette.secondary.main, 0.08),
-                  boxShadow: 3,
-                },
-              }),
+              px: isMinimized ? 0.5 : 2.5,
+              py: isMinimized ? 1.5 : 2,
+              minHeight: isMinimized ? 60 : 64,
+              boxShadow: isMinimized ? 2 : 0,
+              bgcolor: isMinimized ? alpha(theme.palette.background.paper, 0.7) : 'transparent',
+              transition: 'all 0.2s',
+              '&:hover, &:focus': {
+                bgcolor: isMinimized
+                  ? alpha(theme.palette.secondary.main, 0.10)
+                  : alpha(theme.palette.secondary.main, 0.07),
+                boxShadow: isMinimized ? 4 : 2,
+                border: `1.5px solid ${alpha(theme.palette.secondary.main, 0.13)}`,
+              },
+              display: 'flex',
+              flexDirection: isMinimized ? 'column' : 'row',
+              alignItems: 'center',
+              gap: isMinimized ? 0.5 : 2,
             }}
           >
             <Tooltip title={isMinimized ? 'Lab Results' : ''} placement="right">
-              <ListItemIcon sx={{ minWidth: 0, justifyContent: 'center', color: isActive('/patient/lab-results') ? theme.palette.primary.main : 'inherit', fontSize: 28 }}>
+              <ListItemIcon sx={{ minWidth: 0, justifyContent: 'center', color: isActive('/patient/lab-results') ? theme.palette.primary.main : 'inherit', fontSize: isMinimized ? 32 : 28, mb: isMinimized ? 0.5 : 0 }}>
                 <ScienceIcon fontSize="medium" />
               </ListItemIcon>
             </Tooltip>
@@ -922,22 +973,23 @@ const PatientWithHospitalSidebar = ({ user, mobileOpen, handleDrawerToggle, assi
             <Box
               sx={{
                 width: 4,
-                height: 16,
+                height: 18,
                 borderRadius: 1,
                 bgcolor: theme.palette.info.main,
                 mr: 1.5,
-                boxShadow: `0 2px 4px ${alpha(theme.palette.info.main, 0.25)}`
+                boxShadow: `0 2px 8px ${alpha(theme.palette.info.main, 0.18)}`
               }}
             />
             <Typography
               variant="caption"
               sx={{
-                fontWeight: 700,
+                fontWeight: 800,
                 textTransform: 'uppercase',
-                letterSpacing: '0.5px',
-                fontSize: '0.7rem',
+                letterSpacing: '0.7px',
+                fontSize: isMinimized ? '0.72rem' : '0.8rem',
                 color: theme.palette.info.main,
-                textShadow: `0 1px 2px ${alpha(theme.palette.info.main, 0.2)}`
+                textShadow: `0 1px 2px ${alpha(theme.palette.info.main, 0.18)}`,
+                ml: isMinimized ? 0 : 0.5,
               }}
             >
               Health Monitoring
@@ -950,23 +1002,27 @@ const PatientWithHospitalSidebar = ({ user, mobileOpen, handleDrawerToggle, assi
               borderRadius: 2,
               mb: 0.5,
               justifyContent: isMinimized ? 'center' : 'flex-start',
-              px: isMinimized ? 0.5 : 2,
-              ...(isMinimized && {
-                flexDirection: 'column',
-                alignItems: 'center',
-                py: 1.5,
-                minHeight: 56,
-                bgcolor: 'background.paper',
-                boxShadow: 1,
-                '&:hover': {
-                  bgcolor: alpha(theme.palette.info.main, 0.08),
-                  boxShadow: 3,
-                },
-              }),
+              px: isMinimized ? 0.5 : 2.5,
+              py: isMinimized ? 1.5 : 2,
+              minHeight: isMinimized ? 60 : 64,
+              boxShadow: isMinimized ? 2 : 0,
+              bgcolor: isMinimized ? alpha(theme.palette.background.paper, 0.7) : 'transparent',
+              transition: 'all 0.2s',
+              '&:hover, &:focus': {
+                bgcolor: isMinimized
+                  ? alpha(theme.palette.info.main, 0.10)
+                  : alpha(theme.palette.info.main, 0.07),
+                boxShadow: isMinimized ? 4 : 2,
+                border: `1.5px solid ${alpha(theme.palette.info.main, 0.13)}`,
+              },
+              display: 'flex',
+              flexDirection: isMinimized ? 'column' : 'row',
+              alignItems: 'center',
+              gap: isMinimized ? 0.5 : 2,
             }}
           >
             <Tooltip title={isMinimized ? 'Health Stats' : ''} placement="right">
-              <ListItemIcon sx={{ minWidth: 0, justifyContent: 'center', color: isActive('/patient/health-stats') ? theme.palette.primary.main : 'inherit', fontSize: 28 }}>
+              <ListItemIcon sx={{ minWidth: 0, justifyContent: 'center', color: isActive('/patient/health-stats') ? theme.palette.primary.main : 'inherit', fontSize: isMinimized ? 32 : 28, mb: isMinimized ? 0.5 : 0 }}>
                 <MonitorHeartIcon fontSize="medium" />
               </ListItemIcon>
             </Tooltip>
@@ -1295,22 +1351,23 @@ const PatientWithHospitalSidebar = ({ user, mobileOpen, handleDrawerToggle, assi
             <Box
               sx={{
                 width: 4,
-                height: 16,
+                height: 18,
                 borderRadius: 1,
                 bgcolor: theme.palette.success.main,
                 mr: 1.5,
-                boxShadow: `0 2px 4px ${alpha(theme.palette.success.main, 0.25)}`
+                boxShadow: `0 2px 8px ${alpha(theme.palette.success.main, 0.18)}`
               }}
             />
             <Typography
               variant="caption"
               sx={{
-                fontWeight: 700,
+                fontWeight: 800,
                 textTransform: 'uppercase',
-                letterSpacing: '0.5px',
-                fontSize: '0.7rem',
+                letterSpacing: '0.7px',
+                fontSize: isMinimized ? '0.72rem' : '0.8rem',
                 color: theme.palette.success.main,
-                textShadow: `0 1px 2px ${alpha(theme.palette.success.main, 0.2)}`
+                textShadow: `0 1px 2px ${alpha(theme.palette.success.main, 0.18)}`,
+                ml: isMinimized ? 0 : 0.5,
               }}
             >
               Communication
@@ -1324,23 +1381,27 @@ const PatientWithHospitalSidebar = ({ user, mobileOpen, handleDrawerToggle, assi
               borderRadius: 2,
               mb: 0.5,
               justifyContent: isMinimized ? 'center' : 'flex-start',
-              px: isMinimized ? 0.5 : 2,
-              ...(isMinimized && {
-                flexDirection: 'column',
-                alignItems: 'center',
-                py: 1.5,
-                minHeight: 56,
-                bgcolor: 'background.paper',
-                boxShadow: 1,
-                '&:hover': {
-                  bgcolor: alpha(theme.palette.success.main, 0.08),
-                  boxShadow: 3,
-                },
-              }),
+              px: isMinimized ? 0.5 : 2.5,
+              py: isMinimized ? 1.5 : 2,
+              minHeight: isMinimized ? 60 : 64,
+              boxShadow: isMinimized ? 2 : 0,
+              bgcolor: isMinimized ? alpha(theme.palette.background.paper, 0.7) : 'transparent',
+              transition: 'all 0.2s',
+              '&:hover, &:focus': {
+                bgcolor: isMinimized
+                  ? alpha(theme.palette.success.main, 0.10)
+                  : alpha(theme.palette.success.main, 0.07),
+                boxShadow: isMinimized ? 4 : 2,
+                border: `1.5px solid ${alpha(theme.palette.success.main, 0.13)}`,
+              },
+              display: 'flex',
+              flexDirection: isMinimized ? 'column' : 'row',
+              alignItems: 'center',
+              gap: isMinimized ? 0.5 : 2,
             }}
           >
             <Tooltip title={isMinimized ? 'Chat with Doctor' : ''} placement="right">
-              <ListItemIcon sx={{ minWidth: 0, justifyContent: 'center', color: isActive(`/patient/message/${doctorData._id || doctorData.id}`) ? theme.palette.primary.main : 'inherit', fontSize: 28 }}>
+              <ListItemIcon sx={{ minWidth: 0, justifyContent: 'center', color: isActive(`/patient/message/${doctorData._id || doctorData.id}`) ? theme.palette.primary.main : 'inherit', fontSize: isMinimized ? 32 : 28, mb: isMinimized ? 0.5 : 0 }}>
                 <MessageIcon fontSize="medium" />
               </ListItemIcon>
             </Tooltip>
@@ -1368,23 +1429,27 @@ const PatientWithHospitalSidebar = ({ user, mobileOpen, handleDrawerToggle, assi
               borderRadius: 2,
               mb: 0.5,
               justifyContent: isMinimized ? 'center' : 'flex-start',
-              px: isMinimized ? 0.5 : 2,
-              ...(isMinimized && {
-                flexDirection: 'column',
-                alignItems: 'center',
-                py: 1.5,
-                minHeight: 56,
-                bgcolor: 'background.paper',
-                boxShadow: 1,
-                '&:hover': {
-                  bgcolor: alpha(theme.palette.success.main, 0.08),
-                  boxShadow: 3,
-                },
-              }),
+              px: isMinimized ? 0.5 : 2.5,
+              py: isMinimized ? 1.5 : 2,
+              minHeight: isMinimized ? 60 : 64,
+              boxShadow: isMinimized ? 2 : 0,
+              bgcolor: isMinimized ? alpha(theme.palette.background.paper, 0.7) : 'transparent',
+              transition: 'all 0.2s',
+              '&:hover, &:focus': {
+                bgcolor: isMinimized
+                  ? alpha(theme.palette.success.main, 0.10)
+                  : alpha(theme.palette.success.main, 0.07),
+                boxShadow: isMinimized ? 4 : 2,
+                border: `1.5px solid ${alpha(theme.palette.success.main, 0.13)}`,
+              },
+              display: 'flex',
+              flexDirection: isMinimized ? 'column' : 'row',
+              alignItems: 'center',
+              gap: isMinimized ? 0.5 : 2,
             }}
           >
             <Tooltip title={isMinimized ? 'Video Call' : ''} placement="right">
-              <ListItemIcon sx={{ minWidth: 0, justifyContent: 'center', color: isActive(`/patient/call/${doctorData._id || doctorData.id}`) ? theme.palette.primary.main : 'inherit', fontSize: 28 }}>
+              <ListItemIcon sx={{ minWidth: 0, justifyContent: 'center', color: isActive(`/patient/call/${doctorData._id || doctorData.id}`) ? theme.palette.primary.main : 'inherit', fontSize: isMinimized ? 32 : 28, mb: isMinimized ? 0.5 : 0 }}>
                 <VideoCallIcon fontSize="medium" />
               </ListItemIcon>
             </Tooltip>
@@ -1403,13 +1468,15 @@ const PatientWithHospitalSidebar = ({ user, mobileOpen, handleDrawerToggle, assi
       {/* Footer: Only show logo and logout in minimized mode */}
       <Box
         sx={{
-          pt: 2,
-          pb: 1.5,
-          px: isMinimized ? 0.5 : 2,
-          borderTop: `1px solid ${alpha(theme.palette.divider, 0.7)}`,
+          pt: isMinimized ? 1.5 : 2.5,
+          pb: isMinimized ? 1.2 : 2,
+          px: isMinimized ? 0.5 : 2.5,
+          borderTop: `1.5px solid ${alpha(theme.palette.divider, 0.13)}`,
           background: `linear-gradient(to bottom, ${alpha(theme.palette.background.paper, 0.5)}, ${alpha(theme.palette.background.paper, 0.8)})`,
-          backdropFilter: 'blur(8px)',
+          backdropFilter: 'blur(10px)',
           position: 'relative',
+          boxShadow: isMinimized ? 2 : 0,
+          borderRadius: isMinimized ? '0 0 18px 0' : '0 0 28px 0',
         }}
       >
         <Box sx={{ display: 'flex', justifyContent: isMinimized ? 'center' : 'space-between', alignItems: 'center' }}>
@@ -1418,17 +1485,19 @@ const PatientWithHospitalSidebar = ({ user, mobileOpen, handleDrawerToggle, assi
               variant="caption"
               sx={{
                 display: 'block',
-                fontWeight: 600,
+                fontWeight: 700,
                 background: `linear-gradient(90deg, ${theme.palette.secondary.main}, ${theme.palette.primary.main})`,
                 WebkitBackgroundClip: 'text',
                 WebkitTextFillColor: 'transparent',
                 textAlign: isMinimized ? 'center' : 'left',
+                fontSize: isMinimized ? '0.85rem' : '1rem',
+                letterSpacing: 0.5,
               }}
             >
               SoulSpace Health
             </Typography>
             {!isMinimized && (
-              <Typography variant="caption" color="text.disabled" sx={{ fontSize: '0.65rem' }}>
+              <Typography variant="caption" color="text.disabled" sx={{ fontSize: '0.7rem' }}>
                 © 2025 • v1.0.0
               </Typography>
             )}
@@ -1441,11 +1510,13 @@ const PatientWithHospitalSidebar = ({ user, mobileOpen, handleDrawerToggle, assi
               onClick={handleLogout}
               startIcon={<Logout fontSize="small" />}
               sx={{
-                fontSize: '0.7rem',
+                fontSize: '0.8rem',
                 textTransform: 'none',
-                py: 0.5,
-                px: 1,
+                py: 0.7,
+                px: 1.5,
                 minWidth: 'auto',
+                borderRadius: 2,
+                boxShadow: 1,
               }}
             >
               Logout
@@ -1456,7 +1527,74 @@ const PatientWithHospitalSidebar = ({ user, mobileOpen, handleDrawerToggle, assi
     </Box>
   );
 
-  return drawerContent;
+  // Responsive rendering: Drawer for mobile, permanent for md+
+  return (
+    <>
+      {/* Mobile Drawer - zIndex above header */}
+      <Drawer
+        variant="temporary"
+        open={mobileOpen}
+        onClose={handleDrawerToggle}
+        ModalProps={{ keepMounted: true }}
+        sx={{
+          display: { xs: 'block', sm: 'none' },
+          zIndex: 1402,
+          '& .MuiDrawer-paper': {
+            width: sidebarWidth,
+            boxSizing: 'border-box',
+            borderRight: '1px solid',
+            borderColor: 'divider',
+            boxShadow: '0 12px 32px 0 rgba(0,0,0,0.22)',
+            zIndex: 1402,
+            mt: '64px', // Adjust if header height changes
+            height: 'calc(100% - 64px)',
+            transition: theme.transitions.create('width', {
+              easing: theme.transitions.easing.sharp,
+              duration: theme.transitions.duration.enteringScreen,
+            }),
+            overflow: 'auto',
+            background: sidebarBg,
+            borderRadius: '0 24px 24px 0',
+            backdropFilter: 'blur(16px)',
+          },
+        }}
+        aria-label="patient sidebar"
+      >
+        {drawerContent}
+      </Drawer>
+
+      {/* Desktop/Tablet permanent sidebar - zIndex above header */}
+      <Drawer
+        variant="permanent"
+        sx={{
+          display: { xs: 'none', sm: 'block' },
+          zIndex: 1402,
+          '& .MuiDrawer-paper': {
+            width: sidebarWidth,
+            minWidth: sidebarWidth,
+            maxWidth: sidebarWidth,
+            boxSizing: 'border-box',
+            borderRight: '1px solid',
+            borderColor: 'divider',
+            boxShadow: isMinimized ? '0 4px 24px 0 rgba(0,0,0,0.10)' : '0 8px 32px 0 rgba(0,0,0,0.18)',
+            background: sidebarBg,
+            borderRadius: isMinimized ? '0 16px 16px 0' : '0 24px 24px 0',
+            transition: theme.transitions.create('width', {
+              easing: theme.transitions.easing.sharp,
+              duration: theme.transitions.duration.enteringScreen,
+            }),
+            overflow: isMinimized ? 'visible' : 'auto',
+            backdropFilter: 'blur(16px)',
+          },
+        }}
+        open
+        PaperProps={{ style: { position: 'fixed', height: '100vh', top: 0, left: 0, zIndex: 1402 } }}
+        aria-label="patient sidebar"
+      >
+        {drawerContent}
+      </Drawer>
+    </>
+  );
 };
 
 export default PatientWithHospitalSidebar;
