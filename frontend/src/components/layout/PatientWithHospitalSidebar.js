@@ -1,68 +1,38 @@
+import axios from 'axios';
+import { alpha } from '@mui/material/styles';
 import React, { useState, useEffect } from 'react';
-import useMediaQuery from '@mui/material/useMediaQuery';
-import {
-  Box,
-  List,
-  ListItemButton,
-  ListItemIcon,
-  ListItemText,
-  Divider,
-  Typography,
-  Avatar,
-  Collapse,
-  Badge,
-  Chip,
-  IconButton,
-  Tooltip,
-  LinearProgress,
-  CircularProgress,
-  useTheme,
-  alpha,
-  Paper,
-  Drawer,
-  Button,
+import { 
+  Drawer, List, ListItemIcon, ListItemText, Tooltip, Divider, Avatar, IconButton, Box, Typography, Badge, Paper, Chip, LinearProgress, Collapse, Button, ListItemButton 
 } from '@mui/material';
-import {
-  Dashboard as DashboardIcon,
-  Event as EventIcon,
-  FolderShared as FolderSharedIcon,
-  MonitorHeart as MonitorHeartIcon,
-  Medication as MedicationIcon,
-  Science as ScienceIcon,
-  Settings as SettingsIcon,
-  Help as HelpIcon,
-  Notifications as NotificationsIcon,
-  Message as MessageIcon,
-  VideoCall as VideoCallIcon,
-  CalendarMonth,
-  SmartToy,
-  LocalHospital,
-  ExpandMore,
-  ExpandLess,
-  Favorite,
-  LocalDrink,
-  DirectionsWalk,
-  Bedtime,
-  Person,
-  MedicalServices,
-  Chat,
-  Phone,
-  Videocam,
-  HealthAndSafety,
-  Logout,
-  Refresh as RefreshIcon,
-  ShoppingCart,
-  ShoppingBasket,
-  Watch,
-  ChevronRight,
-  ChevronLeft,
-} from '@mui/icons-material';
-import { getAvatarUrl, getInitials } from '../../utils/avatarUtils';
-import axios from '../../utils/axiosConfig';
-import mockChatService from '../../services/mockChatService';
-import SidebarMinimizeToggle from './SidebarMinimizeToggle';
-import { useSidebarMinimization } from './useSidebarMinimization';
+import { useTheme, useMediaQuery } from '@mui/material';
 import { useLocation, useNavigate } from 'react-router-dom';
+import DashboardIcon from '@mui/icons-material/Dashboard';
+import EventIcon from '@mui/icons-material/Event';
+import LocalHospitalIcon from '@mui/icons-material/LocalHospital';
+import PersonIcon from '@mui/icons-material/Person';
+import MessageIcon from '@mui/icons-material/Message';
+import LogoutIcon from '@mui/icons-material/Logout';
+import RefreshIcon from '@mui/icons-material/Refresh';
+import BarChartIcon from '@mui/icons-material/BarChart';
+import ShoppingCartIcon from '@mui/icons-material/ShoppingCart';
+import MenuIcon from '@mui/icons-material/Menu';
+import ChevronRight from '@mui/icons-material/ChevronRight';
+import ChevronLeft from '@mui/icons-material/ChevronLeft';
+import FolderSharedIcon from '@mui/icons-material/FolderShared';
+import MedicationIcon from '@mui/icons-material/Medication';
+import ScienceIcon from '@mui/icons-material/Science';
+import MonitorHeartIcon from '@mui/icons-material/MonitorHeart';
+import ExpandLess from '@mui/icons-material/ExpandLess';
+import ExpandMore from '@mui/icons-material/ExpandMore';
+import DirectionsWalk from '@mui/icons-material/DirectionsWalk';
+import Bedtime from '@mui/icons-material/Bedtime';
+import LocalDrink from '@mui/icons-material/LocalDrink';
+import Favorite from '@mui/icons-material/Favorite';
+import HomeIcon from '@mui/icons-material/Home';
+import CalendarMonthIcon from '@mui/icons-material/CalendarMonth';
+import VideoCallIcon from '@mui/icons-material/VideoCall';
+// Utility functions (implement or import as needed)
+import mockChatService from '../../utils/mockChatService';
 
 const drawerWidth = 280;
 const miniDrawerWidth = 72;
@@ -72,17 +42,12 @@ const PatientWithHospitalSidebar = ({ user, mobileOpen, handleDrawerToggle, assi
   const isLaptop = useMediaQuery(theme.breakpoints.between('md', 'lg'));
   const isDesktop = useMediaQuery(theme.breakpoints.up('lg'));
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
-  // Always expanded on mobile Drawer
   const [isMinimized, setIsMinimized] = useState(true);
-  useEffect(() => {
-    if (mobileOpen && isMobile) setIsMinimized(false);
-  }, [mobileOpen, isMobile]);
-  const sidebarWidth = isMinimized ? 70 : isDesktop ? 320 : isLaptop ? 260 : 220;
+  useEffect(() => { if (isMobile) setIsMinimized(false); }, [mobileOpen, isMobile]);
+  const sidebarWidth = isMinimized ? miniDrawerWidth : isDesktop ? 320 : isLaptop ? 260 : 220;
 
-  // Fix: define location and navigate using react-router-dom hooks
   const location = useLocation();
   const navigate = useNavigate();
-
   const toggleMinimized = () => setIsMinimized((prev) => !prev);
 
   // State for avatar and user info
@@ -321,7 +286,7 @@ const PatientWithHospitalSidebar = ({ user, mobileOpen, handleDrawerToggle, assi
   // Update avatar URL when user changes
   useEffect(() => {
     if (user) {
-      setAvatarUrl(getAvatarUrl(user));
+      setAvatarUrl(user.avatarUrl || '/default-avatar.png');
     } else {
       setAvatarUrl(null);
     }
@@ -625,7 +590,18 @@ const PatientWithHospitalSidebar = ({ user, mobileOpen, handleDrawerToggle, assi
     logDebugData();
   }, [hospitalData, doctorData, hospital, assignedDoctor]);
 
-  // Modern, beautiful sidebar background
+  // Sidebar menu items
+  const menuItems = [
+    { label: 'Home', icon: <HomeIcon />, path: '/patient/dashboard' },
+    { label: 'Appointments', icon: <CalendarMonthIcon />, path: '/patient/appointments' },
+    { label: 'Hospital', icon: <LocalHospitalIcon />, path: '/patient/hospital' },
+    { label: 'Doctor', icon: <PersonIcon />, path: '/patient/doctor' },
+    { label: 'Messages', icon: <MessageIcon />, path: '/patient/messages' },
+    { label: 'Health Stats', icon: <BarChartIcon />, path: '/patient/health-stats' },
+    { label: 'Shop', icon: <ShoppingCartIcon />, path: '/patient/shop' },
+  ];
+
+  // Sidebar background
   const sidebarBg = theme.palette.mode === 'dark'
     ? 'linear-gradient(135deg, rgba(30,41,59,0.95) 0%, rgba(51,65,85,0.92) 100%)'
     : 'linear-gradient(135deg, rgba(255,255,255,0.85) 0%, rgba(236,245,255,0.95) 100%)';
@@ -735,20 +711,22 @@ const PatientWithHospitalSidebar = ({ user, mobileOpen, handleDrawerToggle, assi
                 boxShadow: `0 2px 8px ${alpha(theme.palette.primary.main, 0.18)}`
               }}
             />
-            <Typography
-              variant="caption"
-              sx={{
-                fontWeight: 800,
-                textTransform: 'uppercase',
-                letterSpacing: '0.7px',
-                fontSize: isMinimized ? '0.72rem' : '0.8rem',
-                color: theme.palette.primary.main,
-                textShadow: `0 1px 2px ${alpha(theme.palette.primary.main, 0.18)}`,
-                ml: isMinimized ? 0 : 0.5,
-              }}
-            >
-              Appointments
-            </Typography>
+            {!isMinimized && (
+              <Typography
+                variant="caption"
+                sx={{
+                  fontWeight: 800,
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.7px',
+                  fontSize: isMinimized ? '0.72rem' : '0.8rem',
+                  color: theme.palette.primary.main,
+                  textShadow: `0 1px 2px ${alpha(theme.palette.primary.main, 0.18)}`,
+                  ml: isMinimized ? 0 : 0.5,
+                }}
+              >
+                Appointments
+              </Typography>
+            )}
           </Box>
 
           <ListItemButton
@@ -842,20 +820,22 @@ const PatientWithHospitalSidebar = ({ user, mobileOpen, handleDrawerToggle, assi
                 boxShadow: `0 2px 8px ${alpha(theme.palette.secondary.main, 0.18)}`
               }}
             />
-            <Typography
-              variant="caption"
-              sx={{
-                fontWeight: 800,
-                textTransform: 'uppercase',
-                letterSpacing: '0.7px',
-                fontSize: isMinimized ? '0.72rem' : '0.8rem',
-                color: theme.palette.secondary.main,
-                textShadow: `0 1px 2px ${alpha(theme.palette.secondary.main, 0.18)}`,
-                ml: isMinimized ? 0 : 0.5,
-              }}
-            >
-              Medical Information
-            </Typography>
+            {!isMinimized && (
+              <Typography
+                variant="caption"
+                sx={{
+                  fontWeight: 800,
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.7px',
+                  fontSize: isMinimized ? '0.72rem' : '0.8rem',
+                  color: theme.palette.secondary.main,
+                  textShadow: `0 1px 2px ${alpha(theme.palette.secondary.main, 0.18)}`,
+                  ml: isMinimized ? 0 : 0.5,
+                }}
+              >
+                Medical Information
+              </Typography>
+            )}
           </Box>
 
           <ListItemButton
@@ -980,20 +960,22 @@ const PatientWithHospitalSidebar = ({ user, mobileOpen, handleDrawerToggle, assi
                 boxShadow: `0 2px 8px ${alpha(theme.palette.info.main, 0.18)}`
               }}
             />
-            <Typography
-              variant="caption"
-              sx={{
-                fontWeight: 800,
-                textTransform: 'uppercase',
-                letterSpacing: '0.7px',
-                fontSize: isMinimized ? '0.72rem' : '0.8rem',
-                color: theme.palette.info.main,
-                textShadow: `0 1px 2px ${alpha(theme.palette.info.main, 0.18)}`,
-                ml: isMinimized ? 0 : 0.5,
-              }}
-            >
-              Health Monitoring
-            </Typography>
+            {!isMinimized && (
+              <Typography
+                variant="caption"
+                sx={{
+                  fontWeight: 800,
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.7px',
+                  fontSize: isMinimized ? '0.72rem' : '0.8rem',
+                  color: theme.palette.info.main,
+                  textShadow: `0 1px 2px ${alpha(theme.palette.info.main, 0.18)}`,
+                  ml: isMinimized ? 0 : 0.5,
+                }}
+              >
+                Health Monitoring
+              </Typography>
+            )}
           </Box>
 
           <ListItemButton
@@ -1358,20 +1340,22 @@ const PatientWithHospitalSidebar = ({ user, mobileOpen, handleDrawerToggle, assi
                 boxShadow: `0 2px 8px ${alpha(theme.palette.success.main, 0.18)}`
               }}
             />
-            <Typography
-              variant="caption"
-              sx={{
-                fontWeight: 800,
-                textTransform: 'uppercase',
-                letterSpacing: '0.7px',
-                fontSize: isMinimized ? '0.72rem' : '0.8rem',
-                color: theme.palette.success.main,
-                textShadow: `0 1px 2px ${alpha(theme.palette.success.main, 0.18)}`,
-                ml: isMinimized ? 0 : 0.5,
-              }}
-            >
-              Communication
-            </Typography>
+            {!isMinimized && (
+              <Typography
+                variant="caption"
+                sx={{
+                  fontWeight: 800,
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.7px',
+                  fontSize: isMinimized ? '0.72rem' : '0.8rem',
+                  color: theme.palette.success.main,
+                  textShadow: `0 1px 2px ${alpha(theme.palette.success.main, 0.18)}`,
+                  ml: isMinimized ? 0 : 0.5,
+                }}
+              >
+                Communication
+              </Typography>
+            )}
           </Box>
 
           <ListItemButton
@@ -1508,7 +1492,7 @@ const PatientWithHospitalSidebar = ({ user, mobileOpen, handleDrawerToggle, assi
               size="small"
               color="secondary"
               onClick={handleLogout}
-              startIcon={<Logout fontSize="small" />}
+              startIcon={<LogoutIcon fontSize="small" />}
               sx={{
                 fontSize: '0.8rem',
                 textTransform: 'none',
