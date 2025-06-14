@@ -1135,7 +1135,7 @@ const handleQuotaExceeded = async (userMessage, formattedHistory) => {
       });
       
       // Try again with the new API key - chunk the message if it's long
-      const messageChunks = chunkMessage(userMessage, 400); // Smaller chunks for retry
+      const messageChunks = chunkMessage(userMessage, 300);
       let fullResponse = '';
       
       // Process each chunk sequentially with delays between chunks
@@ -1415,6 +1415,9 @@ exports.processMessage = async (req, res) => {
       formattedHistory = [];
     }
 
+    // Always append the current user input as the latest message in the history
+    formattedHistory.push({ role: 'user', parts: [{ text: message }] });
+
     // Create the system prompt
     const systemPrompt = createSystemPrompt(user);
 
@@ -1458,7 +1461,7 @@ exports.processMessage = async (req, res) => {
     let chat;
     try {
       chat = model.startChat({
-        history: formattedHistory.length > 0 ? formattedHistory : [],
+        history: formattedHistory, // Always use the full, updated history
         generationConfig: {
           temperature: 0.7,
           maxOutputTokens: 800,
@@ -1478,11 +1481,11 @@ exports.processMessage = async (req, res) => {
 
     // Always include the system prompt to ensure the AI has proper context
     // This helps ensure the AI responds to all types of questions appropriately
-    const fullUserMessage = `${systemPrompt}\n\nUser message: ${message}`;
+    const fullUserMessage = `${systemPrompt}`;
 
     // PREEMPTIVE CHECK: Check if this request would exceed our self-imposed limits
     // Use extremely conservative limits to prevent hitting quota errors
-    const estimatedInputTokens = tokenUsageTracker.estimateTokens(fullUserMessage);
+    const estimatedInputTokens = tokenUsageTracker.estimateTokens(fullUserMessage + '\n' + message);
     
     // If the message is too large, use a simplified version
     if (estimatedInputTokens > 2000) {
@@ -1578,11 +1581,12 @@ exports.processMessage = async (req, res) => {
       const messageChunks = chunkMessage(simplifiedMessage, maxChunkSize);
       
       console.log(`Message chunked into ${messageChunks.length} parts`);
-      let fullResponse = '';
-      let chunkResponses = [];
       
       // Limit the number of chunks we'll process to avoid quota issues
-      const maxChunksToProcess = Math.min(messageChunks.length, 1);      if (messageChunks.length > maxChunksToProcess) {
+      const maxChunksToProcess = Math.min(messageChunks.length, 1);
+      let chunkResponses = [];
+
+      if (messageChunks.length > maxChunksToProcess) {
         console.log(`Limiting processing to ${maxChunksToProcess} chunks to avoid quota issues`);
       }
       
@@ -1757,7 +1761,7 @@ exports.processMessage = async (req, res) => {
                   continue; // Continue to the next chunk
                 } catch (retryError) {
                   console.error('Error retrying chunk with new API key:', retryError);
-                  // Fall through to use a placeholder for this chunk
+                  // Fall through
                 }
               } catch (initError) {
                 console.error('Error initializing model with new API key:', initError);
@@ -2123,7 +2127,7 @@ exports.processMessage = async (req, res) => {
         aiResponse = 'Coughing up blood, experiencing breathing difficulties, chest pain, or having a cough that persists for weeks are serious symptoms that require immediate medical attention. Please consult with a healthcare provider as soon as possible.';
         suggestAppointment = true;
       } else {
-        aiResponse = 'A cough can be caused by various factors including viral infections, allergies, or irritants. For a common cough:\n\n- Stay hydrated and rest\n- Use honey (if over 1 year old) or cough drops to soothe your throat\n- Use a humidifier to add moisture to the air\n- Avoid irritants like smoke\n\nIf your cough persists for more than 2 weeks, produces discolored mucus, or is accompanied by fever, shortness of breath, or chest pain, you should consult a healthcare professional.';
+        aiResponse = 'A cough can be caused by various factors including viral infections, allergies, or irritants. For a common cough:\n\n- Stay hydrated and rest\n- Use honey (if over 1 year old) or cough drops to soothe your throat\n- Use a humidifier to add moisture to the air\n- Avoid irritants like smoke\n\nIf your cough persists for 2 weeks, produces discolored mucus, or is accompanied by fever, shortness of breath, or chest pain, you should consult a healthcare professional.';
       }
     }
     else if (currentMessage.includes('rash') || currentMessage.includes('skin')) {
@@ -2255,7 +2259,17 @@ exports.processMessage = async (req, res) => {
         }
         // Skin issues
         else if (relevantTerms.some(term => ['rash', 'itch', 'skin', 'hives', 'eczema', 'acne', 'dermatitis'].includes(term))) {
-          aiResponse = 'For managing skin issues:\n\n1. Avoid scratching to prevent infection and further irritation\n2. Keep the affected area clean with gentle, fragrance-free soap and water\n3. Apply cool compresses to relieve itching and inflammation\n4. Use over-the-counter hydrocortisone cream (1%) for itching and inflammation\n5. Take an antihistamine like diphenhydramine for allergic reactions\n6. Moisturize with fragrance-free lotions for dry skin conditions\n7. For acne, use products containing benzoyl peroxide or salicylic acid\n\nIf the rash is widespread, painful, blistering, accompanied by fever, or doesn\'t improve with home treatment, consult a healthcare provider. Also seek medical attention for any sudden, severe allergic reactions with breathing difficulties.';
+          aiResponse = `For managing skin issues:
+
+1. Avoid scratching to prevent infection and further irritation
+2. Keep the affected area clean with gentle, fragrance-free soap and water
+3. Apply cool compresses to relieve itching and inflammation
+4. Use over-the-counter hydrocortisone cream (1%) for itching and inflammation
+5. Take an antihistamine like diphenhydramine for allergic reactions
+6. Moisturize with fragrance-free lotions for dry skin conditions
+7. For acne, use products containing benzoyl peroxide or salicylic acid
+
+If the rash is widespread, painful, blistering, accompanied by fever, or doesn't improve with home treatment, consult a healthcare provider. Also seek medical attention for any sudden, severe allergic reactions with breathing difficulties.`;
         }
         // Sleep issues
         else if (relevantTerms.some(term => ['sleep', 'insomnia', 'tired', 'fatigue', 'exhausted'].includes(term))) {
@@ -2268,8 +2282,7 @@ exports.processMessage = async (req, res) => {
         // Allergies
         else if (relevantTerms.some(term => ['allergy', 'allergic', 'hay fever', 'seasonal', 'pollen', 'dust', 'pet'].includes(term))) {
           aiResponse = 'For managing allergies:\n\n1. Identify and avoid allergen triggers when possible\n2. For environmental allergies:\n   - Keep windows closed during high pollen seasons\n   - Use air purifiers with HEPA filters\n   - Shower and change clothes after being outdoors\n   - Regularly clean and vacuum your home\n3. Over-the-counter medications can help:\n   - Antihistamines (like cetirizine, loratadine) for sneezing, itching, runny nose\n   - Decongestants for nasal congestion (use only short-term)\n   - Nasal corticosteroid sprays for inflammation\n4. Saline nasal irrigation can help clear allergens\n5. For severe or persistent allergies, consider seeing an allergist for proper testing and possibly immunotherapy\n\nIf you experience symptoms of a severe allergic reaction (difficulty breathing, swelling of face/throat, rapid heartbeat), seek emergency medical attention immediately.';
-        }
-        else {
+        } else {
           // Provide a more specific response based on the medical terms identified
           aiResponse = `Based on your mention of ${relevantTerms.join(', ')}, here are some general recommendations:\n\n1. Monitor your symptoms and note any changes in severity or new symptoms\n2. For mild discomfort, appropriate over-the-counter medications may help\n3. Ensure you're getting adequate rest and staying hydrated\n4. Avoid activities that worsen your symptoms\n\nHowever, for a proper assessment of your specific situation with ${relevantTerms.join(', ')}, I recommend consulting with a healthcare provider who can provide personalized advice based on your medical history and a thorough examination.`;
           suggestAppointment = true;
@@ -2278,7 +2291,7 @@ exports.processMessage = async (req, res) => {
         // No specific medical terms found, ask for more details
         aiResponse = 'I\'d be happy to provide guidance, but could you please share more details about your specific symptoms or health concern? This will help me give you more relevant information about what you can do to address it.';
       }
-    }
+    } 
     // Handle information requests about specific conditions
     else if (currentMessage.includes('what is') || currentMessage.includes('tell me about') ||
              currentMessage.includes('information about') || currentMessage.includes('learn about')) {
@@ -2291,7 +2304,7 @@ exports.processMessage = async (req, res) => {
         aiResponse = 'Hypertension, or high blood pressure, is a common condition where the force of blood against artery walls is consistently too high. It\'s often called a "silent killer" because it typically has no symptoms but can lead to serious health problems like heart disease and stroke.\n\nBlood pressure is measured using two numbers: systolic (pressure when heart beats) and diastolic (pressure when heart rests). Normal blood pressure is below 120/80 mm Hg.\n\nManagement typically includes:\n\n- Regular monitoring\n- Healthy diet low in sodium\n- Regular physical activity\n- Maintaining healthy weight\n- Limiting alcohol\n- Not smoking\n- Medication if prescribed by a doctor\n- Stress management\n\nRegular check-ups are important for monitoring and managing hypertension.';
       }
       else if (currentMessage.includes('asthma')) {
-        aiResponse = 'Asthma is a chronic condition affecting the airways in the lungs. In asthma, these airways become inflamed and narrow, causing symptoms like:\n\n- Wheezing\n- Shortness of breath\n- Chest tightness\n- Coughing, especially at night or early morning\n\nAsthma triggers vary by person but can include allergens, exercise, cold air, respiratory infections, and stress.\n\nManagement typically involves:\n\n- Identifying and avoiding triggers\n- Using controller medications daily to prevent symptoms\n- Having quick-relief medications for sudden symptoms\n- Following an asthma action plan developed with a healthcare provider\n- Regular medical check-ups\n\nWith proper management, most people with asthma can lead normal, active lives.';
+        aiResponse = 'Asthma is a chronic condition affecting the airways in the lungs. In asthma, these airways become inflamed and narrow, causing symptoms like:\n\n- Wheezing\n- Shortness of breath\n- Chest tightness\n- Coughing, especially at night or early morning\n\nAsthma triggers vary by person but can include allergens, exercise, cold air, respiratory infections, and stress.\n\nManagement involves avoiding triggers, using inhaled medications (bronchodilators and steroids), monitoring lung function, and having an action plan for asthma attacks. Regular check-ups with a healthcare provider are essential to manage asthma effectively.';
       }
       else if (currentMessage.includes('arthritis')) {
         aiResponse = 'Arthritis refers to inflammation of one or more joints, causing pain and stiffness that typically worsen with age. There are over 100 types, with osteoarthritis and rheumatoid arthritis being most common.\n\n- Osteoarthritis: Caused by wear and tear on joints, affecting cartilage.\n\n- Rheumatoid arthritis: An autoimmune disorder where the immune system attacks joint linings.\n\nCommon symptoms include joint pain, stiffness, swelling, redness, and decreased range of motion.\n\nManagement approaches include:\n\n- Medications for pain and inflammation\n- Physical therapy to improve mobility\n- Regular exercise, particularly low-impact activities\n- Maintaining healthy weight to reduce joint stress\n- Heat and cold therapy\n- Assistive devices\n- In severe cases, surgical options like joint replacement\n\nEarly diagnosis and treatment can help manage symptoms and slow progression.';
@@ -2327,7 +2340,7 @@ exports.processMessage = async (req, res) => {
         }
       }
     }
-    } // Close the if(!useGeminiResponse) block
+    } // Close the else block for unrecognized health queries
 
     // Add self-care assessment reasoning to the response if available
     let finalResponse = aiResponse;
