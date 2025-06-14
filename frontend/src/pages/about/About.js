@@ -65,14 +65,14 @@ const About = () => {
     {
       name: 'Tuyizere Dieudonne',
       role: 'Chief Executive Officer & Co-Founder',
-      image: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2574&q=80',
+      image: '/doxp.jpg',
       bio: 'Visionary leader who conceived the idea for SoulSpace Health during Senior 4 (S4). Currently in Senior 6 (S6), Tuyizere is driving the development of the SoulSpace wearable device while completing his education.',
       expertise: ['Healthcare Innovation', 'Business Strategy', 'Product Vision'],
     },
     {
       name: 'Aristote',
       role: 'President & Co-Founder',
-      image: 'https://images.unsplash.com/photo-1560250097-0b93528c311a?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2574&q=80',
+      image: '/IMG-20240912-WA0006.jpg',
       bio: 'Co-creator of the SoulSpace concept during Senior 4 (S4). Now in Senior 6 (S6), Aristote is focused on developing the business model and strategic partnerships that will bring the SoulSpace vision to reality.',
       expertise: ['Strategic Planning', 'Partnership Development', 'Healthcare Systems'],
     }
@@ -442,7 +442,9 @@ const About = () => {
                       transform: 'translateY(-8px)',
                       boxShadow: '0 15px 35px rgba(0, 0, 0, 0.15)',
                       '& .member-avatar': {
-                        transform: 'scale(1.05)',
+                        transform: 'scale(1.07) rotate(-2deg)',
+                        boxShadow: '0 8px 32px 0 rgba(79,70,229,0.18), 0 1.5px 8px 0 rgba(6,182,212,0.10)',
+                        filter: 'brightness(1.08) saturate(1.15) blur(0px)',
                       },
                     },
                   }}
@@ -451,8 +453,11 @@ const About = () => {
                     sx={{
                       position: 'relative',
                       pt: '75%', // 4:3 aspect ratio
-                      bgcolor: alpha(theme.palette.primary.main, 0.1),
-                      overflow: 'hidden',
+                      bgcolor: alpha(theme.palette.primary.main, 0.08),
+                      overflow: 'visible',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
                     }}
                   >
                     <Avatar
@@ -460,12 +465,26 @@ const About = () => {
                       className="member-avatar"
                       sx={{
                         position: 'absolute',
-                        top: 0,
-                        left: 0,
-                        width: '100%',
-                        height: '100%',
-                        borderRadius: 0,
-                        transition: 'transform 0.5s ease',
+                        top: '50%',
+                        left: '50%',
+                        width: '80%',
+                        height: '80%',
+                        borderRadius: 3,
+                        boxShadow: '0 8px 32px 0 rgba(79,70,229,0.12), 0 1.5px 8px 0 rgba(6,182,212,0.08)',
+                        border: `4px solid ${alpha(theme.palette.background.paper, 0.85)}`,
+                        objectFit: 'cover',
+                        transform: 'translate(-50%, -50%) scale(1)',
+                        transition: 'all 0.5s cubic-bezier(.4,2,.6,1)',
+                        filter: 'brightness(1.07) saturate(1.12) drop-shadow(0 2px 8px rgba(0,0,0,0.10))',
+                        background: 'linear-gradient(135deg, #4f46e5 0%, #06b6d4 100%)',
+                      }}
+                      imgProps={{
+                        style: {
+                          objectFit: 'cover',
+                          width: '100%',
+                          height: '100%',
+                          borderRadius: 'inherit',
+                        }
                       }}
                     />
                   </Box>

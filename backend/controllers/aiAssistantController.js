@@ -1582,13 +1582,9 @@ exports.processMessage = async (req, res) => {
       let chunkResponses = [];
       
       // Limit the number of chunks we'll process to avoid quota issues
-      const maxChunksToProcess = Math.min(messageChunks.length, 1); // Process only 1 chunk at a time
-      if (messageChunks.length > maxChunksToProcess) {
+      const maxChunksToProcess = Math.min(messageChunks.length, 1);      if (messageChunks.length > maxChunksToProcess) {
         console.log(`Limiting processing to ${maxChunksToProcess} chunks to avoid quota issues`);
       }
-      
-      // Add a fallback response in case all API calls fail
-      chunkResponses.push("I understand you have a question about health or wellness. While I'm processing your request, here's some general advice: maintaining a balanced diet, regular exercise, adequate sleep, and stress management are key components of good health. For specific medical concerns, please consult with a healthcare professional.");
       
       // Process each chunk sequentially with delays between chunks
       for (let i = 0; i < maxChunksToProcess; i++) {
@@ -1804,6 +1800,8 @@ exports.processMessage = async (req, res) => {
           aiResponse.includes("system limitations")) {
         useGeminiResponse = false;
         console.log('Gemini response inadequate, using fallback logic');
+        // Instead of generic fallback, return a minimal error
+        aiResponse = "Sorry, I'm unable to answer your question right now. Please try again later.";
       }
     } catch (sendError) {
       console.error('Error sending message to Gemini:', sendError);
@@ -2624,18 +2622,31 @@ Guidelines:
               ? message.substring(0, 100) + "..."
               : message;
             
-            const simplifiedPrompt = "You are SoulSpace Assistant. Be brief and helpful.";
-            const simplifiedFullMessage = `${simplifiedPrompt}\n\nUser: ${simplifiedMessage}`;
+            // Create a minimal system prompt
+            const minimalPrompt = `You are SoulSpace Assistant. Be brief and helpful.`;
             
-            const simpleResult = await chat.sendMessage(simplifiedFullMessage);
+            // Combine into a simplified full message
+            const simplifiedFullMessage = `${minimalPrompt}\n\nUser message: ${simplifiedMessage}`;
+            
+            // Start a new chat with minimal history
+            const simpleChat = model.startChat({
+              history: [],
+              generationConfig: {
+                temperature: 0.7,
+                maxOutputTokens: 500, // Reduced output tokens
+              },
+            });
+            
+            // Send the simplified message
+            const simpleResult = await simpleChat.sendMessage(simplifiedFullMessage);
             aiResponse = simpleResult.response.text();
             
             if (aiResponse && aiResponse.trim().length > 10) {
               useGeminiResponse = true;
-              console.log('Successfully got guest response with new API key');
+              console.log('Successfully got response with new API key and simplified message');
             }
           } catch (retryError) {
-            console.error('Error with guest retry using new API key:', retryError);
+            console.error('Error with retry using new API key:', retryError);
           }
         }
       }
