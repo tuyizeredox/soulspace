@@ -28,6 +28,7 @@ import {
   Paper,
   Drawer,
   Button,
+  useMediaQuery,
 } from '@mui/material';
 import {
   Dashboard as DashboardIcon,
@@ -58,22 +59,43 @@ import {
   Forum,
   ReceiptLong,
   ShoppingCart,
-
+  ChevronLeft,
+  ChevronRight,
+  Menu as MenuIcon,
 } from '@mui/icons-material';
+import ChevronRightIcon from '@mui/icons-material/ChevronRight';
+import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
 import { motion } from 'framer-motion';
+import SidebarMinimizeToggle from './SidebarMinimizeToggle';
+import { useSidebarMinimization } from './useSidebarMinimization';
 
 // Component starts here
+
+// Full width and minimized width for the drawer
+const drawerWidth = 280;
+const miniDrawerWidth = 72;
 
 // Define the PatientSidebar component
 const PatientSidebar = ({ user, mobileOpen, handleDrawerToggle }) => {
   const theme = useTheme();
   const navigate = useNavigate();
   const location = useLocation();
+  const [isMinimized, toggleMinimized] = useSidebarMinimization('sidebarMinimized');
+  const isDesktop = useMediaQuery(theme.breakpoints.up('md'));
+  const isNonMobile = useMediaQuery(theme.breakpoints.up('sm'));
 
   // Get token from Redux store
   const { token: oldToken } = useSelector((state) => state.auth);
   const { token: newToken } = useSelector((state) => state.userAuth);
   const token = newToken || oldToken;
+
+  // Load minimized preference from localStorage on mount
+  useEffect(() => {
+    const savedPreference = localStorage.getItem('sidebarMinimized');
+    if (savedPreference === 'true' && isDesktop) {
+      toggleMinimized();
+    }
+  }, [isDesktop]);
 
   console.log('PatientSidebar: Using token:', !!token);
 
@@ -390,10 +412,19 @@ const PatientSidebar = ({ user, mobileOpen, handleDrawerToggle }) => {
       display: 'flex',
       flexDirection: 'column',
       height: '100%',
+      width: '100%',
+      position: 'relative',
       background: theme.palette.mode === 'dark'
         ? 'linear-gradient(180deg, rgba(30, 41, 59, 0.8) 0%, rgba(15, 23, 42, 0.9) 100%)'
         : 'linear-gradient(180deg, rgba(255, 255, 255, 0.9) 0%, rgba(248, 250, 252, 0.95) 100%)',
+      transition: theme.transitions.create('width', {
+        easing: theme.transitions.easing.sharp,
+        duration: theme.transitions.duration.enteringScreen,
+      }),
     }}>
+      {/* Sidebar Minimize Toggle (top left, visible on sm and up) */}
+      <SidebarMinimizeToggle minimized={isMinimized} onToggle={toggleMinimized} placement="left" />
+
       {/* User Profile Section */}
       <Box
         sx={{
@@ -889,24 +920,31 @@ const PatientSidebar = ({ user, mobileOpen, handleDrawerToggle }) => {
     <Box
       component="nav"
       sx={{
-        width: { sm: 280 },
+        width: {
+          xs: drawerWidth,
+          sm: isMinimized ? miniDrawerWidth : drawerWidth
+        },
         flexShrink: { sm: 0 },
         zIndex: (theme) => theme.zIndex.drawer + 2,
+        transition: theme.transitions.create('width', {
+          easing: theme.transitions.easing.sharp,
+          duration: theme.transitions.duration.enteringScreen,
+        }),
       }}
       aria-label="patient sidebar"
     >
-      {/* Mobile drawer */}
+      {/* Mobile drawer (can be closed) */}
       <Drawer
         variant="temporary"
         open={mobileOpen}
         onClose={handleDrawerToggle}
         ModalProps={{
-          keepMounted: true, // Better open performance on mobile
+          keepMounted: true,
         }}
         sx={{
           display: { xs: 'block', sm: 'none' },
           '& .MuiDrawer-paper': {
-            width: 280,
+            width: drawerWidth,
             boxSizing: 'border-box',
             borderRight: '1px solid',
             borderColor: 'divider',
@@ -933,13 +971,13 @@ const PatientSidebar = ({ user, mobileOpen, handleDrawerToggle }) => {
         {drawer}
       </Drawer>
 
-      {/* Desktop drawer */}
+      {/* Desktop/Tablet drawer (minimizable only, always visible) */}
       <Drawer
         variant="permanent"
         sx={{
           display: { xs: 'none', sm: 'block' },
           '& .MuiDrawer-paper': {
-            width: 280,
+            width: isMinimized ? miniDrawerWidth : drawerWidth,
             boxSizing: 'border-box',
             borderRight: '1px solid',
             borderColor: 'divider',
@@ -947,6 +985,10 @@ const PatientSidebar = ({ user, mobileOpen, handleDrawerToggle }) => {
             zIndex: (theme) => theme.zIndex.drawer + 1,
             mt: '64px', // Adjust based on your header height
             height: 'calc(100% - 64px)',
+            transition: theme.transitions.create('width', {
+              easing: theme.transitions.easing.sharp,
+              duration: theme.transitions.duration.enteringScreen,
+            }),
             '&::-webkit-scrollbar': {
               width: '8px',
             },
@@ -960,6 +1002,7 @@ const PatientSidebar = ({ user, mobileOpen, handleDrawerToggle }) => {
             '&::-webkit-scrollbar-thumb:hover': {
               background: (theme) => alpha(theme.palette.text.primary, 0.3),
             },
+            overflow: isMinimized ? 'visible' : 'auto',
           },
         }}
         open

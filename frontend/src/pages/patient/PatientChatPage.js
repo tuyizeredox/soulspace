@@ -66,6 +66,9 @@ const PatientChatPage = () => {
           setSelectedDoctor(parsedDoctor);
           usedCachedData = true;
           console.log('Using cached doctor data:', parsedDoctor.name);
+          
+          // If we have cached data, we can end loading early
+          setLoading(false);
         } catch (e) {
           console.error('Error parsing cached doctor:', e);
         }
@@ -154,7 +157,14 @@ const PatientChatPage = () => {
         }
 
         // If we don't have cached data, create a minimal doctor object
-        if (!selectedDoctor) {
+        const currentDoctor = await new Promise(resolve => {
+          setSelectedDoctor(current => {
+            resolve(current);
+            return current;
+          });
+        });
+        
+        if (!currentDoctor) {
           console.log('Creating minimal doctor object due to API error');
           const minimalDoctor = {
             _id: id,
@@ -175,22 +185,46 @@ const PatientChatPage = () => {
     } catch (error) {
       console.error('Error in fetchDoctorDetails:', error);
       // Only set error if we don't have a doctor object yet
-      if (!selectedDoctor) {
+      const currentDoctor = await new Promise(resolve => {
+        setSelectedDoctor(current => {
+          resolve(current);
+          return current;
+        });
+      });
+      
+      if (!currentDoctor) {
         setError('Error loading doctor information. Please try again.');
       }
     } finally {
       setLoading(false);
     }
-  }, [selectedDoctor]);
+  }, []);
 
   // Fetch doctor details when doctorId changes
   useEffect(() => {
-    if (doctorId) {
-      fetchDoctorDetails(doctorId);
-    } else {
-      setSelectedDoctor(null);
-      setLoading(false);
-    }
+    // Track if the component is mounted
+    let isMounted = true;
+    
+    const loadDoctorDetails = async () => {
+      if (doctorId) {
+        // Only proceed if component is still mounted
+        if (isMounted) {
+          await fetchDoctorDetails(doctorId);
+        }
+      } else {
+        if (isMounted) {
+          setSelectedDoctor(null);
+          setLoading(false);
+        }
+      }
+    };
+    
+    loadDoctorDetails();
+    
+    // Cleanup function to prevent state updates after unmount
+    return () => {
+      isMounted = false;
+    };
   }, [doctorId, fetchDoctorDetails]);
 
   // Handle video call with doctor

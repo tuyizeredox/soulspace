@@ -19,6 +19,7 @@ const Layout = ({ children }) => {
   const [loading, setLoading] = useState(true);
   const { isAuthenticated: oldAuth, user: oldUser, token: oldToken } = useSelector((state) => state.auth);
   const { isAuthenticated: newAuth, user: newUser, token: newToken } = useSelector((state) => state.userAuth);
+  const [isSidebarMinimized, setIsSidebarMinimized] = useState(false);
 
   // Use either auth system, preferring the new one
   const isAuthenticated = newAuth || oldAuth;
@@ -34,6 +35,38 @@ const Layout = ({ children }) => {
   const handleDrawerToggle = () => {
     setMobileOpen(!mobileOpen);
   };
+  
+  // Check if sidebar is minimized from localStorage
+  useEffect(() => {
+    const savedPreference = localStorage.getItem('sidebarMinimized');
+    if (savedPreference === 'true' && !isMobile) {
+      setIsSidebarMinimized(true);
+    }
+  }, [isMobile]);
+  
+  // Listen for sidebar minimized state changes
+  useEffect(() => {
+    const handleStorageChange = () => {
+      const savedPreference = localStorage.getItem('sidebarMinimized');
+      setIsSidebarMinimized(savedPreference === 'true');
+    };
+    
+    window.addEventListener('storage', handleStorageChange);
+    
+    // Custom event for direct communication between components
+    const handleSidebarToggle = (event) => {
+      if (event.detail && typeof event.detail.isMinimized === 'boolean') {
+        setIsSidebarMinimized(event.detail.isMinimized);
+      }
+    };
+    
+    window.addEventListener('sidebar-toggle', handleSidebarToggle);
+    
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+      window.removeEventListener('sidebar-toggle', handleSidebarToggle);
+    };
+  }, []);
 
   // Check if patient has a hospital assignment
   useEffect(() => {
@@ -224,6 +257,7 @@ const Layout = ({ children }) => {
   }
 
   const drawerWidth = 240;
+  const miniDrawerWidth = 72;
 
   return (
     <Box sx={{ display: 'flex' }}>
@@ -279,8 +313,16 @@ const Layout = ({ children }) => {
         sx={{
           flexGrow: 1,
           p: 3,
-          width: { xs: '100%', sm: `calc(100% - ${280}px)` },
-          ml: { xs: 0, sm: `${280}px` },
+          width: { 
+            xs: '100%', 
+            sm: isSidebarMinimized 
+              ? `calc(100% - ${miniDrawerWidth}px)` 
+              : `calc(100% - ${drawerWidth}px)` 
+          },
+          ml: { 
+            xs: 0, 
+            sm: isSidebarMinimized ? `${miniDrawerWidth}px` : `${drawerWidth}px` 
+          },
           mt: '64px', // Match the header height
           minHeight: 'calc(100vh - 64px)',
           transition: theme.transitions.create(['margin', 'width'], {

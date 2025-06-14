@@ -38,6 +38,8 @@ import {
   Opacity as OpacityIcon,
   Bedtime as BedtimeIcon,
   Favorite as FavoriteIcon,
+  ChevronLeft as ChevronLeftIcon,
+  ChevronRight as ChevronRightIcon,
 } from '@mui/icons-material';
 import axios from '../../utils/axiosConfig';
 import { getAvatarUrl, getInitials } from '../../utils/avatarUtils';

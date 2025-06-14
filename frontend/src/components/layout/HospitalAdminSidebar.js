@@ -17,6 +17,7 @@ import {
   IconButton,
   Divider,
   Chip,
+  useMediaQuery,
 } from '@mui/material';
 import { getAvatarUrl, getInitials, getRoleColor as getUtilRoleColor, getRoleLabel as getUtilRoleLabel } from '../../utils/avatarUtils';
 import DashboardIcon from '@mui/icons-material/Dashboard';
@@ -43,9 +44,14 @@ import GroupIcon from '@mui/icons-material/Group';
 import MoneyIcon from '@mui/icons-material/Money';
 import InventoryIcon from '@mui/icons-material/Inventory';
 import SupportAgentIcon from '@mui/icons-material/SupportAgent';
+import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
+import ChevronRightIcon from '@mui/icons-material/ChevronRight';
+import MenuIcon from '@mui/icons-material/Menu';
 import axios from '../../utils/axiosConfig';
 
+// Full width and minimized width for the drawer
 const drawerWidth = 240;
+const miniDrawerWidth = 72;
 
 const HospitalAdminSidebar = ({ mobileOpen, onDrawerToggle }) => {
   const navigate = useNavigate();

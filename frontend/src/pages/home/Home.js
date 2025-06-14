@@ -425,8 +425,15 @@ const Home = () => {
             '0%': { backgroundPosition: '0 0' },
             '100%': { backgroundPosition: '100px 100px' },
           },
-          minHeight: { xs: 'calc(100vh - 64px)', md: '100vh' },
-          py: { xs: 8, sm: 10, md: 0 },
+          // Adjusted height for better responsiveness
+          minHeight: { 
+            xs: 'auto', 
+            sm: 'calc(100vh - 64px)', 
+            md: '90vh', 
+            lg: '85vh' 
+          },
+          // Improved padding for different screen sizes
+          py: { xs: 6, sm: 8, md: 6, lg: 8 },
           display: 'flex',
           alignItems: 'center',
           overflow: 'hidden',
@@ -434,16 +441,14 @@ const Home = () => {
       >
         <GamifiedBackground />
 
-        {/* Floating Elements */}
+        {/* Floating Elements - Reduced quantity and opacity for less distraction */}
         <Box sx={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 1, pointerEvents: 'none' }}>
-          {/* Medical Icons */}
+          {/* Medical Icons - Reduced number and made more subtle */}
           {[
-            { icon: '⚕️', size: '2.5rem', left: '10%', top: '15%' },
-            { icon: '🏥', size: '3rem', left: '85%', top: '25%' },
-            { icon: '❤️', size: '2rem', left: '75%', top: '65%' },
-            { icon: '🔬', size: '2.2rem', left: '15%', top: '75%' },
-            { icon: '💊', size: '1.8rem', left: '45%', top: '85%' },
-            { icon: '🩺', size: '2.3rem', left: '90%', top: '80%' },
+            { icon: '⚕️', size: '2rem', left: '10%', top: '15%' },
+            { icon: '🏥', size: '2.5rem', left: '85%', top: '25%' },
+            { icon: '❤️', size: '1.8rem', left: '75%', top: '65%' },
+            { icon: '🔬', size: '2rem', left: '15%', top: '75%' },
           ].map((item, index) => (
             <motion.div
               key={index}
@@ -452,14 +457,14 @@ const Home = () => {
                 left: item.left,
                 top: item.top,
                 fontSize: item.size,
-                opacity: 0.3,
-                filter: 'drop-shadow(0 0 10px rgba(255,255,255,0.5))',
+                opacity: 0.2, // Reduced opacity
+                filter: 'drop-shadow(0 0 8px rgba(255,255,255,0.4))',
               }}
               animate={{
-                y: [0, -20, 0],
-                x: [0, 10, 0],
-                rotate: [0, 5, 0, -5, 0],
-                opacity: [0.3, 0.6, 0.3],
+                y: [0, -15, 0], // Reduced movement
+                x: [0, 8, 0],
+                rotate: [0, 3, 0, -3, 0],
+                opacity: [0.2, 0.4, 0.2],
               }}
               transition={{
                 duration: 5 + index,
@@ -472,28 +477,28 @@ const Home = () => {
             </motion.div>
           ))}
 
-          {/* Glowing Orbs */}
-          {[...Array(8)].map((_, index) => (
+          {/* Glowing Orbs - Reduced number and size */}
+          {[...Array(5)].map((_, index) => (
             <motion.div
               key={`orb-${index}`}
               style={{
                 position: 'absolute',
                 left: `${Math.random() * 90 + 5}%`,
                 top: `${Math.random() * 90 + 5}%`,
-                width: `${Math.random() * 30 + 10}px`,
-                height: `${Math.random() * 30 + 10}px`,
+                width: `${Math.random() * 20 + 8}px`, // Smaller orbs
+                height: `${Math.random() * 20 + 8}px`,
                 borderRadius: '50%',
-                background: `radial-gradient(circle, rgba(165,243,252,0.7) 0%, rgba(79,70,229,0.1) 70%)`,
-                boxShadow: '0 0 15px rgba(165,243,252,0.5)',
+                background: `radial-gradient(circle, rgba(165,243,252,0.6) 0%, rgba(79,70,229,0.1) 70%)`,
+                boxShadow: '0 0 12px rgba(165,243,252,0.4)',
               }}
               animate={{
-                x: [0, Math.random() * 50 - 25, 0],
-                y: [0, Math.random() * 50 - 25, 0],
-                opacity: [0.2, 0.5, 0.2],
-                scale: [1, 1.2, 1],
+                x: [0, Math.random() * 40 - 20, 0], // Reduced movement
+                y: [0, Math.random() * 40 - 20, 0],
+                opacity: [0.2, 0.4, 0.2],
+                scale: [1, 1.1, 1],
               }}
               transition={{
-                duration: Math.random() * 5 + 5,
+                duration: Math.random() * 4 + 4,
                 repeat: Infinity,
                 delay: index * 0.3,
                 ease: "easeInOut"
@@ -506,10 +511,15 @@ const Home = () => {
           maxWidth="lg"
           sx={{
             position: 'relative',
-            zIndex: 2
+            zIndex: 2,
+            px: { xs: 2, sm: 3, md: 4 } // Added horizontal padding for better spacing
           }}
         >
-          <Grid container spacing={{ xs: 8, md: 6 }} alignItems="center">
+          <Grid 
+            container 
+            spacing={{ xs: 4, sm: 5, md: 6 }} // Improved spacing between grid items
+            alignItems="center"
+          >
             <Grid item xs={12} md={6} sx={{ order: { xs: 2, md: 1 } }}>
               <motion.div
                 initial={{ opacity: 0, x: -50 }}
@@ -521,12 +531,18 @@ const Home = () => {
                   component="h1"
                   gutterBottom
                   sx={{
-                    fontSize: { xs: '2.2rem', sm: '2.8rem', md: '3.5rem', lg: '4.5rem' },
+                    // Optimized font sizes for better readability on different devices
+                    fontSize: { 
+                      xs: '2rem', 
+                      sm: '2.4rem', 
+                      md: '2.8rem', 
+                      lg: '3.5rem' 
+                    },
                     fontWeight: 800,
                     textShadow: '2px 2px 4px rgba(0,0,0,0.3)',
-                    mb: { xs: 2, sm: 3, md: 4 },
+                    mb: { xs: 2, sm: 2.5, md: 3 }, // Reduced bottom margin
                     letterSpacing: '-0.02em',
-                    lineHeight: 1.1
+                    lineHeight: 1.2 // Improved line height for better readability
                   }}
                 >
                   <motion.span
@@ -555,10 +571,10 @@ const Home = () => {
                       component="span"
                       sx={{
                         position: 'absolute',
-                        width: '60px',
-                        height: '60px',
-                        right: { xs: '-10px', sm: '-20px', md: '-30px' },
-                        top: { xs: '-15px', sm: '-20px', md: '-25px' },
+                        width: { xs: '40px', sm: '50px', md: '60px' }, // Responsive size
+                        height: { xs: '40px', sm: '50px', md: '60px' },
+                        right: { xs: '-5px', sm: '-10px', md: '-20px' },
+                        top: { xs: '-10px', sm: '-15px', md: '-20px' },
                         background: 'url("/sparkle.svg")',
                         backgroundSize: 'contain',
                         backgroundRepeat: 'no-repeat',
@@ -574,9 +590,9 @@ const Home = () => {
                   </motion.span>
                 </Typography>
 
-                {/* Quick Stats */}
-                <Box sx={{ mb: { xs: 3, md: 4 } }}>
-                  <Grid container spacing={{ xs: 1, sm: 2 }}>
+                {/* Quick Stats - Improved for better professional look */}
+                <Box sx={{ mb: { xs: 2.5, md: 3.5 } }}>
+                  <Grid container spacing={{ xs: 1.5, sm: 2, md: 2.5 }}>
                     {[
                       { icon: <Speed />, label: 'Faster Workflow', value: '300%', color: '#4f46e5' },
                       { icon: <Groups />, label: 'Happy Patients', value: '50K+', color: '#06b6d4' },
@@ -588,13 +604,13 @@ const Home = () => {
                           animate={{ opacity: 1, y: 0 }}
                           transition={{ duration: 0.5, delay: 0.8 + (index * 0.2) }}
                           whileHover={{
-                            y: -5,
+                            y: -3, // Reduced hover movement
                             transition: { duration: 0.2 }
                           }}
                         >
                           <Paper
                             sx={{
-                              p: { xs: 1, sm: 1.5 },
+                              p: { xs: 1.2, sm: 1.5, md: 1.8 }, // Better padding for different screens
                               textAlign: 'center',
                               background: alpha(theme.palette.background.paper, 0.1),
                               backdropFilter: 'blur(10px)',
@@ -621,8 +637,8 @@ const Home = () => {
                           >
                             {React.cloneElement(stat.icon, {
                               sx: {
-                                fontSize: { xs: 20, sm: 24 },
-                                mb: { xs: 0.5, sm: 1 },
+                                fontSize: { xs: 18, sm: 20, md: 24 }, // Better icon sizing
+                                mb: { xs: 0.5, sm: 0.75, md: 1 },
                                 color: 'white',
                                 filter: `drop-shadow(0 0 3px ${stat.color})`
                               }
@@ -630,9 +646,9 @@ const Home = () => {
                             <Typography
                               variant="h6"
                               sx={{
-                                fontSize: { xs: '0.9rem', sm: '1rem' },
+                                fontSize: { xs: '0.85rem', sm: '0.9rem', md: '1rem' }, // Better font sizing
                                 fontWeight: 700,
-                                textShadow: `0 0 10px ${stat.color}`
+                                textShadow: `0 0 8px ${stat.color}`
                               }}
                             >
                               {stat.value}
@@ -640,8 +656,8 @@ const Home = () => {
                             <Typography
                               variant="caption"
                               sx={{
-                                opacity: 0.8,
-                                fontSize: { xs: '0.7rem', sm: '0.75rem' },
+                                opacity: 0.9, // Increased opacity for better readability
+                                fontSize: { xs: '0.65rem', sm: '0.7rem', md: '0.75rem' },
                                 display: 'block'
                               }}
                             >
@@ -657,17 +673,24 @@ const Home = () => {
                 <Typography
                   variant="h5"
                   sx={{
-                    mb: { xs: 3, md: 4 },
-                    opacity: 0.9,
+                    mb: { xs: 2.5, sm: 3, md: 3.5 }, // Better spacing
+                    opacity: 0.95, // Increased opacity for better readability
                     maxWidth: '600px',
-                    lineHeight: 1.8,
-                    fontSize: { xs: '0.95rem', sm: '1.1rem', md: '1.3rem' },
+                    lineHeight: 1.6, // Improved line height
+                    // Better font sizing for different screens
+                    fontSize: { 
+                      xs: '0.9rem', 
+                      sm: '1rem', 
+                      md: '1.1rem', 
+                      lg: '1.2rem' 
+                    },
                     textShadow: '1px 1px 2px rgba(0,0,0,0.2)',
                     position: 'relative',
+                    pl: { md: 2 }, // Added left padding for desktop to accommodate the line
                     '&::before': {
                       content: '""',
                       position: 'absolute',
-                      left: '-10px',
+                      left: 0,
                       top: '0',
                       bottom: '0',
                       width: '3px',
@@ -686,8 +709,8 @@ const Home = () => {
                   </motion.span>
                 </Typography>
 
-                {/* Trust Badges */}
-                <Box sx={{ mb: { xs: 3, md: 4 } }}>
+                {/* Trust Badges - Improved for better professional look */}
+                <Box sx={{ mb: { xs: 2.5, sm: 3, md: 3.5 } }}>
                   <motion.div
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
@@ -695,10 +718,10 @@ const Home = () => {
                   >
                     <Stack
                       direction={{ xs: 'column', sm: 'row' }}
-                      spacing={{ xs: 1, sm: 3 }}
+                      spacing={{ xs: 1, sm: 2, md: 3 }}
                       alignItems={{ xs: 'flex-start', sm: 'center' }}
                       sx={{
-                        p: { xs: 1.5, sm: 2 },
+                        p: { xs: 1.5, sm: 1.8, md: 2 }, // Better padding
                         borderRadius: 2,
                         background: alpha(theme.palette.background.paper, 0.05),
                         backdropFilter: 'blur(8px)',
@@ -708,9 +731,9 @@ const Home = () => {
                       <Typography
                         variant="body2"
                         sx={{
-                          opacity: 0.9,
+                          opacity: 0.95, // Increased opacity
                           fontWeight: 600,
-                          fontSize: { xs: '0.8rem', sm: '0.9rem' },
+                          fontSize: { xs: '0.75rem', sm: '0.8rem', md: '0.85rem' }, // Better font sizing
                           textShadow: '0 0 5px rgba(255,255,255,0.3)'
                         }}
                       >
@@ -718,7 +741,7 @@ const Home = () => {
                       </Typography>
                       <Stack
                         direction="row"
-                        spacing={{ xs: 1, sm: 2 }}
+                        spacing={{ xs: 1, sm: 1.5, md: 2 }}
                         flexWrap="wrap"
                         sx={{
                           '& .MuiChip-root': {
@@ -735,13 +758,15 @@ const Home = () => {
                             key={index}
                             label={cert.label}
                             size="small"
-                            icon={<Security sx={{ fontSize: 16 }} />}
+                            icon={<Security sx={{ fontSize: { xs: 14, sm: 16 } }} />} // Responsive icon size
                             sx={{
                               bgcolor: alpha(cert.color, 0.2),
                               backdropFilter: 'blur(10px)',
                               border: `1px solid ${alpha(cert.color, 0.4)}`,
                               color: 'white',
                               fontWeight: 600,
+                              fontSize: { xs: '0.7rem', sm: '0.75rem' }, // Better font sizing
+                              height: { xs: 24, sm: 28, md: 32 }, // Better height for different screens
                               '& .MuiChip-icon': {
                                 color: cert.color
                               },
@@ -765,9 +790,9 @@ const Home = () => {
                 >
                   <Stack
                     direction={{ xs: 'column', sm: 'row' }}
-                    spacing={{ xs: 2, sm: 3 }}
+                    spacing={{ xs: 2, sm: 2.5, md: 3 }}
                     sx={{
-                      mt: { xs: 3, sm: 4, md: 6 },
+                      mt: { xs: 2.5, sm: 3, md: 4 }, // Reduced top margin
                       width: '100%'
                     }}
                   >
@@ -782,23 +807,25 @@ const Home = () => {
                               display: 'flex',
                               alignItems: 'center',
                               justifyContent: 'center',
-                              width: { xs: 24, sm: 28 },
-                              height: { xs: 24, sm: 28 },
+                              width: { xs: 22, sm: 24, md: 28 }, // Responsive icon container
+                              height: { xs: 22, sm: 24, md: 28 },
                               borderRadius: '50%',
                               bgcolor: 'rgba(255,255,255,0.2)',
                               ml: 1
                             }}>
-                              <ArrowForward sx={{ fontSize: { xs: 16, sm: 18 } }} />
+                              <ArrowForward sx={{ fontSize: { xs: 14, sm: 16, md: 18 } }} /> {/* Responsive icon size */}
                             </Box>
                           }
                           sx={{
-                            py: { xs: 1.8, sm: 2.2 },
-                            px: { xs: 3, sm: 5 },
-                            fontSize: { xs: '1rem', sm: '1.2rem' },
+                            // Better padding for different screen sizes
+                            py: { xs: 1.5, sm: 1.7, md: 2 },
+                            px: { xs: 2.5, sm: 3, md: 4 },
+                            // Better font sizes
+                            fontSize: { xs: '0.9rem', sm: '1rem', md: '1.1rem' },
                             fontWeight: 700,
                             borderRadius: 3,
                             background: 'linear-gradient(90deg, #4f46e5 0%, #06b6d4 100%)',
-                            boxShadow: '0 10px 25px rgba(79, 70, 229, 0.4)',
+                            boxShadow: '0 8px 20px rgba(79, 70, 229, 0.4)', // Reduced shadow
                             textTransform: 'none',
                             position: 'relative',
                             overflow: 'hidden',
@@ -818,8 +845,8 @@ const Home = () => {
                               '100%': { left: '100%' },
                             },
                             '&:hover': {
-                              transform: 'translateY(-4px)',
-                              boxShadow: '0 15px 30px rgba(79, 70, 229, 0.5)',
+                              transform: 'translateY(-3px)', // Reduced hover movement
+                              boxShadow: '0 12px 25px rgba(79, 70, 229, 0.5)',
                               background: 'linear-gradient(90deg, #4338ca 0%, #0891b2 100%)',
                             },
                             transition: 'all 0.3s ease'
@@ -834,9 +861,11 @@ const Home = () => {
                             color: 'white',
                             borderColor: '#a5f3fc',
                             borderWidth: 2,
-                            py: { xs: 1.8, sm: 2.2 },
-                            px: { xs: 3, sm: 5 },
-                            fontSize: { xs: '1rem', sm: '1.2rem' },
+                            // Better padding for different screen sizes
+                            py: { xs: 1.5, sm: 1.7, md: 2 },
+                            px: { xs: 2.5, sm: 3, md: 4 },
+                            // Better font sizes
+                            fontSize: { xs: '0.9rem', sm: '1rem', md: '1.1rem' },
                             fontWeight: 700,
                             borderRadius: 3,
                             textTransform: 'none',
@@ -864,8 +893,8 @@ const Home = () => {
                             '&:hover': {
                               borderColor: '#a5f3fc',
                               backgroundColor: 'rgba(165, 243, 252, 0.1)',
-                              transform: 'translateY(-4px)',
-                              boxShadow: '0 10px 20px rgba(165, 243, 252, 0.2)',
+                              transform: 'translateY(-3px)', // Reduced hover movement
+                              boxShadow: '0 8px 16px rgba(165, 243, 252, 0.2)', // Reduced shadow
                               '&::before': {
                                 opacity: 0.8,
                               }
@@ -888,24 +917,26 @@ const Home = () => {
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'center',
-                            width: { xs: 24, sm: 28 },
-                            height: { xs: 24, sm: 28 },
+                            width: { xs: 22, sm: 24, md: 28 }, // Responsive icon container
+                            height: { xs: 22, sm: 24, md: 28 },
                             borderRadius: '50%',
                             bgcolor: 'rgba(255,255,255,0.2)',
                             ml: 1
                           }}>
-                            <ArrowForward sx={{ fontSize: { xs: 16, sm: 18 } }} />
+                            <ArrowForward sx={{ fontSize: { xs: 14, sm: 16, md: 18 } }} /> {/* Responsive icon size */}
                           </Box>
                         }
                         sx={{
-                          py: { xs: 1.8, sm: 2.2 },
-                          px: { xs: 3, sm: 5 },
-                          fontSize: { xs: '1rem', sm: '1.2rem' },
+                          // Better padding for different screen sizes
+                          py: { xs: 1.5, sm: 1.7, md: 2 },
+                          px: { xs: 2.5, sm: 3, md: 4 },
+                          // Better font sizes
+                          fontSize: { xs: '0.9rem', sm: '1rem', md: '1.1rem' },
                           fontWeight: 700,
                           borderRadius: 3,
                           textTransform: 'none',
                           background: 'linear-gradient(90deg, #4f46e5 0%, #06b6d4 100%)',
-                          boxShadow: '0 10px 25px rgba(79, 70, 229, 0.4)',
+                          boxShadow: '0 8px 20px rgba(79, 70, 229, 0.4)', // Reduced shadow
                           position: 'relative',
                           overflow: 'hidden',
                           '&::after': {
@@ -924,8 +955,8 @@ const Home = () => {
                             '100%': { left: '100%' },
                           },
                           '&:hover': {
-                            transform: 'translateY(-4px)',
-                            boxShadow: '0 15px 30px rgba(79, 70, 229, 0.5)',
+                            transform: 'translateY(-3px)', // Reduced hover movement
+                            boxShadow: '0 12px 25px rgba(79, 70, 229, 0.5)',
                             background: 'linear-gradient(90deg, #4338ca 0%, #0891b2 100%)',
                           },
                           transition: 'all 0.3s ease'
@@ -945,38 +976,49 @@ const Home = () => {
               sx={{
                 position: 'relative',
                 order: { xs: 1, md: 2 },
-                mb: { xs: 4, md: 0 },
-                mt: { xs: 2, md: 0 }
+                mb: { xs: 3, md: 0 }, // Reduced bottom margin on mobile
+                mt: { xs: 1, md: 0 }, // Reduced top margin on mobile
+                display: 'flex',
+                justifyContent: 'center',
+                alignItems: 'center'
               }}
             >
               <Box
                 sx={{
                   position: 'relative',
-                  maxWidth: { xs: '260px', sm: '300px', md: '100%' },
+                  // Better responsive sizing
+                  width: { xs: '240px', sm: '280px', md: '90%', lg: '95%' },
+                  maxWidth: { xs: '280px', sm: '320px', md: '450px', lg: '500px' },
+                  height: { xs: '240px', sm: '280px', md: '350px', lg: '400px' },
                   mx: 'auto',
-                  transform: { xs: 'scale(0.9)', md: 'scale(1)' },
+                  // Better scaling for different devices
+                  transform: { 
+                    xs: 'scale(0.9)', 
+                    sm: 'scale(0.95)', 
+                    md: 'scale(1)' 
+                  },
                   '&::before': {
                     content: '""',
                     position: 'absolute',
-                    top: -20,
-                    left: -20,
-                    right: -20,
-                    bottom: -20,
+                    top: -15,
+                    left: -15,
+                    right: -15,
+                    bottom: -15,
                     background: 'radial-gradient(circle, rgba(255,255,255,0.15) 0%, rgba(255,255,255,0) 70%)',
                     borderRadius: '50%',
                     animation: 'pulse 3s infinite',
                   },
                   '@keyframes pulse': {
                     '0%': {
-                      transform: 'scale(0.95)',
+                      transform: 'scale(0.97)',
                       opacity: 0.5,
                     },
                     '50%': {
                       transform: 'scale(1)',
-                      opacity: 0.8,
+                      opacity: 0.7,
                     },
                     '100%': {
-                      transform: 'scale(0.95)',
+                      transform: 'scale(0.97)',
                       opacity: 0.5,
                     },
                   },

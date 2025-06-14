@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useSelector } from 'react-redux';
 import { useNavigate, useLocation } from 'react-router-dom';
@@ -16,6 +15,8 @@ import {
   Badge,
   Tooltip,
   IconButton,
+  Divider,
+  useMediaQuery,
 } from '@mui/material';
 import { getAvatarUrl, getInitials, getRoleColor as getUtilRoleColor, getRoleLabel as getUtilRoleLabel } from '../../utils/avatarUtils';
 import DashboardIcon from '@mui/icons-material/Dashboard';
@@ -59,12 +60,18 @@ import LanguageIcon from '@mui/icons-material/Language';
 import SchoolIcon from '@mui/icons-material/School';
 import CampaignIcon from '@mui/icons-material/Campaign';
 import ChatIcon from '@mui/icons-material/Chat';
+import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
+import ChevronRightIcon from '@mui/icons-material/ChevronRight';
+import MenuIcon from '@mui/icons-material/Menu';
 
+// Full width and minimized width for the drawer
 const drawerWidth = 240;
+const miniDrawerWidth = 72;
 
 const Sidebar = ({ mobileOpen, onDrawerToggle }) => {
   const navigate = useNavigate();
   const location = useLocation();
+  const [isMinimized, setIsMinimized] = useState(false);
 
   // Get user data from both auth systems
   const { user: oldUser, token: oldToken } = useSelector((state) => state.auth);
@@ -74,13 +81,39 @@ const Sidebar = ({ mobileOpen, onDrawerToggle }) => {
   const user = newUser || oldUser;
   const token = newToken || oldToken;
 
+  // Check if we're on desktop or larger screens
+  const theme = useTheme();
+  const isDesktop = useMediaQuery(theme.breakpoints.up('md'));
+
+  // Toggle sidebar minimized state
+  const toggleMinimized = () => {
+    const newState = !isMinimized;
+    setIsMinimized(newState);
+    
+    // Store preference in localStorage
+    localStorage.setItem('sidebarMinimized', newState ? 'true' : 'false');
+    
+    // Dispatch custom event for direct communication with Layout component
+    window.dispatchEvent(
+      new CustomEvent('sidebar-toggle', { 
+        detail: { isMinimized: newState } 
+      })
+    );
+  };
+
+  // Load minimized preference from localStorage on mount
+  useEffect(() => {
+    const savedPreference = localStorage.getItem('sidebarMinimized');
+    if (savedPreference === 'true' && isDesktop) {
+      setIsMinimized(true);
+    }
+  }, [isDesktop]);
+
   console.log('Sidebar: User data', {
     role: user?.role,
     name: user?.name,
     hasToken: !!token
   });
-
-  const theme = useTheme();
 
   // Role-specific styling using utility functions
   const getRoleColor = (role) => {
@@ -550,11 +583,46 @@ const Sidebar = ({ mobileOpen, onDrawerToggle }) => {
       background: theme.palette.mode === 'dark'
         ? 'linear-gradient(180deg, rgba(30, 41, 59, 0.8) 0%, rgba(15, 23, 42, 0.9) 100%)'
         : 'linear-gradient(180deg, rgba(255, 255, 255, 0.9) 0%, rgba(248, 250, 252, 0.95) 100%)',
+      width: isMinimized ? miniDrawerWidth : drawerWidth,
+      transition: theme.transitions.create('width', {
+        easing: theme.transitions.easing.sharp,
+        duration: theme.transitions.duration.enteringScreen,
+      }),
     }}>
+      {/* Toggle Button - Only visible on desktop */}
+      {isDesktop && (
+        <Box 
+          sx={{ 
+            display: 'flex', 
+            justifyContent: isMinimized ? 'center' : 'flex-end',
+            p: 1,
+            borderBottom: '1px solid',
+            borderColor: 'divider',
+          }}
+        >
+          <Tooltip title={isMinimized ? "Expand sidebar" : "Collapse sidebar"}>
+            <IconButton 
+              onClick={toggleMinimized}
+              size="small"
+              sx={{
+                color: getRoleColor(user?.role),
+                bgcolor: alpha(getRoleColor(user?.role), 0.1),
+                '&:hover': {
+                  bgcolor: alpha(getRoleColor(user?.role), 0.2),
+                },
+                transition: 'all 0.2s ease',
+              }}
+            >
+              {isMinimized ? <ChevronRightIcon /> : <ChevronLeftIcon />}
+            </IconButton>
+          </Tooltip>
+        </Box>
+      )}
+
       {/* User Profile Section */}
       <Box
         sx={{
-          p: 3,
+          p: isMinimized ? 1.5 : 3,
           display: 'flex',
           flexDirection: 'column',
           alignItems: 'center',
@@ -577,15 +645,15 @@ const Sidebar = ({ mobileOpen, onDrawerToggle }) => {
       >
         <Avatar
           sx={{
-            width: 90,
-            height: 90,
-            mb: 1,
+            width: isMinimized ? 50 : 90,
+            height: isMinimized ? 50 : 90,
+            mb: isMinimized ? 0.5 : 1,
             border: '3px solid',
             borderColor: getRoleColor(user?.role),
             boxShadow: `0 0 0 3px ${alpha(getRoleColor(user?.role), 0.2)}, 0 8px 16px ${alpha(theme.palette.common.black, 0.15)}`,
             background: `linear-gradient(135deg, ${alpha(getRoleColor(user?.role), 0.8)} 0%, ${alpha(theme.palette.primary.main, 0.9)} 100%)`,
             color: '#fff',
-            fontSize: '2rem',
+            fontSize: isMinimized ? '1.2rem' : '2rem',
             fontWeight: 'bold',
             transition: 'all 0.3s ease',
             '&:hover': {
@@ -607,104 +675,144 @@ const Sidebar = ({ mobileOpen, onDrawerToggle }) => {
         >
           {getInitials(user?.name)}
         </Avatar>
-        <Typography variant="h6" sx={{ mt: 1, fontWeight: 700, textAlign: 'center' }}>
-          {user?.name || 'User'}
-        </Typography>
-        <Typography
-          variant="caption"
-          sx={{
-            px: 2,
-            py: 0.7,
-            borderRadius: 5,
-            bgcolor: alpha(getRoleColor(user?.role), 0.15),
-            color: getRoleColor(user?.role),
-            fontWeight: 600,
-            mt: 0.5,
-            boxShadow: `0 2px 6px ${alpha(getRoleColor(user?.role), 0.2)}`,
-            border: `1px solid ${alpha(getRoleColor(user?.role), 0.2)}`,
-            textTransform: 'uppercase',
-            letterSpacing: '0.5px',
-          }}
-        >
-          {getRoleLabel(user?.role)}
-        </Typography>
+        
+        {!isMinimized && (
+          <>
+            <Typography variant="h6" sx={{ mt: 1, fontWeight: 700, textAlign: 'center' }}>
+              {user?.name || 'User'}
+            </Typography>
+            <Typography
+              variant="caption"
+              sx={{
+                px: 2,
+                py: 0.7,
+                borderRadius: 5,
+                bgcolor: alpha(getRoleColor(user?.role), 0.15),
+                color: getRoleColor(user?.role),
+                fontWeight: 600,
+                mt: 0.5,
+                boxShadow: `0 2px 6px ${alpha(getRoleColor(user?.role), 0.2)}`,
+                border: `1px solid ${alpha(getRoleColor(user?.role), 0.2)}`,
+                textTransform: 'uppercase',
+                letterSpacing: '0.5px',
+              }}
+            >
+              {getRoleLabel(user?.role)}
+            </Typography>
+          </>
+        )}
       </Box>
 
       {/* Menu Items */}
-      <Box sx={{ flexGrow: 1, overflow: 'auto', px: 2, py: 3 }}>
+      <Box sx={{ 
+        flexGrow: 1, 
+        overflow: 'auto', 
+        px: isMinimized ? 0.5 : 2, 
+        py: isMinimized ? 2 : 3 
+      }}>
         <List component="nav" sx={{ width: '100%' }}>
           {getMenuItems().map((item) => {
             const isActive = location.pathname === item.path;
             return (
-              <ListItemButton
+              <Tooltip 
+                title={isMinimized ? item.text : ""} 
+                placement="right"
                 key={item.text}
-                selected={isActive}
-                onClick={() => navigate(item.path)}
-                sx={{
-                  borderRadius: 2,
-                  mb: 1,
-                  px: 2,
-                  py: 1.2,
-                  transition: 'all 0.2s ease',
-                  position: 'relative',
-                  overflow: 'hidden',
-                  '&.Mui-selected': {
-                    bgcolor: alpha(getRoleColor(user?.role), 0.12),
-                    '&:hover': {
-                      bgcolor: alpha(getRoleColor(user?.role), 0.18),
-                    },
-                    '&::before': {
-                      content: '""',
-                      position: 'absolute',
-                      left: 0,
-                      top: 0,
-                      bottom: 0,
-                      width: '4px',
-                      backgroundColor: getRoleColor(user?.role),
-                      borderRadius: '0 4px 4px 0',
-                    }
-                  },
-                  '&:hover': {
-                    bgcolor: alpha(getRoleColor(user?.role), 0.08),
-                    transform: 'translateX(4px)',
-                  },
-                }}
               >
-                <ListItemIcon
+                <ListItemButton
+                  selected={isActive}
+                  onClick={() => navigate(item.path)}
                   sx={{
-                    color: isActive ? getRoleColor(user?.role) : 'text.secondary',
-                    minWidth: 40,
+                    borderRadius: 2,
+                    mb: 1,
+                    px: isMinimized ? 1 : 2,
+                    py: 1.2,
+                    justifyContent: isMinimized ? 'center' : 'flex-start',
                     transition: 'all 0.2s ease',
-                    transform: isActive ? 'scale(1.1)' : 'scale(1)',
+                    position: 'relative',
+                    overflow: 'hidden',
+                    minHeight: isMinimized ? '48px' : 'auto',
+                    '&.Mui-selected': {
+                      bgcolor: alpha(getRoleColor(user?.role), 0.12),
+                      '&:hover': {
+                        bgcolor: alpha(getRoleColor(user?.role), 0.18),
+                      },
+                      '&::before': {
+                        content: '""',
+                        position: 'absolute',
+                        left: 0,
+                        top: 0,
+                        bottom: 0,
+                        width: '4px',
+                        backgroundColor: getRoleColor(user?.role),
+                        borderRadius: '0 4px 4px 0',
+                      }
+                    },
+                    '&:hover': {
+                      bgcolor: alpha(getRoleColor(user?.role), 0.08),
+                      transform: isMinimized ? 'scale(1.05)' : 'translateX(4px)',
+                    },
                   }}
                 >
-                  {item.icon}
-                </ListItemIcon>
-                <ListItemText
-                  primary={item.text}
-                  primaryTypographyProps={{
-                    fontWeight: isActive ? 700 : 500,
-                    variant: 'body2',
-                    color: isActive ? 'text.primary' : 'text.secondary',
-                  }}
-                />
-                {item.badge && (
-                  <Badge
-                    badgeContent={item.badge.count}
-                    color={item.badge.color}
+                  <ListItemIcon
                     sx={{
-                      ml: 1,
-                      '& .MuiBadge-badge': {
-                        fontWeight: 'bold',
-                        fontSize: '0.7rem',
-                        minWidth: '20px',
-                        height: '20px',
-                        borderRadius: '10px',
-                      }
+                      color: isActive ? getRoleColor(user?.role) : 'text.secondary',
+                      minWidth: isMinimized ? 0 : 40,
+                      mr: isMinimized ? 0 : 2,
+                      justifyContent: 'center',
+                      transition: 'all 0.2s ease',
+                      transform: isActive ? 'scale(1.1)' : 'scale(1)',
                     }}
-                  />
-                )}
-              </ListItemButton>
+                  >
+                    {item.icon}
+                  </ListItemIcon>
+                  
+                  {!isMinimized && (
+                    <ListItemText
+                      primary={item.text}
+                      primaryTypographyProps={{
+                        fontWeight: isActive ? 700 : 500,
+                        variant: 'body2',
+                        color: isActive ? 'text.primary' : 'text.secondary',
+                        noWrap: true,
+                      }}
+                    />
+                  )}
+                  
+                  {!isMinimized && item.badge && (
+                    <Badge
+                      badgeContent={item.badge.count}
+                      color={item.badge.color}
+                      sx={{
+                        ml: 1,
+                        '& .MuiBadge-badge': {
+                          fontWeight: 'bold',
+                          fontSize: '0.7rem',
+                          minWidth: '20px',
+                          height: '20px',
+                          borderRadius: '10px',
+                        }
+                      }}
+                    />
+                  )}
+                  
+                  {/* Show badges as dots when minimized */}
+                  {isMinimized && item.badge && (
+                    <Box
+                      sx={{
+                        position: 'absolute',
+                        top: 8,
+                        right: 8,
+                        width: 8,
+                        height: 8,
+                        borderRadius: '50%',
+                        bgcolor: theme.palette[item.badge.color].main,
+                        boxShadow: `0 0 0 2px ${alpha(theme.palette[item.badge.color].main, 0.3)}`,
+                      }}
+                    />
+                  )}
+                </ListItemButton>
+              </Tooltip>
             );
           })}
         </List>
@@ -713,31 +821,35 @@ const Sidebar = ({ mobileOpen, onDrawerToggle }) => {
       {/* Footer */}
       <Box
         sx={{
-          p: 2,
+          p: isMinimized ? 1 : 2,
           borderTop: '1px solid',
           borderColor: 'divider',
           display: 'flex',
           alignItems: 'center',
-          justifyContent: 'space-between',
+          justifyContent: isMinimized ? 'center' : 'space-between',
           background: alpha(theme.palette.background.paper, 0.6),
           backdropFilter: 'blur(8px)',
+          flexDirection: isMinimized ? 'column' : 'row',
         }}
       >
-        <Box>
-          <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.5, fontWeight: 500 }}>
-            SoulSpace Health
-          </Typography>
-          <Typography variant="caption" color="text.disabled" sx={{ fontSize: '0.65rem' }}>
-            v1.0.0
-          </Typography>
-        </Box>
-        <Box>
+        {!isMinimized && (
+          <Box>
+            <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.5, fontWeight: 500 }}>
+              SoulSpace Health
+            </Typography>
+            <Typography variant="caption" color="text.disabled" sx={{ fontSize: '0.65rem' }}>
+              v1.0.0
+            </Typography>
+          </Box>
+        )}
+        
+        <Box sx={{ display: 'flex', flexDirection: isMinimized ? 'column' : 'row', gap: isMinimized ? 1 : 0 }}>
           <Tooltip title="Settings">
             <IconButton
               size="small"
               onClick={() => navigate('/settings')}
               sx={{
-                mr: 1,
+                mr: isMinimized ? 0 : 1,
                 color: 'text.secondary',
                 '&:hover': {
                   color: getRoleColor(user?.role),
@@ -772,9 +884,16 @@ const Sidebar = ({ mobileOpen, onDrawerToggle }) => {
     <Box
       component="nav"
       sx={{
-        width: { sm: drawerWidth },
+        width: { 
+          xs: drawerWidth,
+          sm: isMinimized ? miniDrawerWidth : drawerWidth 
+        },
         flexShrink: { sm: 0 },
         zIndex: (theme) => theme.zIndex.drawer + 2,
+        transition: theme.transitions.create('width', {
+          easing: theme.transitions.easing.sharp,
+          duration: theme.transitions.duration.enteringScreen,
+        }),
       }}
       aria-label="sidebar navigation"
     >
@@ -788,7 +907,7 @@ const Sidebar = ({ mobileOpen, onDrawerToggle }) => {
           display: { xs: 'block', sm: 'none' },
           '& .MuiDrawer-paper': {
             boxSizing: 'border-box',
-            width: drawerWidth,
+            width: drawerWidth, // Always full width on mobile
             borderRight: 'none',
             boxShadow: theme.palette.mode === 'dark'
               ? '4px 0 15px rgba(0, 0, 0, 0.3)'
@@ -824,7 +943,7 @@ const Sidebar = ({ mobileOpen, onDrawerToggle }) => {
           display: { xs: 'none', sm: 'block' },
           '& .MuiDrawer-paper': {
             boxSizing: 'border-box',
-            width: drawerWidth,
+            width: isMinimized ? miniDrawerWidth : drawerWidth,
             borderRight: 'none',
             boxShadow: theme.palette.mode === 'dark'
               ? '4px 0 15px rgba(0, 0, 0, 0.3)'
