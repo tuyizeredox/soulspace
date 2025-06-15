@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import {
   Box,
   Container,
@@ -36,6 +36,7 @@ import {
   Notifications as NotificationsIcon,
   MoreVert as MoreVertIcon,
   KeyboardArrowRight as KeyboardArrowRightIcon,
+  Refresh as RefreshIcon,
 } from '@mui/icons-material';
 import axios from '../../utils/axios';
 import StatCard from '../../components/dashboard/StatCard';
@@ -62,15 +63,24 @@ const HospitalAdminDashboard = () => {
   const [doctorPerformance, setDoctorPerformance] = useState([]);
   const [departmentStats, setDepartmentStats] = useState([]);
   const [windowWidth, setWindowWidth] = useState(window.innerWidth);
+  const [refreshing, setRefreshing] = useState(false);
+  const lastUserRef = useRef();
+  const lastTokenRef = useRef();
+  const lastHospitalIdRef = useRef();
+  const loadingRef = useRef(false);
 
-  // Handle window resize
+  // Debounced window resize handler
   useEffect(() => {
+    let resizeTimeout;
     const handleResize = () => {
-      setWindowWidth(window.innerWidth);
+      clearTimeout(resizeTimeout);
+      resizeTimeout = setTimeout(() => {
+        setWindowWidth(window.innerWidth);
+      }, 150);
     };
-
     window.addEventListener('resize', handleResize);
     return () => {
+      clearTimeout(resizeTimeout);
       window.removeEventListener('resize', handleResize);
     };
   }, []);
@@ -207,24 +217,34 @@ const HospitalAdminDashboard = () => {
       axios.defaults.headers.common['Authorization'] = `Bearer ${currentToken}`;
 
       // Fetch upcoming appointments
-      const appointmentsResponse = await axios.get('/api/appointments/hospital', config);
-      if (appointmentsResponse.data) {
-        // Sort by date and take the next 5
-        const upcoming = appointmentsResponse.data
-          .filter(apt => apt.status === 'pending' || apt.status === 'confirmed')
-          .sort((a, b) => new Date(a.date) - new Date(b.date))
-          .slice(0, 5);
-        setUpcomingAppointments(upcoming);
+      try {
+        const appointmentsResponse = await axios.get('/api/appointments/hospital', config);
+        if (appointmentsResponse.data) {
+          // Sort by date and take the next 5
+          const upcoming = appointmentsResponse.data
+            .filter(apt => apt.status === 'pending' || apt.status === 'confirmed')
+            .sort((a, b) => new Date(a.date) - new Date(b.date))
+            .slice(0, 5);
+          setUpcomingAppointments(upcoming);
+        }
+      } catch (error) {
+        console.error('Error fetching appointments:', error);
+        // Don't set error state to avoid blocking the dashboard
       }
 
       // Fetch recent patients
-      const patientsResponse = await axios.get('/api/patients/hospital', config);
-      if (patientsResponse.data) {
-        // Sort by creation date and take the most recent 5
-        const recent = patientsResponse.data
-          .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
-          .slice(0, 5);
-        setRecentPatients(recent);
+      try {
+        const patientsResponse = await axios.get('/api/patients/hospital', config);
+        if (patientsResponse.data) {
+          // Sort by creation date and take the most recent 5
+          const recent = patientsResponse.data
+            .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+            .slice(0, 5);
+          setRecentPatients(recent);
+        }
+      } catch (error) {
+        console.error('Error fetching patients:', error);
+        // Don't set error state to avoid blocking the dashboard
       }
 
       // Try to fetch real doctor performance data
@@ -279,8 +299,9 @@ const HospitalAdminDashboard = () => {
           // Group doctors by department and calculate stats
           const departments = {};
 
-          // Use the doctor performance data we just set
-          doctorPerformance.forEach(doctor => {
+          // Use the doctor performance data we have
+          const currentDoctorPerformance = [...doctorPerformance];
+          currentDoctorPerformance.forEach(doctor => {
             if (!departments[doctor.department]) {
               departments[doctor.department] = {
                 name: doctor.department,
@@ -425,171 +446,245 @@ const HospitalAdminDashboard = () => {
     }
   }, [latestUserAuthUser, latestOldAuthUser, user, newToken, oldToken]);
 
+  // Memoize user, token, and hospitalId to avoid unnecessary recalculations and fix no-undef
+  const memoizedUser = useMemo(() => user, [user]);
+  const memoizedToken = useMemo(() => token, [token]);
+  const memoizedHospitalId = useMemo(() => user?.hospitalId, [user]);
+
   // We already have the latest user data from Redux store at the top of the component
 
   // Use useCallback to memoize the function
-  const fetchDashboardData = useCallback(async () => {
-    // Get the most up-to-date user data
-    const currentUser = latestUserAuthUser || latestOldAuthUser || user;
-
-    // Get the most up-to-date token using our utility function
-    const currentToken = newToken || oldToken || getBestToken();
-
-    console.log('fetchDashboardData - Current state:', {
-      hasUser: !!currentUser,
-      hasHospitalId: !!currentUser?.hospitalId,
-      hasToken: !!currentToken
-    });
-
-    if (!currentUser || !currentUser.hospitalId || !currentToken) {
-      console.error('Missing required data:', {
-        user: !!currentUser,
-        hospitalId: !!currentUser?.hospitalId,
-        token: !!currentToken
-      });
-
-      // Try to refresh auth state before giving up
-      try {
-        console.log('Attempting to refresh auth state...');
-        setError('Refreshing authentication...');
-
-        // Try both auth systems in parallel
-        const authPromises = [
-          dispatch(getCurrentUser()).unwrap().catch(err => {
-            console.log('getCurrentUser failed:', err);
-            return null;
-          }),
-          dispatch(checkAuthStatus()).unwrap().catch(err => {
-            console.log('checkAuthStatus failed:', err);
-            return null;
-          })
-        ];
-
-        const results = await Promise.all(authPromises);
-
-        if (!results[0] && !results[1]) {
-          console.error('Both auth checks failed');
-          setError('Authentication failed. Please log in again.');
-          setLoading(false);
-          // Redirect to login after a delay
-          setTimeout(() => navigate('/login'), 2000);
-          return;
-        }
-
-        // Check if we now have the required data
-        const refreshedUser = latestUserAuthUser || latestOldAuthUser;
-        if (!refreshedUser || !refreshedUser.hospitalId) {
-          setError('Could not retrieve hospital information. Please log in again.');
-          setLoading(false);
-          setTimeout(() => navigate('/login'), 2000);
-          return;
-        }
-
-        // Continue with the refreshed user data
-        console.log('Auth refresh successful, continuing with refreshed data');
-      } catch (authError) {
-        console.error('Failed to refresh auth state:', authError);
-        setError('Authentication failed. Please log in again.');
-        setLoading(false);
-        setTimeout(() => navigate('/login'), 2000);
-        return;
-      }
-    }
-
+  const fetchDashboardData = useCallback(async (manual = false) => {
+    if (loadingRef.current && !manual) return; // Prevent duplicate fetches
+    loadingRef.current = true;
+    setRefreshing(!!manual);
     try {
-      setLoading(true);
+      // Only fetch if user/token/hospitalId changed or manual refresh
+      if (
+        manual ||
+        lastUserRef.current !== memoizedUser ||
+        lastTokenRef.current !== memoizedToken ||
+        lastHospitalIdRef.current !== memoizedHospitalId
+      ) {
+        lastUserRef.current = memoizedUser;
+        lastTokenRef.current = memoizedToken;
+        lastHospitalIdRef.current = memoizedHospitalId;
+        setLoading(true);
 
-      // Get the latest user and token after potential refresh
-      const finalUser = latestUserAuthUser || latestOldAuthUser || user || getBestUser();
-      const finalToken = newToken || oldToken || getBestToken();
+        // Get the most up-to-date user data
+        const currentUser = latestUserAuthUser || latestOldAuthUser || user;
 
-      console.log('HospitalAdminDashboard: Fetching dashboard data with token:', !!finalToken);
+        // Get the most up-to-date token using our utility function
+        const currentToken = newToken || oldToken || getBestToken();
 
-      if (!finalToken) {
-        throw new Error('No authentication token available');
-      }
+        console.log('fetchDashboardData - Current state:', {
+          hasUser: !!currentUser,
+          hasHospitalId: !!currentUser?.hospitalId,
+          hasToken: !!currentToken
+        });
 
-      if (!finalUser || !finalUser.hospitalId) {
-        throw new Error('No hospital ID available');
-      }
+        if (!currentUser || !currentUser.hospitalId || !currentToken) {
+          console.error('Missing required data:', {
+            user: !!currentUser,
+            hospitalId: !!currentUser?.hospitalId,
+            token: !!currentToken
+          });
 
-      const config = {
-        headers: { Authorization: `Bearer ${finalToken}` }
-      };
+          // Try to refresh auth state before giving up
+          try {
+            console.log('Attempting to refresh auth state...');
+            setError('Refreshing authentication...');
 
-      // Set the token in axios defaults as well for future requests
-      axios.defaults.headers.common['Authorization'] = `Bearer ${finalToken}`;
+            // Try both auth systems in parallel
+            const authPromises = [
+              dispatch(getCurrentUser()).unwrap().catch(err => {
+                console.log('getCurrentUser failed:', err);
+                return null;
+              }),
+              dispatch(checkAuthStatus()).unwrap().catch(err => {
+                console.log('checkAuthStatus failed:', err);
+                return null;
+              })
+            ];
 
-      console.log(`Fetching stats for hospital ID: ${finalUser.hospitalId}`);
-      const response = await axios.get(`/api/hospitals/${finalUser.hospitalId}/stats`, config);
+            const results = await Promise.all(authPromises);
 
-      // Process the stats data to include trend information
-      const statsData = response.data;
+            if (!results[0] && !results[1]) {
+              console.error('Both auth checks failed');
+              setError('Authentication failed. Please log in again.');
+              setLoading(false);
+              // Redirect to login after a delay
+              setTimeout(() => navigate('/login'), 2000);
+              return;
+            }
 
-      // Calculate trends if analyticsData is available
-      if (statsData.analyticsData && statsData.analyticsData.datasets) {
-        // Get patient trend
-        const patientDataset = statsData.analyticsData.datasets.find(ds => ds.label === 'New Patients');
-        if (patientDataset && patientDataset.data.length >= 2) {
-          const currentMonth = patientDataset.data[patientDataset.data.length - 1];
-          const previousMonth = patientDataset.data[patientDataset.data.length - 2];
+            // Check if we now have the required data
+            const refreshedUser = latestUserAuthUser || latestOldAuthUser;
+            if (!refreshedUser || !refreshedUser.hospitalId) {
+              setError('Could not retrieve hospital information. Please log in again.');
+              setLoading(false);
+              setTimeout(() => navigate('/login'), 2000);
+              return;
+            }
 
-          if (previousMonth > 0) {
-            const percentChange = ((currentMonth - previousMonth) / previousMonth * 100).toFixed(1);
-            statsData.patientTrend = `${percentChange}% from last month`;
-            statsData.patientTrendUp = percentChange >= 0;
+            // Continue with the refreshed user data
+            console.log('Auth refresh successful, continuing with refreshed data');
+          } catch (authError) {
+            console.error('Failed to refresh auth state:', authError);
+            setError('Authentication failed. Please log in again.');
+            setLoading(false);
+            setTimeout(() => navigate('/login'), 2000);
+            return;
           }
         }
 
-        // Get appointment trend
-        const appointmentDataset = statsData.analyticsData.datasets.find(ds => ds.label === 'Appointments');
-        if (appointmentDataset && appointmentDataset.data.length >= 2) {
-          const currentMonth = appointmentDataset.data[appointmentDataset.data.length - 1];
-          const previousMonth = appointmentDataset.data[appointmentDataset.data.length - 2];
+        try {
+          // Get the latest user and token after potential refresh
+          const finalUser = latestUserAuthUser || latestOldAuthUser || user || getBestUser();
+          const finalToken = newToken || oldToken || getBestToken();
 
-          if (previousMonth > 0) {
-            const percentChange = ((currentMonth - previousMonth) / previousMonth * 100).toFixed(1);
-            statsData.appointmentTrend = `${percentChange}% from last month`;
-            statsData.appointmentTrendUp = percentChange >= 0;
+          console.log('HospitalAdminDashboard: Fetching dashboard data with token:', !!finalToken);
+
+          if (!finalToken) {
+            throw new Error('No authentication token available');
           }
-        }
 
-        // Estimate doctor and treatment trends based on patient trend
-        // In a real application, these would come from their own datasets
-        if (statsData.patientTrend) {
-          statsData.doctorTrend = statsData.patientTrendUp ?
-            `${(Math.random() * 5 + 2).toFixed(1)}% from last month` :
-            `${(Math.random() * -3 - 1).toFixed(1)}% from last month`;
-          statsData.doctorTrendUp = parseFloat(statsData.doctorTrend) >= 0;
+          if (!finalUser || !finalUser.hospitalId) {
+            throw new Error('No hospital ID available');
+          }
 
-          statsData.treatmentTrend = statsData.patientTrendUp ?
-            `${(Math.random() * 6 + 1).toFixed(1)}% from last month` :
-            `${(Math.random() * -2 - 0.5).toFixed(1)}% from last month`;
-          statsData.treatmentTrendUp = parseFloat(statsData.treatmentTrend) >= 0;
+          const config = {
+            headers: { Authorization: `Bearer ${finalToken}` }
+          };
+
+          // Set the token in axios defaults as well for future requests
+          axios.defaults.headers.common['Authorization'] = `Bearer ${finalToken}`;
+
+          console.log(`Fetching stats for hospital ID: ${finalUser.hospitalId}`);
+          
+          // Add retry mechanism for main stats
+          let response;
+          let retries = 0;
+          const maxRetries = 3;
+          
+          while (retries < maxRetries) {
+            try {
+              response = await axios.get(`/api/hospitals/${finalUser.hospitalId}/stats`, config);
+              break; // Success, exit the retry loop
+            } catch (err) {
+              retries++;
+              console.log(`Attempt ${retries}/${maxRetries} failed:`, err.message);
+              
+              if (retries >= maxRetries) {
+                throw err; // Max retries reached, propagate the error
+              }
+              
+              // Wait before retrying (exponential backoff)
+              await new Promise(resolve => setTimeout(resolve, 1000 * Math.pow(2, retries - 1)));
+            }
+          }
+
+          // Process the stats data to include trend information
+          const statsData = response.data;
+
+          // Calculate trends if analyticsData is available
+          if (statsData.analyticsData && statsData.analyticsData.datasets) {
+            // Get patient trend
+            const patientDataset = statsData.analyticsData.datasets.find(ds => ds.label === 'New Patients');
+            if (patientDataset && patientDataset.data.length >= 2) {
+              const currentMonth = patientDataset.data[patientDataset.data.length - 1];
+              const previousMonth = patientDataset.data[patientDataset.data.length - 2];
+
+              if (previousMonth > 0) {
+                const percentChange = ((currentMonth - previousMonth) / previousMonth * 100).toFixed(1);
+                statsData.patientTrend = `${percentChange}% from last month`;
+                statsData.patientTrendUp = percentChange >= 0;
+              }
+            }
+
+            // Get appointment trend
+            const appointmentDataset = statsData.analyticsData.datasets.find(ds => ds.label === 'Appointments');
+            if (appointmentDataset && appointmentDataset.data.length >= 2) {
+              const currentMonth = appointmentDataset.data[appointmentDataset.data.length - 1];
+              const previousMonth = appointmentDataset.data[appointmentDataset.data.length - 2];
+
+              if (previousMonth > 0) {
+                const percentChange = ((currentMonth - previousMonth) / previousMonth * 100).toFixed(1);
+                statsData.appointmentTrend = `${percentChange}% from last month`;
+                statsData.appointmentTrendUp = percentChange >= 0;
+              }
+            }
+
+            // Estimate doctor and treatment trends based on patient trend
+            // In a real application, these would come from their own datasets
+            if (statsData.patientTrend) {
+              const doctorTrendValue = statsData.patientTrendUp ?
+                (Math.random() * 5 + 2) :
+                (Math.random() * -3 - 1);
+              statsData.doctorTrend = `${doctorTrendValue.toFixed(1)}% from last month`;
+              statsData.doctorTrendUp = doctorTrendValue >= 0;
+
+              const treatmentTrendValue = statsData.patientTrendUp ?
+                (Math.random() * 6 + 1) :
+                (Math.random() * -2 - 0.5);
+              statsData.treatmentTrend = `${treatmentTrendValue.toFixed(1)}% from last month`;
+              statsData.treatmentTrendUp = treatmentTrendValue >= 0;
+            }
+          }
+
+          setStats(statsData);
+
+          // Fetch additional data after the main stats are loaded
+          await fetchAdditionalData();
+        } catch (error) {
+          console.error('Error fetching dashboard data:', error);
+
+          if (error.response?.status === 401 || error.response?.status === 403) {
+            setError('Authentication failed. Please log in again.');
+            // Redirect to login after a delay
+            setTimeout(() => navigate('/login'), 3000);
+          } else if (error.isNetworkError) {
+            setError('Network connection issue. Will retry automatically...');
+            // The auto-refresh mechanism will handle retrying
+          } else {
+            setError('Error fetching dashboard data: ' + (error.response?.data?.message || error.message));
+            console.log('Will attempt to retry in 10 seconds');
+          }
+        } finally {
+          setLoading(false);
         }
       }
-
-      setStats(statsData);
-
-      // Fetch additional data after the main stats are loaded
-      await fetchAdditionalData();
     } catch (error) {
       console.error('Error fetching dashboard data:', error);
-
-      if (error.response?.status === 401 || error.response?.status === 403) {
-        setError('Authentication failed. Please log in again.');
-        // Redirect to login after a delay
-        setTimeout(() => navigate('/login'), 3000);
-      } else {
-        setError('Error fetching dashboard data: ' + (error.response?.data?.message || error.message));
-      }
-    } finally {
       setLoading(false);
+      setRefreshing(false);
+      loadingRef.current = false;
     }
-  }, [latestUserAuthUser, latestOldAuthUser, user, newToken, oldToken, dispatch, navigate, fetchAdditionalData]);
+  }, [memoizedUser, memoizedToken, memoizedHospitalId, latestUserAuthUser, latestOldAuthUser, user, newToken, oldToken, dispatch, navigate, fetchAdditionalData]);
+
+  // Only run on mount and when user/token/hospitalId changes
   useEffect(() => {
     fetchDashboardData();
-  }, [fetchDashboardData]); // Add fetchDashboardData as dependency
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [memoizedUser, memoizedToken, memoizedHospitalId]);
+  
+  // Add auto-refresh mechanism to retry if data fetching fails
+  useEffect(() => {
+    // If there's an error, set up an auto-refresh after a delay
+    if (error) {
+      const refreshTimer = setTimeout(() => {
+        console.log('Auto-refreshing dashboard data after error...');
+        fetchDashboardData(true);
+      }, 10000); // Try again after 10 seconds
+      
+      return () => clearTimeout(refreshTimer);
+    }
+  }, [error, fetchDashboardData]);
+
+  // Manual refresh handler
+  const handleRefresh = () => {
+    fetchDashboardData(true);
+  };
 
   // Helper function to get notification icon based on type
   const getNotificationIcon = (type) => {
@@ -694,11 +789,7 @@ const HospitalAdminDashboard = () => {
         <motion.div
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, type: "spring", stiffness: 100 }}
-        >
-          <Paper
-            elevation={0}
-            sx={{
+          sx={{
               p: { xs: 2.5, sm: 3, md: 4 },
               mb: { xs: 3, md: 4 },
               borderRadius: { xs: 3, md: 4 },
@@ -802,7 +893,7 @@ const HospitalAdminDashboard = () => {
                 left: 0,
                 right: 0,
                 bottom: 0,
-                backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23${theme.palette.primary.main.replace('#', '')}' fill-opacity='0.05'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`,
+                backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23${theme.palette.primary.main.replace('#', '')}' fill-opacity='0.05'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zM36 0V4h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`,
                 opacity: 0.4,
                 zIndex: 0,
               }}
@@ -1038,10 +1129,23 @@ const HospitalAdminDashboard = () => {
                 Open Chat
               </Button>
             </Box>
-          </Paper>
-        </motion.div>
+          </motion.div>
 
         {error && <Alert severity="error" sx={{ mb: 2, borderRadius: 2 }}>{error}</Alert>}
+
+        {/* Refresh Button */}
+        <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 2 }}>
+          <Button
+            variant="outlined"
+            color="primary"
+            onClick={handleRefresh}
+            disabled={loading || refreshing}
+            startIcon={<RefreshIcon />}
+            sx={{ borderRadius: 3, fontWeight: 600 }}
+          >
+            {refreshing ? 'Refreshing...' : 'Refresh'}
+          </Button>
+        </Box>
 
         {/* Stats Cards */}
         <Grid
@@ -1151,7 +1255,7 @@ const HospitalAdminDashboard = () => {
                 {upcomingAppointments.length > 0 ? (
                   <List sx={{ width: '100%' }}>
                     {upcomingAppointments.map((appointment, index) => (
-                      <React.Fragment key={appointment._id || index}>
+                      <React.Fragment key={appointment._id || `appointment-${index}`}>
                         <ListItem
                           alignItems="flex-start"
                           sx={{
@@ -1338,7 +1442,7 @@ const HospitalAdminDashboard = () => {
 
                 <List sx={{ width: '100%' }}>
                   {notifications.map((notification, index) => (
-                    <React.Fragment key={notification.id}>
+                    <React.Fragment key={notification.id || `notification-${index}`}>
                       <ListItem
                         alignItems="flex-start"
                         sx={{
@@ -1427,7 +1531,7 @@ const HospitalAdminDashboard = () => {
                 {recentPatients.length > 0 ? (
                   <List sx={{ width: '100%' }}>
                     {recentPatients.map((patient, index) => (
-                      <React.Fragment key={patient._id || index}>
+                      <React.Fragment key={patient._id || `patient-${index}`}>
                         <ListItem
                           alignItems="flex-start"
                           sx={{

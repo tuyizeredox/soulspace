@@ -64,6 +64,20 @@ axios.interceptors.response.use(
 
       // For network errors, don't clear auth tokens or redirect
       // This allows the app to recover when network connection is restored
+      
+      // Implement automatic retry for GET requests on network errors
+      if (error.config && error.config.method === 'get' && !error.config._retry) {
+        error.config._retry = true;
+        
+        // Wait a bit before retrying
+        return new Promise(resolve => {
+          setTimeout(() => {
+            console.log('Retrying request after network error:', error.config.url);
+            resolve(axios(error.config));
+          }, 2000);
+        });
+      }
+      
       return Promise.reject({
         ...error,
         message: 'Network error. Please check your connection and try again.',

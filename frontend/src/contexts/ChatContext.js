@@ -1327,7 +1327,7 @@ export const ChatProvider = ({ children }) => {
     }
   };
 
-  // Fetch messages for a chat - optimized to show real messages and handle temporary chats
+  // Fetch messages for a chat - optimized with stronger caching and debouncing
   const fetchMessages = async (chatId, limit = 100, skipCache = false) => {
     if (!chatId) {
       console.error('Cannot fetch messages: No chat ID provided');
@@ -1364,6 +1364,35 @@ export const ChatProvider = ({ children }) => {
       return [];
     }
 
+    // Check if we recently fetched messages for this chat to prevent excessive API calls
+    const lastFetchKey = `lastFetch_${chatId}`;
+    const lastFetchTime = parseInt(localStorage.getItem(lastFetchKey) || '0');
+    const now = Date.now();
+    const timeSinceLastFetch = now - lastFetchTime;
+
+    // If we fetched recently (less than 30 seconds ago) and not skipping cache, use cached data
+    if (!skipCache && timeSinceLastFetch < 30000) {
+      console.log(`Using cached messages for ${chatId} (fetched ${Math.round(timeSinceLastFetch / 1000)}s ago)`);
+      
+      try {
+        const cachedData = localStorage.getItem(`messages_${chatId}`);
+        if (cachedData) {
+          const cachedMessages = JSON.parse(cachedData);
+          if (Array.isArray(cachedMessages) && cachedMessages.length > 0) {
+            const validMessages = cachedMessages.filter(msg => msg && typeof msg === 'object');
+            setMessages(validMessages);
+            setLoading(false);
+            return validMessages;
+          }
+        }
+      } catch (e) {
+        console.warn('Error reading cached messages:', e);
+      }
+    }
+
+    // Update last fetch time immediately to prevent concurrent calls
+    localStorage.setItem(lastFetchKey, now.toString());
+
     // STEP 1: Use cached messages for immediate display if available
     if (!skipCache) {
       try {
@@ -1387,11 +1416,12 @@ export const ChatProvider = ({ children }) => {
       setLoading(true);
     }
 
-    // STEP 2: Fetch real messages from the API
+    // STEP 2: Fetch real messages from the API with timeout and error handling
     try {
       // Get token for authentication
       const token = getToken();
       if (!token) {
+        console.warn('No token available for fetching messages');
         setLoading(false);
         return messages.length > 0 ? messages.filter(msg => msg && typeof msg === 'object') : [];
       }
@@ -1405,13 +1435,28 @@ export const ChatProvider = ({ children }) => {
         ? `/api/patient-doctor-chat/${chatId}/messages`
         : `/api/chats/${chatId}/messages`;
 
-      console.log(`Fetching messages from ${url}`);
+      console.log(`Fetching messages from ${url} (limit: ${limit})`);
 
-      // Make direct API call to get real messages
-      const response = await axios.get(url, {
-        params: { limit },
-        timeout: 10000 // 10 second timeout
-      });
+      // Make API call with timeout and retry logic
+      const fetchWithTimeout = async (timeoutMs = 8000) => {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
+        try {
+          const response = await axios.get(url, {
+            params: { limit },
+            signal: controller.signal,
+            timeout: timeoutMs
+          });
+          clearTimeout(timeoutId);
+          return response;
+        } catch (error) {
+          clearTimeout(timeoutId);
+          throw error;
+        }
+      };
+
+      const response = await fetchWithTimeout();
 
       // Process the response
       let processedMessages = [];
@@ -1430,7 +1475,7 @@ export const ChatProvider = ({ children }) => {
           .filter(msg => msg && typeof msg === 'object') // Filter out any non-object messages
           .map(message => ({
             ...message,
-            _id: message._id?.toString() || `temp-${Date.now()}`,
+            _id: message._id?.toString() || `temp-${Date.now()}-${Math.random()}`,
             content: message.content || '',
             sender: message.sender ? {
               ...message.sender,
@@ -1446,7 +1491,7 @@ export const ChatProvider = ({ children }) => {
           .filter(msg => msg && typeof msg === 'object') // Filter out any non-object messages
           .map(message => ({
             ...message,
-            _id: message._id?.toString() || `temp-${Date.now()}`,
+            _id: message._id?.toString() || `temp-${Date.now()}-${Math.random()}`,
             content: message.content || '',
             sender: message.sender ? {
               ...message.sender,
@@ -1466,20 +1511,24 @@ export const ChatProvider = ({ children }) => {
         try {
           localStorage.setItem(`messages_${chatId}`, JSON.stringify(processedMessages));
           localStorage.setItem(`${chatId}_timestamp`, Date.now().toString());
-        } catch (e) {}
+        } catch (e) {
+          console.warn('Failed to save messages to cache:', e);
+        }
 
-        // Mark chat as read in background
+        // Mark chat as read in background (non-blocking)
         setTimeout(() => {
           try {
             markChatAsRead(chatId);
-          } catch (e) {}
-        }, 0);
+          } catch (e) {
+            console.warn('Failed to mark chat as read:', e);
+          }
+        }, 500);
       }
 
       setLoading(false);
       return processedMessages;
     } catch (error) {
-      console.error('Error fetching messages:', error);
+      console.error('Error fetching messages:', error.message || error);
       setLoading(false);
 
       // If API call fails, try to use cached messages
@@ -1488,10 +1537,15 @@ export const ChatProvider = ({ children }) => {
         if (cachedData) {
           const cachedMessages = JSON.parse(cachedData);
           if (Array.isArray(cachedMessages) && cachedMessages.length > 0) {
-            return cachedMessages;
+            const validMessages = cachedMessages.filter(msg => msg && typeof msg === 'object');
+            console.log(`Using cached messages as fallback (${validMessages.length} messages)`);
+            setMessages(validMessages);
+            return validMessages;
           }
         }
-      } catch (e) {}
+      } catch (e) {
+        console.warn('Failed to load cached messages:', e);
+      }
 
       // Return empty array if no messages are available
       return [];

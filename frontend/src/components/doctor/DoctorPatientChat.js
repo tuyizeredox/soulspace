@@ -542,10 +542,11 @@ const DoctorPatientChat = ({
     }
   }, [chatId, messages, contextFetchMessages, contextMessages]);
 
-  // Initialize chat when patient changes with optimized performance
+  // Initialize chat when patient changes with optimized performance and debouncing
   useEffect(() => {
     // Track if the component is mounted to prevent state updates after unmount
     let isMounted = true;
+    let initTimeout;
     const startTime = performance.now();
     const requestId = `init-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
 
@@ -572,16 +573,36 @@ const DoctorPatientChat = ({
           if (cachedMessages && cachedMessages.length > 0 && isMounted) {
             console.log(`[${requestId}] Using ${cachedMessages.length} cached messages for immediate display`);
             setMessages(cachedMessages);
-            // Removed automatic scroll to bottom
-            setMessageStatus('Loading latest messages...');
+            setMessageStatus('');
 
-            // Update last refresh time
+            // Update last refresh time to prevent immediate refresh
             setLastRefreshTime(Date.now());
+            
+            // Mark as loaded and return early if cache is recent
+            const cacheTimestamp = localStorage.getItem(`${cachedChatId}_timestamp`);
+            const isCacheRecent = cacheTimestamp && (Date.now() - parseInt(cacheTimestamp)) < 60000; // 1 minute
+            
+            if (isCacheRecent) {
+              console.log(`[${requestId}] Cache is recent, skipping server fetch`);
+              setLoading(false);
+              return;
+            }
           }
         }
 
-        // STEP 2: Check backend availability
-        const isBackendAvailable = await checkBackendAvailability();
+        // STEP 2: Check backend availability with timeout
+        let isBackendAvailable = false;
+        try {
+          const availabilityPromise = checkBackendAvailability();
+          const timeoutPromise = new Promise((_, reject) => 
+            setTimeout(() => reject(new Error('Backend check timeout')), 5000)
+          );
+          
+          isBackendAvailable = await Promise.race([availabilityPromise, timeoutPromise]);
+        } catch (error) {
+          console.log(`[${requestId}] Backend availability check failed:`, error.message);
+          isBackendAvailable = false;
+        }
 
         // If backend is not available but we have cached data, use it
         if (!isBackendAvailable && cachedChatId) {
@@ -594,11 +615,9 @@ const DoctorPatientChat = ({
               const cachedMessages = loadChatHistory(cachedChatId);
               if (cachedMessages && cachedMessages.length > 0) {
                 setMessages(cachedMessages);
-                // Removed automatic scroll to bottom
               } else {
                 // If no cached messages, use mock data
                 setMessages(getMockMessages());
-                // Removed automatic scroll to bottom
               }
             }
 
@@ -615,158 +634,188 @@ const DoctorPatientChat = ({
 
         if (!currentToken) {
           console.error(`[${requestId}] No authentication token found`);
-          setMessageStatus('Authentication required. Please log in again.');
-          setLoading(false);
+          if (isMounted) {
+            setMessageStatus('Authentication required. Please log in again.');
+            setLoading(false);
+          }
           return;
         }
 
         // Set token in axios headers
         axios.defaults.headers.common['Authorization'] = `Bearer ${currentToken}`;
 
-        // STEP 4: Access or create chat with the patient
-        console.log(`[${requestId}] Accessing chat with patient: ${patientId}`);
+        // STEP 4: Access or create chat with the patient (only if backend is available)
+        if (isBackendAvailable) {
+          console.log(`[${requestId}] Accessing chat with patient: ${patientId}`);
 
-        let chat;
-        try {
-          // Use the optimized accessChat function
-          chat = await accessChat(patientId);
+          let chat;
+          try {
+            // Use the optimized accessChat function with timeout
+            const chatPromise = accessChat(patientId);
+            const timeoutPromise = new Promise((_, reject) => 
+              setTimeout(() => reject(new Error('Chat access timeout')), 10000)
+            );
+            
+            chat = await Promise.race([chatPromise, timeoutPromise]);
 
-          if (chat && isMounted) {
-            console.log(`[${requestId}] Chat accessed successfully: ${chat._id}`);
+            if (chat && isMounted) {
+              console.log(`[${requestId}] Chat accessed successfully: ${chat._id}`);
 
-            // Save chat ID to localStorage for future use
-            localStorage.setItem(`chat_${patientId}`, chat._id);
-            setChatId(chat._id);
+              // Save chat ID to localStorage for future use
+              localStorage.setItem(`chat_${patientId}`, chat._id);
+              setChatId(chat._id);
 
-            // Join the chat room via socket
-            if (socket && socket.connected) {
-              socket.emit('join-chat', chat._id);
-              console.log(`[${requestId}] Joined socket room for chat: ${chat._id}`);
-            }
-
-            // STEP 5: Fetch messages if needed
-            // If we already have messages from cache, check if they're recent
-            const cacheTimestamp = localStorage.getItem(`${chat._id}_timestamp`);
-            const isCacheRecent = cacheTimestamp && (Date.now() - parseInt(cacheTimestamp)) < 30000;
-
-            if (messages.length > 0 && isCacheRecent) {
-              console.log(`[${requestId}] Using recent cached messages, skipping fetch`);
-              markChatAsRead(chat._id);
-              setMessageStatus('');
-            } else {
-              // Fetch fresh messages
-              console.log(`[${requestId}] Fetching fresh messages`);
-              if (isMounted) {
-                setMessageStatus('Loading conversation history...');
+              // Join the chat room via socket (non-blocking)
+              if (socket && socket.connected) {
+                try {
+                  socket.emit('join-chat', chat._id);
+                  console.log(`[${requestId}] Joined socket room for chat: ${chat._id}`);
+                } catch (socketError) {
+                  console.warn(`[${requestId}] Socket join failed:`, socketError.message);
+                }
               }
 
-              // Use the optimized fetchMessages function with a limit of 50 messages
-              await contextFetchMessages(chat._id, 50);
+              // STEP 5: Fetch messages only if we don't have recent cached messages
+              const cacheTimestamp = localStorage.getItem(`${chat._id}_timestamp`);
+              const isCacheRecent = cacheTimestamp && (Date.now() - parseInt(cacheTimestamp)) < 60000; // 1 minute
 
-              if (isMounted && contextMessages && contextMessages.length > 0) {
-                setMessages(contextMessages);
-                saveChatHistory(chat._id, contextMessages);
-                // Removed automatic scroll to bottom
+              if (!isCacheRecent) {
+                console.log(`[${requestId}] Fetching fresh messages`);
+                if (isMounted) {
+                  setMessageStatus('Loading conversation history...');
+                }
 
-                // Update last refresh time
-                setLastRefreshTime(Date.now());
-              }
+                try {
+                  // Use the optimized fetchMessages function with timeout
+                  const messagesPromise = contextFetchMessages(chat._id, 50);
+                  const timeoutPromise = new Promise((_, reject) => 
+                    setTimeout(() => reject(new Error('Messages fetch timeout')), 8000)
+                  );
+                  
+                  await Promise.race([messagesPromise, timeoutPromise]);
 
-              // Mark messages as read in a non-blocking way
-              setTimeout(() => markChatAsRead(chat._id), 0);
+                  if (isMounted && contextMessages && contextMessages.length > 0) {
+                    setMessages(contextMessages);
+                    saveChatHistory(chat._id, contextMessages);
+                    localStorage.setItem(`${chat._id}_timestamp`, Date.now().toString());
 
-              if (isMounted) {
-                setMessageStatus('');
-              }
-            }
-
-            // Set up socket listeners
-            if (socket) {
-              socket.off('message-received');
-              socket.off('messages-marked-read');
-
-              socket.on('message-received', (newMessage) => {
-                if (!isMounted) return;
-
-                if (newMessage.chatId === chat._id || (newMessage.chat && newMessage.chat._id === chat._id)) {
-                  // Check if this message is already in our list to avoid duplicates
-                  const messageExists = messages.some(m => (m._id && newMessage._id && m._id === newMessage._id));
-
-                  if (!messageExists) {
-                    const messageWithReadStatus = {
-                      ...newMessage,
-                      read: false
-                    };
-
-                    setMessages(prev => [...prev, messageWithReadStatus]);
-
-                    // Also update the cached messages
-                    const updatedMessages = [...messages, messageWithReadStatus];
-                    saveChatHistory(chat._id, updatedMessages);
-
-                    // Mark as read without triggering a refresh
-                    markChatAsRead(chat._id);
-
-                    // Update last refresh time to prevent auto-refresh
+                    // Update last refresh time
                     setLastRefreshTime(Date.now());
+                  }
+                } catch (fetchError) {
+                  console.warn(`[${requestId}] Messages fetch failed:`, fetchError.message);
+                  // Continue with cached messages if available
+                }
 
-                    // Removed automatic scroll to bottom
+                // Mark messages as read in a non-blocking way
+                setTimeout(() => {
+                  try {
+                    markChatAsRead(chat._id);
+                  } catch (readError) {
+                    console.warn(`[${requestId}] Mark as read failed:`, readError.message);
+                  }
+                }, 100);
+              }
+
+              // Set up socket listeners (only once per chat)
+              if (socket && !socket.hasListeners('message-received')) {
+                socket.on('message-received', (newMessage) => {
+                  if (!isMounted) return;
+
+                  if (newMessage.chatId === chat._id || (newMessage.chat && newMessage.chat._id === chat._id)) {
+                    // Check if this message is already in our list to avoid duplicates
+                    setMessages(prev => {
+                      const messageExists = prev.some(m => (m._id && newMessage._id && m._id === newMessage._id));
+                      
+                      if (!messageExists) {
+                        const messageWithReadStatus = {
+                          ...newMessage,
+                          read: false
+                        };
+
+                        const updatedMessages = [...prev, messageWithReadStatus];
+                        
+                        // Save to cache
+                        try {
+                          saveChatHistory(chat._id, updatedMessages);
+                        } catch (cacheError) {
+                          console.warn('Failed to save to cache:', cacheError.message);
+                        }
+
+                        // Mark as read without triggering a refresh
+                        setTimeout(() => {
+                          try {
+                            markChatAsRead(chat._id);
+                          } catch (readError) {
+                            console.warn('Failed to mark as read:', readError.message);
+                          }
+                        }, 100);
+
+                        // Update last refresh time to prevent auto-refresh
+                        setLastRefreshTime(Date.now());
+
+                        return updatedMessages;
+                      }
+                      
+                      return prev;
+                    });
+                  }
+                });
+
+                socket.on('messages-marked-read', (data) => {
+                  if (!isMounted) return;
+
+                  if (data.chatId === chat._id) {
+                    setMessages(prev => prev.map(msg => {
+                      if (msg.sender?._id === (user?._id || user?.id) && data.readBy !== (user?._id || user?.id)) {
+                        return { ...msg, read: true };
+                      }
+                      return msg;
+                    }));
+                  }
+                });
+              }
+
+              // Process any queued messages (debounced)
+              setTimeout(() => {
+                if (isMounted) {
+                  try {
+                    processMessageQueue();
+                  } catch (queueError) {
+                    console.warn(`[${requestId}] Message queue processing failed:`, queueError.message);
                   }
                 }
-              });
+              }, 2000);
+            }
+          } catch (error) {
+            console.error(`[${requestId}] Error accessing chat:`, error);
 
-              socket.on('messages-marked-read', (data) => {
-                if (!isMounted) return;
+            // If we have a cached chat ID, use it as fallback
+            if (cachedChatId && isMounted) {
+              console.log(`[${requestId}] Using cached chat ID as fallback: ${cachedChatId}`);
+              setChatId(cachedChatId);
+              setMessageStatus('Using cached conversation. Could not connect to server.');
 
-                if (data.chatId === chat._id) {
-                  setMessages(prev => prev.map(msg => {
-                    if (msg.sender?._id === (user?._id || user?.id) && data.readBy !== (user?._id || user?.id)) {
-                      return { ...msg, read: true };
-                    }
-                    return msg;
-                  }));
+              // If we haven't already loaded cached messages, do it now
+              if (messages.length === 0) {
+                const cachedMessages = loadChatHistory(cachedChatId);
+                if (cachedMessages && cachedMessages.length > 0) {
+                  setMessages(cachedMessages);
+                } else {
+                  // If no cached messages, use mock data
+                  setMessages(getMockMessages());
                 }
-              });
-            }
-
-            // Process any queued messages
-            setTimeout(() => {
-              if (isMounted) {
-                processMessageQueue();
               }
-            }, 1000);
-          }
-        } catch (error) {
-          console.error(`[${requestId}] Error accessing chat:`, error);
 
-          // If we have a cached chat ID, use it as fallback
-          if (cachedChatId && isMounted) {
-            console.log(`[${requestId}] Using cached chat ID as fallback: ${cachedChatId}`);
-            setChatId(cachedChatId);
-            setMessageStatus('Using cached conversation. Could not connect to server.');
-
-            // If we haven't already loaded cached messages, do it now
-            if (messages.length === 0) {
-              const cachedMessages = loadChatHistory(cachedChatId);
-              if (cachedMessages && cachedMessages.length > 0) {
-                setMessages(cachedMessages);
-                // Removed automatic scroll to bottom
-              } else {
-                // If no cached messages, use mock data
-                setMessages(getMockMessages());
-                // Removed automatic scroll to bottom
-              }
-            }
-
-            setLoading(false);
-          } else {
-            // If no cached chat ID, use mock data
-            if (isMounted) {
-              setChatId(`mock_${patientId}`);
-              setMessages(getMockMessages());
-              setMessageStatus('Using demo mode - real-time messaging unavailable');
-              // Removed automatic scroll to bottom
               setLoading(false);
+            } else {
+              // If no cached chat ID, use mock data
+              if (isMounted) {
+                setChatId(`mock_${patientId}`);
+                setMessages(getMockMessages());
+                setMessageStatus('Using demo mode - real-time messaging unavailable');
+                setLoading(false);
+              }
             }
           }
         }
@@ -781,22 +830,26 @@ const DoctorPatientChat = ({
           // Use mock data as fallback
           setChatId(`mock_${patient._id || patient.id}`);
           setMessages(getMockMessages());
-          // Removed automatic scroll to bottom
         }
       } finally {
         if (isMounted) {
           setLoading(false);
+          setMessageStatus('');
         }
       }
     };
 
+    // Debounce the initialization to prevent rapid re-initializations
     if (patient && user) {
-      initializeChat();
+      clearTimeout(initTimeout);
+      initTimeout = setTimeout(initializeChat, 300); // 300ms debounce
     }
 
     // Cleanup function to remove socket listeners when component unmounts
     return () => {
       isMounted = false;
+      clearTimeout(initTimeout);
+      
       if (socket) {
         socket.off('message-received');
         socket.off('messages-marked-read');
@@ -805,18 +858,9 @@ const DoctorPatientChat = ({
       socketInitialized.current = false;
     };
   }, [
-    patient,
-    user,
-    socket,
-    markChatAsRead,
-    contextFetchMessages,
-    contextMessages,
-    forceScrollToBottom,
-    scrollToBottom,
-    processMessageQueue,
-    accessChat,
-    checkBackendAvailability
-    // Removed 'messages' from dependency array to prevent infinite re-renders
+    patient?._id || patient?.id, // Only depend on patient ID to prevent unnecessary re-runs
+    user?._id || user?.id // Only depend on user ID
+    // Removed all other dependencies to prevent infinite loops
   ]);
 
 
@@ -907,140 +951,159 @@ const DoctorPatientChat = ({
 
   // We already have lastRefreshTime defined above
 
-  // Function to manually refresh chat history with debounce
+  // Function to manually refresh chat history with stronger debounce to prevent API loops
   const refreshChatHistory = useCallback(async (force = false) => {
     if (!chatId || chatId.startsWith('mock')) {
       console.log('Cannot refresh mock chat');
       return;
     }
 
-    // Implement stronger debounce - don't refresh if last refresh was less than 60 seconds ago
+    // Implement much stronger debounce - don't refresh if last refresh was less than 5 minutes ago
     // unless force=true is specified
     const now = Date.now();
-    if (!force && now - lastRefreshTime < 60000) { // 60 seconds
-      console.log('Skipping refresh - too soon since last refresh');
+    const minRefreshInterval = force ? 30000 : 300000; // 30 seconds for forced, 5 minutes for auto
+    
+    if (now - lastRefreshTime < minRefreshInterval) {
+      console.log(`Skipping refresh - too soon since last refresh (${Math.round((now - lastRefreshTime) / 1000)}s ago)`);
       return;
     }
 
-    // Update last refresh time
+    // Update last refresh time immediately to prevent concurrent calls
     setLastRefreshTime(now);
 
-    // Check if backend is available before attempting to refresh
-    const isBackendAvailable = await checkBackendAvailability();
-    if (!isBackendAvailable) {
-      if (force) {
-        setMessageStatus('Server is currently unavailable. Using cached conversation.');
-      }
-
-      // Try to load from cache
-      const cachedMessages = loadChatHistory(chatId);
-      if (cachedMessages && cachedMessages.length > 0) {
-        // Filter out any non-object messages (like strings)
-        const validMessages = cachedMessages.filter(msg => msg && typeof msg === 'object');
-        setMessages(validMessages);
-      }
-
-      return;
-    }
-
-    // If we're already loading and this is not a forced refresh, skip it
-    if (loading && !force) {
-      console.log('Already loading messages, skipping refresh');
-      return;
-    }
-
     try {
+      // Check if backend is available with timeout
+      let isBackendAvailable = false;
+      try {
+        const availabilityPromise = checkBackendAvailability();
+        const timeoutPromise = new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Backend check timeout')), 3000)
+        );
+        
+        isBackendAvailable = await Promise.race([availabilityPromise, timeoutPromise]);
+      } catch (error) {
+        console.log('Backend availability check failed:', error.message);
+        isBackendAvailable = false;
+      }
+
+      if (!isBackendAvailable) {
+        if (force) {
+          setMessageStatus('Server is currently unavailable. Using cached conversation.');
+        }
+
+        // Try to load from cache
+        const cachedMessages = loadChatHistory(chatId);
+        if (cachedMessages && cachedMessages.length > 0) {
+          // Filter out any non-object messages (like strings)
+          const validMessages = cachedMessages.filter(msg => msg && typeof msg === 'object');
+          setMessages(validMessages);
+        }
+
+        return;
+      }
+
+      // If we're already loading and this is not a forced refresh, skip it
+      if (loading && !force) {
+        console.log('Already loading messages, skipping refresh');
+        return;
+      }
+
       // Only show loading indicator for forced refreshes to avoid flickering
       if (force) {
         setLoading(true);
         setMessageStatus('Refreshing conversation...');
       }
 
-      // Fetch messages for this chat
-      await contextFetchMessages(chatId);
+      // Fetch messages for this chat with timeout
+      try {
+        const fetchPromise = contextFetchMessages(chatId, 50);
+        const timeoutPromise = new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Fetch messages timeout')), 10000)
+        );
+        
+        await Promise.race([fetchPromise, timeoutPromise]);
 
-      // Save fetched messages to localStorage for offline access
-      if (contextMessages && contextMessages.length > 0) {
-        // Filter out any non-object messages (like strings)
-        const validMessages = contextMessages.filter(msg => msg && typeof msg === 'object');
+        // Save fetched messages to localStorage for offline access
+        if (contextMessages && contextMessages.length > 0) {
+          // Filter out any non-object messages (like strings)
+          const validMessages = contextMessages.filter(msg => msg && typeof msg === 'object');
 
-        // Compare with current messages to see if there are any changes
-        // Use a function to get the current messages to avoid stale state
-        const currentMessageIds = (() => {
-          return messages
-            .filter(m => m && typeof m === 'object')
-            .map(m => m._id || m.id || '')
-            .filter(Boolean)
-            .join(',');
-        })();
+          // Only update if this is a forced refresh or if we have significantly different message count
+          const shouldUpdate = force || Math.abs(validMessages.length - messages.length) > 2;
 
-        const newMessageIds = validMessages
-          .map(m => m._id || m.id || '')
-          .filter(Boolean)
-          .join(',');
+          if (shouldUpdate) {
+            saveChatHistory(chatId, validMessages);
+            localStorage.setItem(`${chatId}_timestamp`, Date.now().toString());
 
-        // Only update if there are changes or this is a forced refresh
-        if (force || currentMessageIds !== newMessageIds) {
-          saveChatHistory(chatId, validMessages);
+            // Only log for forced refreshes to reduce console noise
+            if (force) {
+              console.log('Saved refreshed messages to localStorage');
+            }
 
-          // Only log for forced refreshes to reduce console noise
-          if (force) {
-            console.log('Saved refreshed messages to localStorage');
+            // Check if there might be more messages to load
+            setHasMoreMessages(validMessages.length >= 20);
+
+            // Reset current page to 1 since we've loaded the most recent messages
+            setCurrentPage(1);
+
+            // Update messages state
+            setMessages(validMessages);
+          } else {
+            console.log('No significant changes, skipping update');
           }
+        } else {
+          // If no messages were returned but this is a forced refresh,
+          // clear the messages to show an empty conversation
+          if (force) {
+            setMessages([]);
+            saveChatHistory(chatId, []);
+          }
+        }
 
-          // Check if there might be more messages to load
-          setHasMoreMessages(validMessages.length >= 20);
+        // Mark chat as read (non-blocking)
+        setTimeout(() => {
+          try {
+            markChatAsRead(chatId);
+          } catch (readError) {
+            console.warn('Failed to mark as read:', readError.message);
+          }
+        }, 100);
 
-          // Reset current page to 1 since we've loaded the most recent messages
-          setCurrentPage(1);
-
-          // Update messages state
+        // Clear status message on success
+        if (force) {
+          setMessageStatus('');
+        }
+      } catch (fetchError) {
+        console.error('Error fetching messages:', fetchError.message);
+        
+        // Try to load from cache if refresh fails
+        const cachedMessages = loadChatHistory(chatId);
+        if (cachedMessages && cachedMessages.length > 0) {
+          // Filter out any non-object messages (like strings)
+          const validMessages = cachedMessages.filter(msg => msg && typeof msg === 'object');
           setMessages(validMessages);
 
-          // Removed automatic scroll to bottom after refresh
+          if (force) {
+            setMessageStatus('Could not refresh. Using cached conversation.');
+          }
         } else {
-          console.log('No new messages, skipping update');
+          if (force) {
+            setMessageStatus('Could not refresh conversation. Please try again.');
+          }
         }
-      } else {
-        // If no messages were returned but this is a forced refresh,
-        // clear the messages to show an empty conversation
-        if (force) {
-          setMessages([]);
-          saveChatHistory(chatId, []);
-        }
-      }
-
-      // Mark chat as read
-      markChatAsRead(chatId);
-
-      // Clear status message on success
-      if (force) {
-        setMessageStatus('');
       }
     } catch (error) {
-      console.error('Error refreshing chat history:', error);
-
-      // Try to load from cache if refresh fails
-      const cachedMessages = loadChatHistory(chatId);
-      if (cachedMessages && cachedMessages.length > 0) {
-        // Filter out any non-object messages (like strings)
-        const validMessages = cachedMessages.filter(msg => msg && typeof msg === 'object');
-        setMessages(validMessages);
-
-        if (force) {
-          setMessageStatus('Could not refresh. Using cached conversation.');
-        }
-      } else {
-        if (force) {
-          setMessageStatus('Could not refresh conversation. Please try again.');
-        }
+      console.error('Error in refreshChatHistory:', error);
+      
+      if (force) {
+        setMessageStatus('Could not refresh conversation. Please try again.');
       }
     } finally {
       if (force) {
         setLoading(false);
       }
     }
-  }, [chatId, contextFetchMessages, contextMessages, markChatAsRead, forceScrollToBottom, loading]);
+  }, [chatId, contextFetchMessages, contextMessages, markChatAsRead, loading, messages.length, lastRefreshTime]);
 
   // Add a useEffect to log when messages change - helps with debugging
   useEffect(() => {
@@ -1049,24 +1112,29 @@ const DoctorPatientChat = ({
     }
   }, [messages, chatId]);
 
-  // Initialize socket connection - only once
+  // Initialize socket connection - only once with better error handling
   useEffect(() => {
     // Check if socket already exists to prevent multiple connections
-    if (!socket && !socketInitialized.current) {
+    if (!socket && !socketInitialized.current && user) {
       // Set flag to prevent multiple initialization attempts
       socketInitialized.current = true;
 
-      // First check if backend is available
-      checkBackendAvailability().then(isAvailable => {
-        if (!isAvailable) {
-          console.log('Backend not available, skipping socket connection');
-          socketInitialized.current = false; // Reset flag to allow retry later
-          return;
-        }
-
+      // Debounce socket initialization
+      const initSocket = async () => {
         try {
-          // Connect to socket server with options to prevent frequent reconnects
-          // Use relative URL to avoid hardcoding localhost
+          // First check if backend is available with timeout
+          const isAvailable = await Promise.race([
+            checkBackendAvailability(),
+            new Promise((_, reject) => setTimeout(() => reject(new Error('Backend check timeout')), 3000))
+          ]);
+
+          if (!isAvailable) {
+            console.log('Backend not available, skipping socket connection');
+            socketInitialized.current = false; // Reset flag to allow retry later
+            return;
+          }
+
+          // Connect to socket server with conservative options
           const socketUrl = window.location.hostname === 'localhost'
             ? `${window.location.protocol}//${window.location.hostname}:5000`
             : window.location.origin;
@@ -1076,55 +1144,81 @@ const DoctorPatientChat = ({
           const newSocket = io(socketUrl, {
             reconnectionAttempts: 3,
             reconnectionDelay: 5000,
-            timeout: 10000,
+            timeout: 15000,
             transports: ['websocket', 'polling'],
-            // Add additional options to make connection more stable
             forceNew: false,
             multiplex: true,
             reconnection: true,
-            reconnectionAttempts: 5,
-            reconnectionDelay: 1000,
-            reconnectionDelayMax: 5000,
-            randomizationFactor: 0.5
+            reconnectionDelayMax: 10000,
+            randomizationFactor: 0.5,
+            // Add auth token if available
+            auth: {
+              token: localStorage.getItem('token') || localStorage.getItem('userToken')
+            }
+          });
+
+          // Set up error handlers first
+          newSocket.on('connect_error', (error) => {
+            console.warn('Socket connection error:', error.message);
+            socketInitialized.current = false; // Allow retry
+          });
+
+          newSocket.on('disconnect', (reason) => {
+            console.log('Socket disconnected:', reason);
+            if (reason === 'io server disconnect') {
+              // Server disconnected, don't auto-reconnect
+              socketInitialized.current = false;
+            }
+          });
+
+          newSocket.on('error', (error) => {
+            console.warn('Socket error:', error.message);
+          });
+
+          // Setup successful connection handler
+          newSocket.on('connect', () => {
+            console.log('Socket connected with ID:', newSocket.id);
+            
+            // Emit setup with user info
+            if (user) {
+              newSocket.emit('setup', {
+                _id: user._id || user.id,
+                name: user.name,
+                role: user.role
+              });
+            }
+
+            // Process pending operations when socket connects
+            setTimeout(() => {
+              try {
+                processPendingReadOperations();
+              } catch (error) {
+                console.warn('Failed to process pending operations:', error.message);
+              }
+            }, 1000);
           });
 
           setSocket(newSocket);
-
-          // Setup event listeners
-          newSocket.on('connect', () => {
-            console.log('Socket connected with ID:', newSocket.id);
-
-            // Process pending operations when socket connects
-            processPendingReadOperations();
-          });
-
-          newSocket.on('connected', () => {
-            console.log('Socket setup complete');
-          });
-
-          newSocket.on('disconnect', () => {
-            console.log('Socket disconnected');
-          });
-
-          newSocket.on('connect_error', (error) => {
-            console.error('Socket connection error:', error);
-          });
         } catch (error) {
-          console.error('Error initializing socket:', error);
+          console.error('Error initializing socket:', error.message);
+          socketInitialized.current = false; // Reset flag to allow retry
         }
-      });
-
-      // Cleanup on unmount
-      return () => {
-        if (socket) {
-          console.log('Disconnecting socket on cleanup');
-          socket.disconnect();
-        }
-        // Reset socket initialization flag
-        socketInitialized.current = false;
       };
+
+      // Delay socket initialization to avoid conflicts
+      setTimeout(initSocket, 1000);
     }
-  }, [processPendingReadOperations, checkBackendAvailability]);
+
+    // Cleanup function
+    return () => {
+      if (socket) {
+        console.log('Cleaning up socket connection');
+        socket.disconnect();
+        setSocket(null);
+      }
+      socketInitialized.current = false;
+    };
+  }, [user?._id || user?.id]); // Only depend on user ID
 
   // Setup user in socket when user is available
   useEffect(() => {
@@ -1140,19 +1234,20 @@ const DoctorPatientChat = ({
   // Removed automatic scroll to bottom when tab becomes active
   // scrollToBottom is a stable function defined in the component
 
-  // Mark messages as read when the user is viewing the chat
+  // Mark messages as read when the user is viewing the chat - with much less frequency
   useEffect(() => {
-    // Set up an interval to periodically mark messages as read
-    // This ensures messages are marked as read even if the user is just viewing the chat
     if (chatId && !chatId.startsWith('mock')) {
       // Mark as read immediately when chat is opened
       markChatAsRead(chatId);
 
-      // Set up a much less frequent interval to mark messages as read
-      // This drastically reduces backend load and prevents continuous refreshing
+      // Set up a very infrequent interval to mark messages as read
+      // This drastically reduces backend load and prevents continuous API calls
       const readInterval = setInterval(() => {
-        markChatAsRead(chatId);
-      }, 120000); // Check every 2 minutes instead of 30 seconds
+        // Only mark as read if the document is visible and the user is actively viewing
+        if (document.visibilityState === 'visible') {
+          markChatAsRead(chatId);
+        }
+      }, 300000); // Check every 5 minutes instead of 2 minutes
 
       return () => clearInterval(readInterval);
     }

@@ -18,6 +18,7 @@ import {
   alpha,
   Tooltip,
   Badge,
+  CircularProgress,
 } from '@mui/material';
 import {
   Add as AddIcon,
@@ -38,6 +39,8 @@ import { useNavigate } from 'react-router-dom';
 const StaffManagement = ({ staffData = [], onViewMore }) => {
   const theme = useTheme();
   const navigate = useNavigate();
+  const [loading, setLoading] = React.useState(false);
+  const [error, setError] = React.useState(null);
 
   // If no staff data is provided, use mock data
   const staff = staffData.length > 0 ? staffData : [
@@ -182,7 +185,32 @@ const StaffManagement = ({ staffData = [], onViewMore }) => {
           </Box>
         </Box>
 
-        <List sx={{ width: '100%' }}>
+        {error && (
+          <Box sx={{ p: 2, textAlign: 'center', color: 'error.main' }}>
+            <Typography variant="body2">{error}</Typography>
+          </Box>
+        )}
+        
+        <List sx={{ width: '100%', position: 'relative' }}>
+          {loading && (
+            <Box 
+              sx={{ 
+                position: 'absolute', 
+                top: 0, 
+                left: 0, 
+                right: 0, 
+                bottom: 0, 
+                display: 'flex', 
+                alignItems: 'center', 
+                justifyContent: 'center',
+                bgcolor: 'rgba(255,255,255,0.7)',
+                zIndex: 1
+              }}
+            >
+              <CircularProgress size={40} />
+            </Box>
+          )}
+          
           {staff.map((member, index) => {
             const statusInfo = getStatusInfo(member.status);
             return (
