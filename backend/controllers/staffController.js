@@ -5,6 +5,14 @@ const bcrypt = require('bcryptjs');
 // Get all staff for a hospital
 exports.getHospitalStaff = async (req, res) => {
   try {
+    console.log('getHospitalStaff called by user:', req.user);
+    console.log('User hospitalId:', req.user.hospitalId);
+    
+    if (!req.user.hospitalId) {
+      console.log('No hospitalId found for user');
+      return res.status(400).json({ message: 'Hospital ID not found for user' });
+    }
+    
     // Get query parameters for filtering
     const { role, department, search, status } = req.query;
 
@@ -62,6 +70,7 @@ exports.getHospitalStaff = async (req, res) => {
       appointments: member.profile?.appointments || 0
     }));
 
+    console.log('Found staff:', formattedStaff.length);
     res.json(formattedStaff);
   } catch (error) {
     console.error('Error fetching staff:', error);

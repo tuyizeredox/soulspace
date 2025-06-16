@@ -158,25 +158,37 @@ const StaffManagement = () => {
       setLoading(true);
       setError('');
 
+      console.log('Fetching staff - User:', user);
+      console.log('User hospitalId:', user?.hospitalId);
+      console.log('Token exists:', !!token);
+
       const config = {
         headers: { Authorization: `Bearer ${token}` }
       };
 
       const response = await axios.get('/api/staff/hospital', config);
+      console.log('Staff fetch successful:', response.data?.length || 0, 'staff members');
       setStaff(response.data || []);
     } catch (error) {
       console.error('Error fetching staff:', error);
+      console.error('Error response:', error.response?.data);
+      console.error('Error status:', error.response?.status);
       setError(error.response?.data?.message || 'Failed to fetch staff data. Please try again.');
     } finally {
       setLoading(false);
     }
-  }, [token]);
+  }, [token, user]);
 
   useEffect(() => {
-    if (token) {
+    if (token && user) {
+      if (!user.hospitalId) {
+        setError('Your account is not associated with a hospital. Please logout and login again.');
+        setLoading(false);
+        return;
+      }
       fetchStaff();
     }
-  }, [fetchStaff, token]);
+  }, [token]);
 
   // Filter staff based on search and filters
   const filteredStaff = staff.filter(member => {
@@ -584,6 +596,38 @@ const StaffManagement = () => {
       )
     }
   ];
+
+  // Debug: Show user data if hospitalId is missing
+  if (!user?.hospitalId && user) {
+    return (
+      <Box sx={{ p: 3 }}>
+        <Alert severity="error" sx={{ mb: 2 }}>
+          <Typography variant="h6" gutterBottom>
+            Hospital ID Missing
+          </Typography>
+          <Typography variant="body2" sx={{ mb: 2 }}>
+            Your account is not associated with a hospital. Please log out and log in again, or contact support.
+          </Typography>
+          <Typography variant="body2" sx={{ mb: 1 }}>
+            <strong>Current User Data:</strong>
+          </Typography>
+          <pre style={{ fontSize: '12px', background: '#f5f5f5', padding: '10px', borderRadius: '4px' }}>
+            {JSON.stringify(user, null, 2)}
+          </pre>
+          <Button 
+            variant="contained" 
+            sx={{ mt: 2 }}
+            onClick={() => {
+              localStorage.clear();
+              window.location.href = '/login';
+            }}
+          >
+            Logout and Login Again
+          </Button>
+        </Alert>
+      </Box>
+    );
+  }
 
   if (loading && staff.length === 0) {
     return (
