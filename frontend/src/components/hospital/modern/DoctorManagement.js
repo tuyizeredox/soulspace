@@ -51,7 +51,6 @@ import {
 } from '@mui/icons-material';
 import { DataGrid } from '@mui/x-data-grid';
 import { format, parseISO } from 'date-fns';
-import axios from '../../../utils/axios';
 
 const DoctorManagement = () => {
   const theme = useTheme();
@@ -168,6 +167,11 @@ const DoctorManagement = () => {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
       
+      const contentType = response.headers.get('content-type');
+      if (!contentType || !contentType.includes('application/json')) {
+        throw new Error('Server returned non-JSON response. Please try again later.');
+      }
+      
       const data = await response.json();
       console.log('Doctors response:', data);
       setDoctors(data || []);
@@ -175,15 +179,9 @@ const DoctorManagement = () => {
     } catch (error) {
       const requestId = Math.random().toString(36).substr(2, 9);
       console.error(`[${requestId}] Error fetching doctors:`, error);
-      console.error(`[${requestId}] Error response:`, error.response);
-      console.error(`[${requestId}] Error code:`, error.code);
       console.error(`[${requestId}] Error message:`, error.message);
       
-      const errorMessage = error.response?.data?.message || 
-                          error.response?.statusText || 
-                          error.message || 
-                          'Failed to fetch doctors data. Please try again.';
-      setError(`Error: ${errorMessage} (Status: ${error.response?.status || 'Unknown'})`);
+      setError(error.message || 'Failed to fetch doctors data. Please try again.');
     } finally {
       setLoading(false);
     }

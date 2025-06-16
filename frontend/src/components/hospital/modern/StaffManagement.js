@@ -52,7 +52,6 @@ import {
 } from '@mui/icons-material';
 import { DataGrid } from '@mui/x-data-grid';
 import { format, parseISO } from 'date-fns';
-import axios from '../../../utils/axios';
 
 const StaffManagement = () => {
   const theme = useTheme();
@@ -158,15 +157,28 @@ const StaffManagement = () => {
       setLoading(true);
       setError('');
 
-      const config = {
-        headers: { Authorization: `Bearer ${token}` }
-      };
-
-      const response = await axios.get('/api/staff/hospital', config);
-      setStaff(response.data || []);
+      const response = await fetch('/api/staff/hospital', {
+        method: 'GET',
+        headers: { 
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      const contentType = response.headers.get('content-type');
+      if (!contentType || !contentType.includes('application/json')) {
+        throw new Error('Server returned non-JSON response. Please try again later.');
+      }
+      
+      const data = await response.json();
+      setStaff(data || []);
     } catch (error) {
       console.error('Error fetching staff:', error);
-      setError(error.response?.data?.message || 'Failed to fetch staff data. Please try again.');
+      setError(error.message || 'Failed to fetch staff data. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -245,10 +257,6 @@ const StaffManagement = () => {
       setSubmitLoading(true);
       setError('');
       
-      const config = {
-        headers: { Authorization: `Bearer ${token}` }
-      };
-      
       const submitData = {
         ...formData,
         profile: {
@@ -263,21 +271,34 @@ const StaffManagement = () => {
         delete submitData.password;
       }
       
-      if (editingStaff) {
-        await axios.put(`/api/staff/${editingStaff._id}`, submitData, config);
-        setSuccess('Staff member updated successfully');
-      } else {
-        await axios.post('/api/staff', submitData, config);
-        setSuccess('Staff member created successfully');
+      const url = editingStaff 
+        ? `/api/staff/${editingStaff._id}` 
+        : '/api/staff';
+      
+      const method = editingStaff ? 'PUT' : 'POST';
+      
+      const response = await fetch(url, {
+        method,
+        headers: { 
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(submitData)
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
       }
       
+      setSuccess(editingStaff ? 'Staff member updated successfully' : 'Staff member created successfully');
       setOpenDialog(false);
       resetForm();
       fetchStaff();
       
     } catch (error) {
       console.error('Error saving staff:', error);
-      setError(error.response?.data?.message || 'Failed to save staff member');
+      setError(error.message || 'Failed to save staff member');
     } finally {
       setSubmitLoading(false);
     }
@@ -289,11 +310,20 @@ const StaffManagement = () => {
     
     try {
       setSubmitLoading(true);
-      const config = {
-        headers: { Authorization: `Bearer ${token}` }
-      };
       
-      await axios.delete(`/api/staff/${staffToDelete._id}`, config);
+      const response = await fetch(`/api/staff/${staffToDelete._id}`, {
+        method: 'DELETE',
+        headers: { 
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
+      }
+      
       setSuccess('Staff member deleted successfully');
       setDeleteDialog(false);
       setStaffToDelete(null);
@@ -301,7 +331,7 @@ const StaffManagement = () => {
       
     } catch (error) {
       console.error('Error deleting staff:', error);
-      setError(error.response?.data?.message || 'Failed to delete staff member');
+      setError(error.message || 'Failed to delete staff member');
     } finally {
       setSubmitLoading(false);
     }
@@ -311,21 +341,30 @@ const StaffManagement = () => {
   const handleStatusUpdate = async (staffId, newStatus) => {
     try {
       setSubmitLoading(true);
-      const config = {
-        headers: { Authorization: `Bearer ${token}` }
-      };
       
-      await axios.post('/api/staff/update-status', {
-        staffId,
-        status: newStatus
-      }, config);
+      const response = await fetch('/api/staff/update-status', {
+        method: 'POST',
+        headers: { 
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          staffId,
+          status: newStatus
+        })
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
+      }
       
       setSuccess(`Staff status updated to ${newStatus}`);
       fetchStaff();
       
     } catch (error) {
       console.error('Error updating staff status:', error);
-      setError(error.response?.data?.message || 'Failed to update staff status');
+      setError(error.message || 'Failed to update staff status');
     } finally {
       setSubmitLoading(false);
     }

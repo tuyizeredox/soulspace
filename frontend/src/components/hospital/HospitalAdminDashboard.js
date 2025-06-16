@@ -25,7 +25,8 @@ import {
 import { 
   PatientManagement, 
   DoctorManagement, 
-  AppointmentManagement 
+  AppointmentManagement,
+  StaffManagement
 } from './modern';
 
 const HospitalAdminDashboard = () => {
@@ -41,7 +42,7 @@ const HospitalAdminDashboard = () => {
     { label: 'Patients', icon: <PeopleIcon />, component: <PatientManagement /> },
     { label: 'Doctors', icon: <DoctorIcon />, component: <DoctorManagement /> },
     { label: 'Appointments', icon: <AppointmentIcon />, component: <AppointmentManagement /> },
-    { label: 'Staff', icon: <StaffIcon />, component: <div>Staff Management - Coming Soon</div> },
+    { label: 'Staff', icon: <StaffIcon />, component: <StaffManagement /> },
   ];
 
   return (

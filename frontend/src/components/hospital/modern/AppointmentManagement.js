@@ -54,7 +54,6 @@ import { format, parseISO, addDays, startOfDay } from 'date-fns';
 import { DateTimePicker } from '@mui/x-date-pickers/DateTimePicker';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
-import axios from '../../../utils/axios';
 
 const AppointmentManagement = () => {
   const theme = useTheme();
@@ -135,6 +134,11 @@ const AppointmentManagement = () => {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
       
+      const contentType = response.headers.get('content-type');
+      if (!contentType || !contentType.includes('application/json')) {
+        throw new Error('Server returned non-JSON response. Please try again later.');
+      }
+      
       const data = await response.json();
       console.log('Appointments data:', data);
       console.log('First appointment:', data?.[0]);
@@ -169,6 +173,15 @@ const AppointmentManagement = () => {
       
       if (!doctorsRes.ok || !patientsRes.ok) {
         throw new Error('Failed to fetch form data');
+      }
+      
+      // Check content types
+      const doctorsContentType = doctorsRes.headers.get('content-type');
+      const patientsContentType = patientsRes.headers.get('content-type');
+      
+      if (!doctorsContentType || !doctorsContentType.includes('application/json') ||
+          !patientsContentType || !patientsContentType.includes('application/json')) {
+        throw new Error('Server returned non-JSON response. Please try again later.');
       }
       
       const [doctorsData, patientsData] = await Promise.all([
@@ -251,33 +264,48 @@ const AppointmentManagement = () => {
       setSubmitLoading(true);
       setError('');
       
-      const config = {
-        headers: { Authorization: `Bearer ${token}` }
-      };
-      
       const submitData = {
         ...formData,
         date: new Date(formData.date).toISOString()
       };
       
+      let response;
       if (editingAppointment) {
-        await axios.put(`/api/appointments/${editingAppointment._id}/status`, {
-          status: formData.status,
-          notes: formData.notes
-        }, config);
-        setSuccess('Appointment updated successfully');
+        response = await fetch(`/api/appointments/${editingAppointment._id}/status`, {
+          method: 'PUT',
+          headers: { 
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            status: formData.status,
+            notes: formData.notes
+          })
+        });
       } else {
-        await axios.post('/api/appointments/admin', submitData, config);
-        setSuccess('Appointment created successfully');
+        response = await fetch('/api/appointments/admin', {
+          method: 'POST',
+          headers: { 
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(submitData)
+        });
       }
       
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
+      }
+      
+      setSuccess(editingAppointment ? 'Appointment updated successfully' : 'Appointment created successfully');
       setOpenDialog(false);
       resetForm();
       fetchAppointments();
       
     } catch (error) {
       console.error('Error saving appointment:', error);
-      setError(error.response?.data?.message || 'Failed to save appointment');
+      setError(error.message || 'Failed to save appointment');
     } finally {
       setSubmitLoading(false);
     }
@@ -329,11 +357,20 @@ const AppointmentManagement = () => {
     
     try {
       setSubmitLoading(true);
-      const config = {
-        headers: { Authorization: `Bearer ${token}` }
-      };
       
-      await axios.delete(`/api/appointments/${appointmentToDelete._id}`, config);
+      const response = await fetch(`/api/appointments/${appointmentToDelete._id}`, {
+        method: 'DELETE',
+        headers: { 
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
+      }
+      
       setSuccess('Appointment deleted successfully');
       setDeleteDialog(false);
       setAppointmentToDelete(null);
@@ -341,7 +378,7 @@ const AppointmentManagement = () => {
       
     } catch (error) {
       console.error('Error deleting appointment:', error);
-      setError(error.response?.data?.message || 'Failed to delete appointment');
+      setError(error.message || 'Failed to delete appointment');
     } finally {
       setSubmitLoading(false);
     }
