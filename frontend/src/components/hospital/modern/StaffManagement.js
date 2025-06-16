@@ -161,14 +161,55 @@ const StaffManagement = () => {
       console.log('Fetching staff - User:', user);
       console.log('User hospitalId:', user?.hospitalId);
       console.log('Token exists:', !!token);
+      console.log('Axios baseURL:', axios.defaults.baseURL);
+      console.log('Full URL will be:', `${axios.defaults.baseURL}/api/staff/hospital`);
 
       const config = {
         headers: { Authorization: `Bearer ${token}` }
       };
 
-      const response = await axios.get('/api/staff/hospital', config);
-      console.log('Staff fetch successful:', response.data?.length || 0, 'staff members');
-      setStaff(response.data || []);
+      console.log('Making request to /api/staff/hospital with config:', config);
+      
+      // Try different approaches to isolate the issue
+      try {
+        // Method 1: Using the same pattern as DoctorManagement
+        const response = await axios.get('/api/staff/hospital', {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        console.log('Staff fetch successful:', response.data?.length || 0, 'staff members');
+        setStaff(response.data || []);
+      } catch (firstError) {
+        console.log('First attempt failed, trying alternative method...');
+        
+        // Method 2: Try with explicit baseURL
+        try {
+          const fullUrl = `${axios.defaults.baseURL}/api/staff/hospital`;
+          console.log('Trying full URL:', fullUrl);
+          const response2 = await fetch(fullUrl, {
+            method: 'GET',
+            headers: { 
+              'Authorization': `Bearer ${token}`,
+              'Content-Type': 'application/json'
+            }
+          });
+          
+          console.log('Fetch response status:', response2.status);
+          console.log('Fetch response headers:', response2.headers);
+          
+          if (!response2.ok) {
+            const errorText = await response2.text();
+            console.log('Error response text:', errorText);
+            throw new Error(`HTTP ${response2.status}: ${errorText}`);
+          }
+          
+          const data = await response2.json();
+          console.log('Staff fetch successful via fetch:', data?.length || 0, 'staff members');
+          setStaff(data || []);
+        } catch (secondError) {
+          console.error('Both methods failed:', { firstError, secondError });
+          throw firstError; // Throw the original axios error
+        }
+      }
     } catch (error) {
       console.error('Error fetching staff:', error);
       console.error('Error response:', error.response?.data);
