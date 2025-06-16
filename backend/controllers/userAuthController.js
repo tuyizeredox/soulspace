@@ -38,6 +38,33 @@ exports.loginUser = async (req, res) => {
       return res.status(401).json({ success: false, message: 'Invalid credentials' });
     }
 
+    // Auto-fix missing hospitalId for hospital admins
+    if (user.role === 'hospital_admin' && !user.hospitalId) {
+      console.log('Hospital admin missing hospitalId, attempting to find hospital...');
+      const Hospital = require('../models/Hospital');
+      
+      try {
+        // Find hospital where this user is the admin
+        const hospital = await Hospital.findOne({
+          $or: [
+            { adminId: user._id },
+            { admins: user._id }
+          ]
+        });
+        
+        if (hospital) {
+          console.log(`Found hospital ${hospital.name} for user, updating hospitalId...`);
+          user.hospitalId = hospital._id;
+          await user.save();
+          console.log('HospitalId updated successfully');
+        } else {
+          console.log('No hospital found for this admin user');
+        }
+      } catch (error) {
+        console.error('Error finding hospital for admin:', error);
+      }
+    }
+
     // Create JWT token
     console.log('Creating JWT token');
     // Include hospitalId in the token if the user is a hospital_admin
@@ -62,17 +89,24 @@ exports.loginUser = async (req, res) => {
 
     // Send success response
     console.log('Login successful, sending response');
+    const userData = {
+      id: user._id,
+      name: user.name,
+      email: user.email,
+      role: user.role,
+      profile: user.profile
+    };
+
+    // Include hospitalId in user data if it exists
+    if (user.hospitalId) {
+      userData.hospitalId = user.hospitalId;
+    }
+
     res.status(200).json({
       success: true,
       message: 'Login successful',
       token,
-      user: {
-        id: user._id,
-        name: user.name,
-        email: user.email,
-        role: user.role,
-        profile: user.profile
-      },
+      user: userData,
       redirectUrl: user.role === 'super_admin' ? '/admin/dashboard' : '/dashboard'
     });
   } catch (error) {

@@ -54,6 +54,7 @@ import { format, parseISO, addDays, startOfDay } from 'date-fns';
 import { DateTimePicker } from '@mui/x-date-pickers/DateTimePicker';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
+import axios from '../../../utils/axiosConfig';
 
 const AppointmentManagement = () => {
   const theme = useTheme();
@@ -121,57 +122,16 @@ const AppointmentManagement = () => {
     try {
       setLoading(true);
       setError('');
-      
-      if (!token) {
-        setError('Authentication token not found. Please log in again.');
-        setLoading(false);
-        return;
-      }
-      
-      console.log('Fetching appointments with token:', token ? 'Token present' : 'No token');
 
-      const response = await fetch('/api/appointments/hospital', {
-        method: 'GET',
-        headers: { 
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
-      
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-      
-      const contentType = response.headers.get('content-type');
-      console.log('Response content type:', contentType);
-      
-      // If not JSON, log the actual response text for debugging
-      if (!contentType || !contentType.includes('application/json')) {
-        const responseText = await response.text();
-        console.log('Non-JSON response received:', responseText.substring(0, 500) + '...');
-        
-        // If it's an HTML response with a redirect, it might be an authentication issue
-        if (responseText.includes('<html') && (responseText.includes('login') || responseText.includes('auth'))) {
-          console.warn('Authentication issue detected, using empty data as fallback');
-          // Use empty data as fallback instead of throwing an error
-          setAppointments([]);
-          setError('Authentication required. Please refresh the page or log in again.');
-          return;
-        } else {
-          console.warn('Non-JSON response, using empty data as fallback');
-          // Use empty data as fallback instead of throwing an error
-          setAppointments([]);
-          return;
-        }
-      }
-      
-      const data = await response.json();
-      console.log('Appointments data:', data);
-      console.log('First appointment:', data?.[0]);
-      setAppointments(data || []);
+      const config = {
+        headers: { Authorization: `Bearer ${token}` }
+      };
+
+      const response = await axios.get('/api/appointments/hospital', config);
+      setAppointments(response.data || []);
     } catch (error) {
       console.error('Error fetching appointments:', error);
-      setError(error.message || 'Failed to fetch appointments data. Please try again.');
+      setError(error.response?.data?.message || 'Failed to fetch appointments data. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -180,78 +140,17 @@ const AppointmentManagement = () => {
   // Fetch doctors and patients for form
   const fetchFormData = useCallback(async () => {
     try {
-      if (!token) {
-        console.error('Authentication token not found when fetching form data');
-        return;
-      }
-      
-      console.log('Fetching form data with token:', token ? 'Token present' : 'No token');
+      const config = {
+        headers: { Authorization: `Bearer ${token}` }
+      };
+
       const [doctorsRes, patientsRes] = await Promise.all([
-        fetch('/api/doctors/hospital', {
-          method: 'GET',
-          headers: { 
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json'
-          }
-        }),
-        fetch('/api/patients/hospital', {
-          method: 'GET',
-          headers: { 
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json'
-          }
-        })
-      ]);
-      
-      if (!doctorsRes.ok || !patientsRes.ok) {
-        throw new Error('Failed to fetch form data');
-      }
-      
-      // Check content types
-      const doctorsContentType = doctorsRes.headers.get('content-type');
-      const patientsContentType = patientsRes.headers.get('content-type');
-      
-      console.log('Doctors response content type:', doctorsContentType);
-      console.log('Patients response content type:', patientsContentType);
-      
-      // If not JSON, log the actual response text for debugging
-      if (!doctorsContentType || !doctorsContentType.includes('application/json') ||
-          !patientsContentType || !patientsContentType.includes('application/json')) {
-        
-        // Get response text for debugging
-        const [doctorsText, patientsText] = await Promise.all([
-          doctorsRes.text(),
-          patientsRes.text()
-        ]);
-        
-        console.log('Non-JSON doctors response:', doctorsText.substring(0, 300) + '...');
-        console.log('Non-JSON patients response:', patientsText.substring(0, 300) + '...');
-        
-        // If it's an HTML response with a redirect, it might be an authentication issue
-        if ((doctorsText.includes('<html') && doctorsText.includes('login')) || 
-            (patientsText.includes('<html') && patientsText.includes('login'))) {
-          console.warn('Authentication issue detected in form data, using empty data as fallback');
-          // Use empty data as fallback instead of throwing an error
-          setDoctors([]);
-          setPatients([]);
-          setError('Authentication required. Please refresh the page or log in again.');
-          return;
-        } else {
-          console.warn('Non-JSON response in form data, using empty data as fallback');
-          // Use empty data as fallback instead of throwing an error
-          setDoctors([]);
-          setPatients([]);
-          return;
-        }
-      }
-      
-      const [doctorsData, patientsData] = await Promise.all([
-        doctorsRes.json(),
-        patientsRes.json()
+        axios.get('/api/doctors/hospital', config),
+        axios.get('/api/patients/hospital', config)
       ]);
 
-      setDoctors(doctorsData || []);
-      setPatients(patientsData || []);
+      setDoctors(doctorsRes.data || []);
+      setPatients(patientsRes.data || []);
     } catch (error) {
       console.error('Error fetching form data:', error);
     }

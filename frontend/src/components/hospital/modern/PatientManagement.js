@@ -51,7 +51,7 @@ import {
 } from '@mui/icons-material';
 import { DataGrid } from '@mui/x-data-grid';
 import { format, parseISO } from 'date-fns';
-import axios from '../../../utils/axios';
+import axios from '../../../utils/axiosConfig';
 
 const PatientManagement = () => {
   const theme = useTheme();

@@ -5,7 +5,6 @@
 
 // List of problematic endpoints that should be blocked
 const BLOCKED_ENDPOINTS = [
-  '/api/doctors',
   '/api/patient-doctor-chat/patient',
   '/api/chats/find/force-doctor-id',
   '/api/chats/mock-chat-1/messages/unread',
@@ -15,25 +14,19 @@ const BLOCKED_ENDPOINTS = [
 // List of endpoints that should NEVER be blocked (allow real messages)
 const ALLOWED_ENDPOINTS = [
   '/api/patient-doctor-chat/',
-  '/api/chats/'
+  '/api/chats/',
+  '/api/doctors/hospital',
+  '/api/doctors/stats',
+  '/api/doctors/my-patients',
+  '/api/doctors/shifts',
+  '/api/doctors/my-appointments',
+  '/api/patients/hospital',
+  '/api/appointments/',
+  '/api/staff/hospital'
 ];
 
 // Mock data to return for blocked endpoints
 const MOCK_RESPONSES = {
-  '/api/doctors': [
-    {
-      _id: 'mock-doctor-id',
-      name: 'Dr. John Smith',
-      specialization: 'General Medicine',
-      hospital: { _id: 'mock-hospital-id', name: 'General Hospital' }
-    },
-    {
-      _id: 'mock-doctor-id-2',
-      name: 'Dr. Jane Doe',
-      specialization: 'Cardiology',
-      hospital: { _id: 'mock-hospital-id', name: 'General Hospital' }
-    }
-  ],
   '/api/patient-doctor-chat/patient': {
     _id: 'mock-chat-id',
     participants: [
@@ -66,26 +59,28 @@ export const shouldBlockRequest = (url) => {
   if (!url) return false;
 
   // First check if the URL is in the allowed list (these should never be blocked)
-  // This ensures real message endpoints are never blocked
   const isAllowed = ALLOWED_ENDPOINTS.some(endpoint => {
-    // Check if it's a message endpoint
-    if (url.includes(endpoint) && url.includes('/messages')) {
-      return true;
-    }
-    return false;
+    return url === endpoint || url.startsWith(`${endpoint}/`) || url.includes(endpoint);
   });
 
   // If it's in the allowed list, don't block it
   if (isAllowed) {
+    console.log(`Request to ${url} is allowed`);
     return false;
   }
 
   // Otherwise, check if it matches any blocked endpoint
-  return BLOCKED_ENDPOINTS.some(endpoint =>
+  const shouldBlock = BLOCKED_ENDPOINTS.some(endpoint =>
     url === endpoint ||
     url.startsWith(`${endpoint}/`) ||
     url.includes(endpoint)
   );
+  
+  if (shouldBlock) {
+    console.log(`Request to ${url} is blocked`);
+  }
+  
+  return shouldBlock;
 };
 
 /**

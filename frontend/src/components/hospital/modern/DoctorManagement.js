@@ -29,8 +29,7 @@ import {
   Stack,
   Paper,
   Fade,
-  Slide,
-  Badge
+  Slide
 } from '@mui/material';
 import {
   Add as AddIcon,
@@ -38,12 +37,12 @@ import {
   Edit as EditIcon,
   Delete as DeleteIcon,
   Refresh as RefreshIcon,
-  LocalHospital as DoctorIcon,
+  Person as PersonIcon,
   Phone as PhoneIcon,
   Email as EmailIcon,
-  School as SchoolIcon,
-  Star as StarIcon,
-  Work as WorkIcon,
+  LocalHospital as HospitalIcon,
+  School as EducationIcon,
+  Work as ExperienceIcon,
   FilterList as FilterIcon,
   Clear as ClearIcon,
   Visibility as VisibilityIcon,
@@ -51,6 +50,7 @@ import {
 } from '@mui/icons-material';
 import { DataGrid } from '@mui/x-data-grid';
 import { format, parseISO } from 'date-fns';
+import axios from '../../../utils/axiosConfig';
 
 const DoctorManagement = () => {
   const theme = useTheme();
@@ -65,8 +65,8 @@ const DoctorManagement = () => {
   
   // Search and filter states
   const [searchQuery, setSearchQuery] = useState('');
-  const [specializationFilter, setSpecializationFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
+  const [specializationFilter, setSpecializationFilter] = useState('all');
   const [showFilters, setShowFilters] = useState(false);
   
   // Dialog states
@@ -81,7 +81,7 @@ const DoctorManagement = () => {
     name: '',
     email: '',
     password: '',
-    role: 'doctor',
+    status: 'active',
     profile: {
       phone: '',
       specialization: '',
@@ -102,6 +102,7 @@ const DoctorManagement = () => {
     'Dermatology',
     'Endocrinology',
     'Gastroenterology',
+    'Hematology',
     'Neurology',
     'Oncology',
     'Orthopedics',
@@ -109,25 +110,17 @@ const DoctorManagement = () => {
     'Psychiatry',
     'Radiology',
     'Surgery',
-    'Urology',
-    'Ophthalmology',
-    'ENT',
-    'Anesthesiology',
-    'Emergency Medicine',
-    'Family Medicine',
-    'Internal Medicine',
-    'Obstetrics & Gynecology'
+    'Urology'
   ];
 
   // Departments list
   const departments = [
-    'General',
     'Emergency',
     'ICU',
     'Surgery',
-    'Pediatrics',
     'Cardiology',
     'Neurology',
+    'Pediatrics',
     'Orthopedics',
     'Radiology',
     'Laboratory',
@@ -137,97 +130,56 @@ const DoctorManagement = () => {
   ];
 
   // Fetch doctors data
-  const fetchDoctors = useCallback(async (abortController) => {
+  const fetchDoctors = useCallback(async () => {
     try {
       setLoading(true);
       setError('');
 
-      if (!token) {
-        setError('Authentication token not found. Please log in again.');
-        setLoading(false);
-        return;
-      }
+      console.log('Fetching doctors - User:', user);
+      console.log('User hospitalId:', user?.hospitalId);
+      console.log('Token exists:', !!token);
 
-      const requestId = Math.random().toString(36).substr(2, 9);
-      console.log(`[${requestId}] Fetching doctors with token:`, token ? 'Token present' : 'No token');
-      console.log(`[${requestId}] User info:`, user);
+      const config = {
+        headers: { Authorization: `Bearer ${token}` }
+      };
 
-      // Try with native fetch to bypass axios interceptors
-      const response = await fetch('/api/doctors/hospital', {
-        method: 'GET',
-        headers: { 
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
-      
-      console.log(`[${requestId}] Request completed successfully, status:`, response.status);
-      
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-      
-      const contentType = response.headers.get('content-type');
-      console.log('Doctors response content type:', contentType);
-      
-      // If not JSON, log the actual response text for debugging
-      if (!contentType || !contentType.includes('application/json')) {
-        const responseText = await response.text();
-        console.log('Non-JSON response received:', responseText.substring(0, 500) + '...');
-        
-        // If it's an HTML response with a redirect, it might be an authentication issue
-        if (responseText.includes('<html') && (responseText.includes('login') || responseText.includes('auth'))) {
-          console.warn('Authentication issue detected, using empty data as fallback');
-          // Use empty data as fallback instead of throwing an error
-          setDoctors([]);
-          setError('Authentication required. Please refresh the page or log in again.');
-          return;
-        } else {
-          console.warn('Non-JSON response, using empty data as fallback');
-          // Use empty data as fallback instead of throwing an error
-          setDoctors([]);
-          return;
-        }
-      }
-      
-      const data = await response.json();
-      console.log('Doctors response:', data);
-      setDoctors(data || []);
-      
+      const response = await axios.get('/api/doctors/hospital', config);
+      console.log('Doctors fetch successful:', response.data?.length || 0, 'doctors');
+      setDoctors(response.data || []);
     } catch (error) {
-      const requestId = Math.random().toString(36).substr(2, 9);
-      console.error(`[${requestId}] Error fetching doctors:`, error);
-      console.error(`[${requestId}] Error message:`, error.message);
-      
-      setError(error.message || 'Failed to fetch doctors data. Please try again.');
+      console.error('Error fetching doctors:', error);
+      console.error('Error response:', error.response?.data);
+      console.error('Error status:', error.response?.status);
+      setError(error.response?.data?.message || 'Failed to fetch doctors data. Please try again.');
     } finally {
       setLoading(false);
     }
   }, [token]);
 
   useEffect(() => {
-    console.log('DoctorManagement useEffect triggered, token:', !!token);
-    console.log('fetchDoctors function reference:', fetchDoctors);
-    if (token) {
-      console.log('Calling fetchDoctors...');
+    if (token && user) {
+      if (!user.hospitalId) {
+        setError('Your account is not associated with a hospital. Please contact support.');
+        setLoading(false);
+        return;
+      }
       fetchDoctors();
     }
-  }, [fetchDoctors, token]);
+  }, [token]);
 
   // Filter doctors based on search and filters
   const filteredDoctors = doctors.filter(doctor => {
     const matchesSearch = !searchQuery || 
       doctor.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       doctor.email?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      doctor.specialization?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      doctor.department?.toLowerCase().includes(searchQuery.toLowerCase());
+      doctor.specialization?.toLowerCase().includes(searchQuery.toLowerCase());
+    
+    const matchesStatus = statusFilter === 'all' || doctor.status === statusFilter;
     
     const matchesSpecialization = specializationFilter === 'all' || 
       doctor.specialization === specializationFilter;
     
-    const matchesStatus = statusFilter === 'all' || doctor.status === statusFilter;
-    
-    return matchesSearch && matchesSpecialization && matchesStatus;
+    return matchesSearch && matchesStatus && matchesSpecialization;
   });
 
   // Form validation
@@ -246,14 +198,12 @@ const DoctorManagement = () => {
     
     if (!editingDoctor && !formData.password.trim()) {
       errors.password = 'Password is required for new doctors';
-    } else if (formData.password && formData.password.length < 6) {
-      errors.password = 'Password must be at least 6 characters';
     }
-
+    
     if (!formData.profile.phone.trim()) {
       errors.phone = 'Phone number is required';
     }
-
+    
     if (!formData.profile.specialization.trim()) {
       errors.specialization = 'Specialization is required';
     }
@@ -274,6 +224,10 @@ const DoctorManagement = () => {
       setSubmitLoading(true);
       setError('');
       
+      const config = {
+        headers: { Authorization: `Bearer ${token}` }
+      };
+      
       const submitData = {
         ...formData,
         profile: {
@@ -287,38 +241,11 @@ const DoctorManagement = () => {
         delete submitData.password;
       }
       
-      let response;
       if (editingDoctor) {
-        response = await fetch(`/api/doctors/${editingDoctor.id || editingDoctor._id}`, {
-          method: 'PUT',
-          headers: { 
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify(submitData)
-        });
-        
-        if (!response.ok) {
-          const errorData = await response.json().catch(() => ({}));
-          throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
-        }
-        
+        await axios.put(`/api/doctors/${editingDoctor.id || editingDoctor._id}`, submitData, config);
         setSuccess('Doctor updated successfully');
       } else {
-        response = await fetch('/api/doctors', {
-          method: 'POST',
-          headers: { 
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify(submitData)
-        });
-        
-        if (!response.ok) {
-          const errorData = await response.json().catch(() => ({}));
-          throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
-        }
-        
+        await axios.post('/api/doctors', submitData, config);
         setSuccess('Doctor created successfully');
       }
       
@@ -328,7 +255,7 @@ const DoctorManagement = () => {
       
     } catch (error) {
       console.error('Error saving doctor:', error);
-      setError(error.message || 'Failed to save doctor');
+      setError(error.response?.data?.message || 'Failed to save doctor');
     } finally {
       setSubmitLoading(false);
     }
@@ -340,20 +267,11 @@ const DoctorManagement = () => {
     
     try {
       setSubmitLoading(true);
+      const config = {
+        headers: { Authorization: `Bearer ${token}` }
+      };
       
-      const response = await fetch(`/api/doctors/${doctorToDelete.id || doctorToDelete._id}`, {
-        method: 'DELETE',
-        headers: { 
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
-      
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
-      }
-      
+      await axios.delete(`/api/doctors/${doctorToDelete.id || doctorToDelete._id}`, config);
       setSuccess('Doctor deleted successfully');
       setDeleteDialog(false);
       setDoctorToDelete(null);
@@ -361,7 +279,7 @@ const DoctorManagement = () => {
       
     } catch (error) {
       console.error('Error deleting doctor:', error);
-      setError(error.message || 'Failed to delete doctor');
+      setError(error.response?.data?.message || 'Failed to delete doctor');
     } finally {
       setSubmitLoading(false);
     }
@@ -373,7 +291,7 @@ const DoctorManagement = () => {
       name: '',
       email: '',
       password: '',
-      role: 'doctor',
+      status: 'active',
       profile: {
         phone: '',
         specialization: '',
@@ -393,14 +311,14 @@ const DoctorManagement = () => {
     setFormData({
       name: doctor.name || '',
       email: doctor.email || '',
-      password: '', // Don't populate password for editing
-      role: doctor.role || 'doctor',
+      password: '',
+      status: doctor.status || 'active',
       profile: {
         phone: doctor.phone || '',
         specialization: doctor.specialization || '',
         department: doctor.department || '',
         qualifications: doctor.qualifications || '',
-        experience: doctor.experience?.toString() || '',
+        experience: doctor.experience || '',
         bio: doctor.bio || ''
       }
     });
@@ -410,8 +328,8 @@ const DoctorManagement = () => {
 
   const clearFilters = () => {
     setSearchQuery('');
-    setSpecializationFilter('all');
     setStatusFilter('all');
+    setSpecializationFilter('all');
   };
 
   // DataGrid columns
@@ -422,35 +340,19 @@ const DoctorManagement = () => {
       width: 250,
       renderCell: (params) => (
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, py: 1 }}>
-          <Badge
-            overlap="circular"
-            anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
-            badgeContent={
-              <Box
-                sx={{
-                  width: 12,
-                  height: 12,
-                  borderRadius: '50%',
-                  bgcolor: params.row.status === 'active' ? 'success.main' : 'grey.400',
-                  border: '2px solid white'
-                }}
-              />
-            }
+          <Avatar 
+            sx={{ 
+              width: 40, 
+              height: 40, 
+              bgcolor: theme.palette.primary.main,
+              fontSize: '1rem'
+            }}
           >
-            <Avatar 
-              sx={{ 
-                width: 40, 
-                height: 40, 
-                bgcolor: theme.palette.primary.main,
-                fontSize: '1rem'
-              }}
-            >
-              {params.value?.charAt(0)?.toUpperCase() || 'D'}
-            </Avatar>
-          </Badge>
+            {params.value?.charAt(0)?.toUpperCase() || 'D'}
+          </Avatar>
           <Box>
             <Typography variant="body2" fontWeight={600} color="text.primary">
-              Dr. {params.value}
+              {params.value}
             </Typography>
             <Typography variant="caption" color="text.secondary">
               {params.row.email}
@@ -464,22 +366,8 @@ const DoctorManagement = () => {
       headerName: 'Specialization',
       width: 180,
       renderCell: (params) => (
-        <Chip 
-          label={params.value || 'General'} 
-          size="small" 
-          color="primary"
-          variant="outlined"
-          sx={{ fontWeight: 500 }}
-        />
-      )
-    },
-    {
-      field: 'department',
-      headerName: 'Department',
-      width: 150,
-      renderCell: (params) => (
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-          <WorkIcon color="action" fontSize="small" />
+          <HospitalIcon color="action" fontSize="small" />
           <Typography variant="body2">{params.value || 'General'}</Typography>
         </Box>
       )
@@ -496,12 +384,20 @@ const DoctorManagement = () => {
       )
     },
     {
+      field: 'department',
+      headerName: 'Department',
+      width: 130,
+      renderCell: (params) => (
+        <Typography variant="body2">{params.value || 'General'}</Typography>
+      )
+    },
+    {
       field: 'experience',
       headerName: 'Experience',
       width: 120,
       renderCell: (params) => (
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-          <StarIcon color="warning" fontSize="small" />
+          <ExperienceIcon color="action" fontSize="small" />
           <Typography variant="body2">
             {params.value ? `${params.value} years` : 'N/A'}
           </Typography>
@@ -509,27 +405,24 @@ const DoctorManagement = () => {
       )
     },
     {
-      field: 'qualifications',
-      headerName: 'Qualifications',
-      width: 200,
-      renderCell: (params) => (
-        <Tooltip title={params.value || 'No qualifications listed'}>
-          <Typography 
-            variant="body2" 
-            sx={{ 
-              overflow: 'hidden',
-              textOverflow: 'ellipsis',
-              whiteSpace: 'nowrap',
-              maxWidth: '100%'
-            }}
-          >
-            {params.value ? 
-              (params.value.length > 25 ? `${params.value.substring(0, 25)}...` : params.value) : 
-              'Not specified'
-            }
-          </Typography>
-        </Tooltip>
-      )
+      field: 'status',
+      headerName: 'Status',
+      width: 120,
+      renderCell: (params) => {
+        const status = params.value || 'active';
+        const colors = {
+          active: 'success',
+          inactive: 'default'
+        };
+        return (
+          <Chip 
+            label={status.charAt(0).toUpperCase() + status.slice(1)} 
+            size="small" 
+            color={colors[status] || 'default'}
+            variant="filled"
+          />
+        );
+      }
     },
     {
       field: 'createdAt',
@@ -584,6 +477,38 @@ const DoctorManagement = () => {
     }
   ];
 
+  // Debug: Show user data
+  if (!user?.hospitalId && user) {
+    return (
+      <Box sx={{ p: 3 }}>
+        <Alert severity="error" sx={{ mb: 2 }}>
+          <Typography variant="h6" gutterBottom>
+            Hospital ID Missing
+          </Typography>
+          <Typography variant="body2" sx={{ mb: 2 }}>
+            Your account is not associated with a hospital. Please log out and log in again, or contact support.
+          </Typography>
+          <Typography variant="body2" sx={{ mb: 1 }}>
+            <strong>Current User Data:</strong>
+          </Typography>
+          <pre style={{ fontSize: '12px', background: '#f5f5f5', padding: '10px', borderRadius: '4px' }}>
+            {JSON.stringify(user, null, 2)}
+          </pre>
+          <Button 
+            variant="contained" 
+            sx={{ mt: 2 }}
+            onClick={() => {
+              localStorage.clear();
+              window.location.href = '/login';
+            }}
+          >
+            Logout and Login Again
+          </Button>
+        </Alert>
+      </Box>
+    );
+  }
+
   if (loading && doctors.length === 0) {
     return (
       <Box sx={{ 
@@ -603,26 +528,24 @@ const DoctorManagement = () => {
       <Box sx={{ 
         display: 'flex', 
         justifyContent: 'space-between', 
-        alignItems: 'center', 
-        mb: 3,
-        flexWrap: 'wrap',
-        gap: 2
+        alignItems: 'center',
+        mb: 3
       }}>
         <Box>
-          <Typography variant="h4" fontWeight={700} color="primary.main" gutterBottom>
-            Doctor Management (Modern v2.0)
+          <Typography variant="h4" fontWeight={700} color="text.primary" gutterBottom>
+            Doctor Management
           </Typography>
-          <Typography variant="body2" color="text.secondary">
-            Manage hospital doctors and their professional information
+          <Typography variant="body1" color="text.secondary">
+            Manage hospital doctors and their information
           </Typography>
         </Box>
-        <Stack direction="row" spacing={1}>
+        
+        <Stack direction="row" spacing={2}>
           <Button
             variant="outlined"
             startIcon={<RefreshIcon />}
-            onClick={() => fetchDoctors()}
+            onClick={fetchDoctors}
             disabled={loading}
-            sx={{ minWidth: 'auto' }}
           >
             Refresh
           </Button>
@@ -651,6 +574,18 @@ const DoctorManagement = () => {
               severity="error" 
               onClose={() => setError('')}
               sx={{ mb: 2 }}
+              action={
+                <Button 
+                  color="inherit" 
+                  size="small" 
+                  onClick={() => {
+                    setError('');
+                    fetchDoctors();
+                  }}
+                >
+                  Retry
+                </Button>
+              }
             >
               {error}
             </Alert>
@@ -698,7 +633,7 @@ const DoctorManagement = () => {
                 }}
                 sx={{
                   '& .MuiOutlinedInput-root': {
-                    borderRadius: 2
+                    bgcolor: alpha(theme.palette.background.paper, 0.8)
                   }
                 }}
               />
@@ -714,17 +649,17 @@ const DoctorManagement = () => {
                 Filters
               </Button>
             </Grid>
-
-            <Grid item xs={12} md={4}>
-              <Typography variant="body2" color="text.secondary" textAlign="right">
-                Showing {filteredDoctors.length} of {doctors.length} doctors
+            
+            <Grid item xs={12} md={2}>
+              <Typography variant="body2" color="text.secondary" textAlign="center">
+                {filteredDoctors.length} of {doctors.length} doctors
               </Typography>
             </Grid>
-
-            <Grid item xs={12} md={2}>
-              {(specializationFilter !== 'all' || statusFilter !== 'all') && (
+            
+            <Grid item xs={12} md={4}>
+              {(searchQuery || statusFilter !== 'all' || specializationFilter !== 'all') && (
                 <Button
-                  variant="text"
+                  variant="outlined"
                   startIcon={<ClearIcon />}
                   onClick={clearFilters}
                   size="small"
@@ -830,10 +765,9 @@ const DoctorManagement = () => {
             <Grid container spacing={3}>
               {/* Basic Information */}
               <Grid item xs={12}>
-                <Typography variant="subtitle1" fontWeight={600} color="primary.main" gutterBottom>
+                <Typography variant="subtitle1" fontWeight={600} sx={{ mb: 2 }}>
                   Basic Information
                 </Typography>
-                <Divider sx={{ mb: 2 }} />
               </Grid>
               
               <Grid item xs={12} md={6}>
@@ -845,13 +779,6 @@ const DoctorManagement = () => {
                   error={!!formErrors.name}
                   helperText={formErrors.name}
                   required
-                  InputProps={{
-                    startAdornment: (
-                      <InputAdornment position="start">
-                        <DoctorIcon color="action" />
-                      </InputAdornment>
-                    )
-                  }}
                 />
               </Grid>
               
@@ -865,20 +792,13 @@ const DoctorManagement = () => {
                   error={!!formErrors.email}
                   helperText={formErrors.email}
                   required
-                  InputProps={{
-                    startAdornment: (
-                      <InputAdornment position="start">
-                        <EmailIcon color="action" />
-                      </InputAdornment>
-                    )
-                  }}
                 />
               </Grid>
               
               <Grid item xs={12} md={6}>
                 <TextField
                   fullWidth
-                  label={editingDoctor ? "New Password (leave blank to keep current)" : "Password"}
+                  label={editingDoctor ? "New Password (leave empty to keep current)" : "Password"}
                   type={showPassword ? 'text' : 'password'}
                   value={formData.password}
                   onChange={(e) => setFormData({ ...formData, password: e.target.value })}
@@ -901,6 +821,28 @@ const DoctorManagement = () => {
               </Grid>
               
               <Grid item xs={12} md={6}>
+                <FormControl fullWidth>
+                  <InputLabel>Status</InputLabel>
+                  <Select
+                    value={formData.status}
+                    onChange={(e) => setFormData({ ...formData, status: e.target.value })}
+                    label="Status"
+                  >
+                    <MenuItem value="active">Active</MenuItem>
+                    <MenuItem value="inactive">Inactive</MenuItem>
+                  </Select>
+                </FormControl>
+              </Grid>
+
+              {/* Professional Information */}
+              <Grid item xs={12}>
+                <Divider sx={{ my: 2 }} />
+                <Typography variant="subtitle1" fontWeight={600} sx={{ mb: 2 }}>
+                  Professional Information
+                </Typography>
+              </Grid>
+              
+              <Grid item xs={12} md={6}>
                 <TextField
                   fullWidth
                   label="Phone Number"
@@ -912,22 +854,7 @@ const DoctorManagement = () => {
                   error={!!formErrors.phone}
                   helperText={formErrors.phone}
                   required
-                  InputProps={{
-                    startAdornment: (
-                      <InputAdornment position="start">
-                        <PhoneIcon color="action" />
-                      </InputAdornment>
-                    )
-                  }}
                 />
-              </Grid>
-
-              {/* Professional Information */}
-              <Grid item xs={12}>
-                <Typography variant="subtitle1" fontWeight={600} color="primary.main" gutterBottom sx={{ mt: 2 }}>
-                  Professional Information
-                </Typography>
-                <Divider sx={{ mb: 2 }} />
               </Grid>
               
               <Grid item xs={12} md={6}>
@@ -986,31 +913,7 @@ const DoctorManagement = () => {
                     profile: { ...formData.profile, experience: e.target.value }
                   })}
                   InputProps={{
-                    startAdornment: (
-                      <InputAdornment position="start">
-                        <StarIcon color="action" />
-                      </InputAdornment>
-                    )
-                  }}
-                />
-              </Grid>
-              
-              <Grid item xs={12} md={6}>
-                <TextField
-                  fullWidth
-                  label="Qualifications"
-                  value={formData.profile.qualifications}
-                  onChange={(e) => setFormData({ 
-                    ...formData, 
-                    profile: { ...formData.profile, qualifications: e.target.value }
-                  })}
-                  placeholder="e.g., MBBS, MD, PhD"
-                  InputProps={{
-                    startAdornment: (
-                      <InputAdornment position="start">
-                        <SchoolIcon color="action" />
-                      </InputAdornment>
-                    )
+                    inputProps: { min: 0, max: 50 }
                   }}
                 />
               </Grid>
@@ -1018,7 +921,22 @@ const DoctorManagement = () => {
               <Grid item xs={12}>
                 <TextField
                   fullWidth
-                  label="Bio / Additional Information"
+                  label="Qualifications"
+                  multiline
+                  rows={2}
+                  value={formData.profile.qualifications}
+                  onChange={(e) => setFormData({ 
+                    ...formData, 
+                    profile: { ...formData.profile, qualifications: e.target.value }
+                  })}
+                  placeholder="e.g., MBBS, MD, Fellowship in Cardiology"
+                />
+              </Grid>
+              
+              <Grid item xs={12}>
+                <TextField
+                  fullWidth
+                  label="Bio"
                   multiline
                   rows={3}
                   value={formData.profile.bio}
@@ -1026,13 +944,13 @@ const DoctorManagement = () => {
                     ...formData, 
                     profile: { ...formData.profile, bio: e.target.value }
                   })}
-                  placeholder="Brief description about the doctor's expertise and background"
+                  placeholder="Brief professional bio..."
                 />
               </Grid>
             </Grid>
           </DialogContent>
           
-          <DialogActions sx={{ p: 3, pt: 1 }}>
+          <DialogActions sx={{ p: 3, pt: 0 }}>
             <Button 
               onClick={() => setOpenDialog(false)}
               disabled={submitLoading}
@@ -1043,48 +961,34 @@ const DoctorManagement = () => {
               type="submit"
               variant="contained"
               disabled={submitLoading}
-              startIcon={submitLoading ? <CircularProgress size={16} /> : null}
+              startIcon={submitLoading ? <CircularProgress size={20} /> : null}
             >
-              {submitLoading ? 'Saving...' : (editingDoctor ? 'Update Doctor' : 'Add Doctor')}
+              {editingDoctor ? 'Update Doctor' : 'Add Doctor'}
             </Button>
           </DialogActions>
         </form>
       </Dialog>
 
       {/* Delete Confirmation Dialog */}
-      <Dialog
-        open={deleteDialog}
-        onClose={() => setDeleteDialog(false)}
-        PaperProps={{
-          sx: { borderRadius: 2 }
-        }}
-      >
-        <DialogTitle>
-          <Typography variant="h6" color="error.main">
-            Delete Doctor
-          </Typography>
-        </DialogTitle>
+      <Dialog open={deleteDialog} onClose={() => setDeleteDialog(false)}>
+        <DialogTitle>Confirm Delete</DialogTitle>
         <DialogContent>
           <Typography>
-            Are you sure you want to delete Dr. "{doctorToDelete?.name}"? 
-            This action cannot be undone and will affect all related appointments and patient assignments.
+            Are you sure you want to delete Dr. {doctorToDelete?.name}? This action cannot be undone.
           </Typography>
         </DialogContent>
-        <DialogActions sx={{ p: 3, pt: 1 }}>
-          <Button 
-            onClick={() => setDeleteDialog(false)}
-            disabled={submitLoading}
-          >
+        <DialogActions>
+          <Button onClick={() => setDeleteDialog(false)} disabled={submitLoading}>
             Cancel
           </Button>
           <Button 
             onClick={handleDelete}
-            color="error"
+            color="error" 
             variant="contained"
             disabled={submitLoading}
-            startIcon={submitLoading ? <CircularProgress size={16} /> : null}
+            startIcon={submitLoading ? <CircularProgress size={20} /> : null}
           >
-            {submitLoading ? 'Deleting...' : 'Delete'}
+            Delete
           </Button>
         </DialogActions>
       </Dialog>
