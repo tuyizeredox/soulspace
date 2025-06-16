@@ -71,14 +71,16 @@ import ChatPage from './pages/admin/ChatPage';
 
 // Add Hospital Admin Routes
 import HospitalAdminDashboard from './components/hospital/HospitalAdminDashboard';
+import HospitalRouter from './components/routing/HospitalRouter';
 // New streamlined hospital management components - using modern components
 import { 
   PatientManagement, 
   DoctorManagement, 
   AppointmentManagement,
-  NurseManagement 
+  NurseManagement,
+  StaffManagement,
+  StaffAnalytics
 } from './components/hospital/modern';
-import StaffManagement from './components/hospital/modern/StaffManagementFixed';
 
 import HospitalChatPage from './pages/hospital/HospitalChatPage';
 import Staff from './pages/hospital/Staff';
@@ -384,6 +386,22 @@ const App = () => {
             }
           />
 
+          {/* Hospital Admin Routes - Using Layout component */}
+          <Route
+            path="/hospital/*"
+            element={
+              <PrivateRoute roles={['hospital_admin']}>
+                <AuthProvider>
+                  <ChatProvider>
+                    <Layout>
+                      <HospitalRouter />
+                    </Layout>
+                  </ChatProvider>
+                </AuthProvider>
+              </PrivateRoute>
+            }
+          />
+
           {/* Dashboard Route - Using Layout component */}
           <Route
             path="/dashboard"
@@ -396,18 +414,6 @@ const App = () => {
                     </Layout>
                   </ChatProvider>
                 </AuthProvider>
-              </PrivateRoute>
-            }
-          />
-
-          {/* Hospital Admin Dashboard Route */}
-          <Route
-            path="/hospital/dashboard"
-            element={
-              <PrivateRoute roles={['hospital_admin']}>
-                <Layout>
-                  <HospitalAdminDashboard />
-                </Layout>
               </PrivateRoute>
             }
           />

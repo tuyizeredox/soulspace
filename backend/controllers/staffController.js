@@ -19,7 +19,13 @@ exports.getHospitalStaff = async (req, res) => {
     // Build query
     const query = {
       hospitalId: req.user.hospitalId,
-      role: { $in: ['doctor', 'nurse', 'pharmacist', 'staff', 'receptionist', 'lab_technician'] }
+      role: { 
+        $in: [
+          'doctor', 'nurse', 'pharmacist', 'receptionist', 'technician', 
+          'administrator', 'security', 'maintenance', 'cleaner', 'accountant', 
+          'hr_manager', 'it_support', 'lab_technician', 'staff'
+        ] 
+      }
     };
 
     // Add filters if provided
@@ -55,6 +61,7 @@ exports.getHospitalStaff = async (req, res) => {
     // Transform data for frontend
     const formattedStaff = filteredStaff.map(member => ({
       id: member._id,
+      _id: member._id,
       name: member.name,
       email: member.email,
       role: member.role,
@@ -64,7 +71,18 @@ exports.getHospitalStaff = async (req, res) => {
       licenseNumber: member.profile?.licenseNumber,
       status: member.status || 'active',
       joinDate: member.createdAt,
+      createdAt: member.createdAt,
+      updatedAt: member.updatedAt,
       avatar: member.profile?.avatar,
+      position: member.profile?.position,
+      shift: member.profile?.shift,
+      salary: member.profile?.salary,
+      hireDate: member.profile?.hireDate,
+      emergencyContact: member.profile?.emergencyContact,
+      address: member.profile?.address,
+      skills: member.profile?.skills,
+      certifications: member.profile?.certifications,
+      experience: member.profile?.experience,
       assignedDoctors: member.profile?.assignedDoctors || [],
       assignedPatients: member.profile?.assignedPatients || [],
       appointments: member.profile?.appointments || 0

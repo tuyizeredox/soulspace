@@ -26,7 +26,8 @@ import {
   PatientManagement, 
   DoctorManagement, 
   AppointmentManagement,
-  StaffManagement
+  StaffManagement,
+  StaffAnalytics
 } from './modern';
 
 const HospitalAdminDashboard = () => {
