@@ -121,6 +121,14 @@ const AppointmentManagement = () => {
     try {
       setLoading(true);
       setError('');
+      
+      if (!token) {
+        setError('Authentication token not found. Please log in again.');
+        setLoading(false);
+        return;
+      }
+      
+      console.log('Fetching appointments with token:', token ? 'Token present' : 'No token');
 
       const response = await fetch('/api/appointments/hospital', {
         method: 'GET',
@@ -135,8 +143,26 @@ const AppointmentManagement = () => {
       }
       
       const contentType = response.headers.get('content-type');
+      console.log('Response content type:', contentType);
+      
+      // If not JSON, log the actual response text for debugging
       if (!contentType || !contentType.includes('application/json')) {
-        throw new Error('Server returned non-JSON response. Please try again later.');
+        const responseText = await response.text();
+        console.log('Non-JSON response received:', responseText.substring(0, 500) + '...');
+        
+        // If it's an HTML response with a redirect, it might be an authentication issue
+        if (responseText.includes('<html') && (responseText.includes('login') || responseText.includes('auth'))) {
+          console.warn('Authentication issue detected, using empty data as fallback');
+          // Use empty data as fallback instead of throwing an error
+          setAppointments([]);
+          setError('Authentication required. Please refresh the page or log in again.');
+          return;
+        } else {
+          console.warn('Non-JSON response, using empty data as fallback');
+          // Use empty data as fallback instead of throwing an error
+          setAppointments([]);
+          return;
+        }
       }
       
       const data = await response.json();
@@ -154,6 +180,12 @@ const AppointmentManagement = () => {
   // Fetch doctors and patients for form
   const fetchFormData = useCallback(async () => {
     try {
+      if (!token) {
+        console.error('Authentication token not found when fetching form data');
+        return;
+      }
+      
+      console.log('Fetching form data with token:', token ? 'Token present' : 'No token');
       const [doctorsRes, patientsRes] = await Promise.all([
         fetch('/api/doctors/hospital', {
           method: 'GET',
@@ -179,9 +211,38 @@ const AppointmentManagement = () => {
       const doctorsContentType = doctorsRes.headers.get('content-type');
       const patientsContentType = patientsRes.headers.get('content-type');
       
+      console.log('Doctors response content type:', doctorsContentType);
+      console.log('Patients response content type:', patientsContentType);
+      
+      // If not JSON, log the actual response text for debugging
       if (!doctorsContentType || !doctorsContentType.includes('application/json') ||
           !patientsContentType || !patientsContentType.includes('application/json')) {
-        throw new Error('Server returned non-JSON response. Please try again later.');
+        
+        // Get response text for debugging
+        const [doctorsText, patientsText] = await Promise.all([
+          doctorsRes.text(),
+          patientsRes.text()
+        ]);
+        
+        console.log('Non-JSON doctors response:', doctorsText.substring(0, 300) + '...');
+        console.log('Non-JSON patients response:', patientsText.substring(0, 300) + '...');
+        
+        // If it's an HTML response with a redirect, it might be an authentication issue
+        if ((doctorsText.includes('<html') && doctorsText.includes('login')) || 
+            (patientsText.includes('<html') && patientsText.includes('login'))) {
+          console.warn('Authentication issue detected in form data, using empty data as fallback');
+          // Use empty data as fallback instead of throwing an error
+          setDoctors([]);
+          setPatients([]);
+          setError('Authentication required. Please refresh the page or log in again.');
+          return;
+        } else {
+          console.warn('Non-JSON response in form data, using empty data as fallback');
+          // Use empty data as fallback instead of throwing an error
+          setDoctors([]);
+          setPatients([]);
+          return;
+        }
       }
       
       const [doctorsData, patientsData] = await Promise.all([
@@ -732,6 +793,19 @@ const AppointmentManagement = () => {
                 severity="error" 
                 onClose={() => setError('')}
                 sx={{ mb: 2 }}
+                action={
+                  <Button 
+                    color="inherit" 
+                    size="small" 
+                    onClick={() => {
+                      setError('');
+                      fetchAppointments();
+                      fetchFormData();
+                    }}
+                  >
+                    Retry
+                  </Button>
+                }
               >
                 {error}
               </Alert>

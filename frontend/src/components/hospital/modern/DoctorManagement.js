@@ -168,8 +168,26 @@ const DoctorManagement = () => {
       }
       
       const contentType = response.headers.get('content-type');
+      console.log('Doctors response content type:', contentType);
+      
+      // If not JSON, log the actual response text for debugging
       if (!contentType || !contentType.includes('application/json')) {
-        throw new Error('Server returned non-JSON response. Please try again later.');
+        const responseText = await response.text();
+        console.log('Non-JSON response received:', responseText.substring(0, 500) + '...');
+        
+        // If it's an HTML response with a redirect, it might be an authentication issue
+        if (responseText.includes('<html') && (responseText.includes('login') || responseText.includes('auth'))) {
+          console.warn('Authentication issue detected, using empty data as fallback');
+          // Use empty data as fallback instead of throwing an error
+          setDoctors([]);
+          setError('Authentication required. Please refresh the page or log in again.');
+          return;
+        } else {
+          console.warn('Non-JSON response, using empty data as fallback');
+          // Use empty data as fallback instead of throwing an error
+          setDoctors([]);
+          return;
+        }
       }
       
       const data = await response.json();

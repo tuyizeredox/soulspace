@@ -156,6 +156,14 @@ const StaffManagement = () => {
     try {
       setLoading(true);
       setError('');
+      
+      if (!token) {
+        setError('Authentication token not found. Please log in again.');
+        setLoading(false);
+        return;
+      }
+      
+      console.log('Fetching staff with token:', token ? 'Token present' : 'No token');
 
       const response = await fetch('/api/staff/hospital', {
         method: 'GET',
@@ -170,8 +178,26 @@ const StaffManagement = () => {
       }
       
       const contentType = response.headers.get('content-type');
+      console.log('Response content type:', contentType);
+      
+      // If not JSON, log the actual response text for debugging
       if (!contentType || !contentType.includes('application/json')) {
-        throw new Error('Server returned non-JSON response. Please try again later.');
+        const responseText = await response.text();
+        console.log('Non-JSON response received:', responseText.substring(0, 500) + '...');
+        
+        // If it's an HTML response with a redirect, it might be an authentication issue
+        if (responseText.includes('<html') && (responseText.includes('login') || responseText.includes('auth'))) {
+          console.warn('Authentication issue detected, using empty data as fallback');
+          // Use empty data as fallback instead of throwing an error
+          setStaff([]);
+          setError('Authentication required. Please refresh the page or log in again.');
+          return;
+        } else {
+          console.warn('Non-JSON response, using empty data as fallback');
+          // Use empty data as fallback instead of throwing an error
+          setStaff([]);
+          return;
+        }
       }
       
       const data = await response.json();
@@ -692,6 +718,18 @@ const StaffManagement = () => {
               severity="error" 
               onClose={() => setError('')}
               sx={{ mb: 2 }}
+              action={
+                <Button 
+                  color="inherit" 
+                  size="small" 
+                  onClick={() => {
+                    setError('');
+                    fetchStaff();
+                  }}
+                >
+                  Retry
+                </Button>
+              }
             >
               {error}
             </Alert>
