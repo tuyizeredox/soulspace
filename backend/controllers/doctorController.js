@@ -4,10 +4,20 @@ const bcrypt = require('bcryptjs');
 
 exports.getHospitalDoctors = async (req, res) => {
   try {
+    console.log('getHospitalDoctors called by user:', req.user);
+    console.log('User hospitalId:', req.user.hospitalId);
+    
+    if (!req.user.hospitalId) {
+      console.log('No hospitalId found for user');
+      return res.status(400).json({ message: 'Hospital ID not found for user' });
+    }
+    
     const doctors = await User.find({
       role: 'doctor',
       hospitalId: req.user.hospitalId
     }).select('-password');
+    
+    console.log('Found doctors:', doctors.length);
 
     const formattedDoctors = doctors.map(doctor => ({
       id: doctor._id,

@@ -41,8 +41,6 @@ import {
 import axios from '../../utils/axios';
 import StatCard from '../../components/dashboard/StatCard';
 import AdvancedAnalytics from '../../components/hospital/AdvancedAnalytics';
-import StaffManagement from '../../components/hospital/StaffManagement';
-import PatientManagement from '../../components/hospital/PatientManagement';
 import DashboardBackground from '../../components/animations/DashboardBackground';
 import { checkAuthStatus } from '../../store/slices/authSlice';
 import { getCurrentUser } from '../../store/slices/userAuthSlice';

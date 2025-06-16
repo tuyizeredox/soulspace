@@ -70,12 +70,15 @@ import DatabaseManagement from './pages/admin/DatabaseManagement';
 import ChatPage from './pages/admin/ChatPage';
 
 // Add Hospital Admin Routes
-import HospitalAdminDashboard from './pages/hospital/HospitalAdminDashboard';
-import HospitalPatients from './pages/hospital/Patients';
-import HospitalDoctors from './pages/hospital/Doctors';
-import HospitalPharmacists from './pages/hospital/Pharmacists';
-import HospitalNurses from './pages/hospital/Nurses';
-import HospitalAppointments from './pages/hospital/Appointments';
+import HospitalAdminDashboard from './components/hospital/HospitalAdminDashboard';
+// New streamlined hospital management components - using modern components
+import { 
+  PatientManagement, 
+  DoctorManagement, 
+  AppointmentManagement,
+  NurseManagement 
+} from './components/hospital/modern';
+import StaffManagement from './components/hospital/modern/StaffManagementFixed';
 
 import HospitalChatPage from './pages/hospital/HospitalChatPage';
 import Staff from './pages/hospital/Staff';
@@ -101,6 +104,7 @@ import HelpCenterPage from './pages/patient/HelpCenterPage';
 
 // Debug Pages
 import AuthDebug from './pages/AuthDebug';
+import ApiTest from './components/debug/ApiTest';
 
 // Shop Routes
 import { WearableDevicesPage, ShoppingCartPage } from './pages/shop';
@@ -286,6 +290,7 @@ const App = () => {
           <Route path="/test-api" element={<TestApi />} />
           <Route path="/test-login" element={<LoginTest />} />
           <Route path="/auth-debug" element={<AuthDebug />} />
+          <Route path="/api-test" element={<ApiTest />} />
           <Route path="/register" element={
             <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
               <HomeNavbar />
@@ -395,6 +400,18 @@ const App = () => {
             }
           />
 
+          {/* Hospital Admin Dashboard Route */}
+          <Route
+            path="/hospital/dashboard"
+            element={
+              <PrivateRoute roles={['hospital_admin']}>
+                <Layout>
+                  <HospitalAdminDashboard />
+                </Layout>
+              </PrivateRoute>
+            }
+          />
+
           {/* Other Protected Routes - Using Layout component */}
           <Route
             path="/hospitals"
@@ -411,7 +428,7 @@ const App = () => {
             element={
               <PrivateRoute roles={['hospital_admin', 'doctor']}>
                 <Layout>
-                  <Patients />
+                  <PatientManagement />
                 </Layout>
               </PrivateRoute>
             }
@@ -421,7 +438,27 @@ const App = () => {
             element={
               <PrivateRoute>
                 <Layout>
-                  <Appointments />
+                  <AppointmentManagement />
+                </Layout>
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/doctors"
+            element={
+              <PrivateRoute roles={['hospital_admin']}>
+                <Layout>
+                  <DoctorManagement />
+                </Layout>
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/staff"
+            element={
+              <PrivateRoute roles={['hospital_admin']}>
+                <Layout>
+                  <StaffManagement />
                 </Layout>
               </PrivateRoute>
             }
@@ -625,12 +662,11 @@ const App = () => {
                 <Layout>
                   <Routes>
                     <Route path="dashboard" element={<HospitalAdminDashboard />} />
-                    <Route path="patients" element={<HospitalPatients />} />
-                    <Route path="doctors" element={<HospitalDoctors />} />
-                    <Route path="pharmacists" element={<HospitalPharmacists />} />
-                    <Route path="nurses" element={<HospitalNurses />} />
-                    <Route path="appointments" element={<HospitalAppointments />} />
-                    <Route path="staff" element={<Staff />} />
+                    <Route path="patients" element={<PatientManagement />} />
+                    <Route path="doctors" element={<DoctorManagement />} />
+                    <Route path="nurses" element={<NurseManagement />} />
+                    <Route path="staff" element={<StaffManagement />} />
+                    <Route path="appointments" element={<AppointmentManagement />} />
                     <Route path="staff/:id" element={<StaffDetail />} />
                     <Route path="analytics" element={
                       <AuthProvider>

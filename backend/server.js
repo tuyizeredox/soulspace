@@ -106,6 +106,15 @@ const startServer = async () => {
     // Only set up routes after database connection is established
     app.use('/api/auth', authRoutes);
     app.use('/api/user', userAuthRoutes); // New user auth routes
+    
+    // Test route for debugging authentication
+    app.get('/api/test-auth', require('./middleware/authMiddleware').verifyToken, (req, res) => {
+      res.json({
+        message: 'Authentication successful',
+        user: req.user,
+        timestamp: new Date().toISOString()
+      });
+    });
     // Add these routes
     app.use('/api/hospitals', hospitalRoutes);
     app.use('/api/hospital-registrations', hospitalRegistrationRoutes);

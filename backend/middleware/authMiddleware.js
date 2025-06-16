@@ -16,6 +16,7 @@ exports.verifyToken = async (req, res, next) => {
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     console.log('Token verified successfully for user:', decoded.id);
+    console.log('Decoded token data:', decoded);
 
     // Include all user information from the token
     req.user = {
@@ -29,10 +30,15 @@ exports.verifyToken = async (req, res, next) => {
     // For hospital_admin role, try to get the hospitalId from the database if not in token
     if (decoded.role === 'hospital_admin' && !decoded.hospitalId) {
       try {
+        console.log('Looking up hospitalId for hospital_admin user:', decoded.id);
         const User = require('../models/User');
         const user = await User.findById(decoded.id).select('hospitalId');
+        console.log('User lookup result:', user);
         if (user && user.hospitalId) {
           req.user.hospitalId = user.hospitalId;
+          console.log('Set hospitalId from database:', user.hospitalId);
+        } else {
+          console.log('No hospitalId found in database for user');
         }
       } catch (dbError) {
         console.error('Error fetching user hospitalId:', dbError);
@@ -40,6 +46,7 @@ exports.verifyToken = async (req, res, next) => {
       }
     }
 
+    console.log('Final req.user object:', req.user);
     next();
   } catch (error) {
     console.error('Token verification error:', error.message);

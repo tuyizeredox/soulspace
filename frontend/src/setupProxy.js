@@ -5,7 +5,7 @@ module.exports = function(app) {
   app.use(
     '/api',
     createProxyMiddleware({
-      target: process.env.REACT_APP_API_URL || 'https://soulspacebackend.onrender.com',
+      target: process.env.REACT_APP_API_URL || 'http://localhost:5000',
       changeOrigin: true,
       secure: false,
       pathRewrite: {
@@ -13,7 +13,7 @@ module.exports = function(app) {
       },
       onProxyReq: (proxyReq, req, res) => {
         // Log proxy requests
-        console.log(`Proxying ${req.method} ${req.url} to ${process.env.REACT_APP_API_URL || 'https://soulspacebackend.onrender.com'}`);
+        console.log(`Proxying ${req.method} ${req.url} to ${process.env.REACT_APP_API_URL || 'http://localhost:5000'}`);
       },
       onError: (err, req, res) => {
         console.error('Proxy error:', err);
