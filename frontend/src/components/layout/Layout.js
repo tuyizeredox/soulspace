@@ -10,11 +10,17 @@ import PatientSidebar from './PatientSidebar';
 import PatientWithHospitalSidebar from './PatientWithHospitalSidebar';
 import HospitalAdminSidebar from './HospitalAdminSidebar';
 
+// Drawer width constants
+const drawerWidth = 240;
+const miniDrawerWidth = 72;
+
 const Layout = ({ children }) => {
   const theme = useTheme();
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
+  const isTablet = useMediaQuery(theme.breakpoints.down('md'));
+  const isLaptop = useMediaQuery(theme.breakpoints.down('lg'));
   const [mobileOpen, setMobileOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const { isAuthenticated: oldAuth, user: oldUser, token: oldToken } = useSelector((state) => state.auth);
@@ -60,11 +66,20 @@ const Layout = ({ children }) => {
       }
     };
     
+    // Handle events from hospital admin sidebar
+    const handleSidebarMinimized = (event) => {
+      if (event.detail && typeof event.detail.minimized === 'boolean') {
+        setIsSidebarMinimized(event.detail.minimized && !isMobile);
+      }
+    };
+    
     window.addEventListener('sidebar-toggle', handleSidebarToggle);
+    window.addEventListener('sidebar-minimized', handleSidebarMinimized);
     
     return () => {
       window.removeEventListener('storage', handleStorageChange);
       window.removeEventListener('sidebar-toggle', handleSidebarToggle);
+      window.removeEventListener('sidebar-minimized', handleSidebarMinimized);
     };
   }, []);
 
@@ -315,13 +330,33 @@ const Layout = ({ children }) => {
           p: 3,
           width: { 
             xs: '100%', 
-            sm: isSidebarMinimized 
-              ? `calc(100% - ${miniDrawerWidth}px)` 
-              : `calc(100% - ${drawerWidth}px)` 
+            sm: (() => {
+              // For hospital admin, use responsive minimization logic
+              if (user?.role === 'hospital_admin') {
+                const shouldAutoMinimize = !isMobile && (isTablet || isLaptop);
+                const shouldMinimize = shouldAutoMinimize || isSidebarMinimized;
+                return shouldMinimize 
+                  ? `calc(100% - ${miniDrawerWidth}px)`
+                  : `calc(100% - ${drawerWidth}px)`;
+              }
+              // For other roles, use normal logic
+              return isSidebarMinimized 
+                ? `calc(100% - ${miniDrawerWidth}px)` 
+                : `calc(100% - ${drawerWidth}px)`;
+            })()
           },
           ml: { 
             xs: 0, 
-            sm: isSidebarMinimized ? `${miniDrawerWidth}px` : `${drawerWidth}px` 
+            sm: (() => {
+              // For hospital admin, use responsive minimization logic
+              if (user?.role === 'hospital_admin') {
+                const shouldAutoMinimize = !isMobile && (isTablet || isLaptop);
+                const shouldMinimize = shouldAutoMinimize || isSidebarMinimized;
+                return shouldMinimize ? `${miniDrawerWidth}px` : `${drawerWidth}px`;
+              }
+              // For other roles, use normal logic
+              return isSidebarMinimized ? `${miniDrawerWidth}px` : `${drawerWidth}px`;
+            })()
           },
           mt: '64px', // Match the header height
           minHeight: 'calc(100vh - 64px)',

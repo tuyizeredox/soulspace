@@ -7,6 +7,7 @@ import { Box, Alert } from '@mui/material';
  * Hospital Router Component
  * 
  * Handles all hospital administration routes including:
+ * - /hospital/doctors - Uses new EnhancedDoctorManagement component with scheduling & analytics
  * - /hospital/staff - Uses new EnhancedStaffManagement component
  * - /hospital/nurses - Uses existing Nurses page component  
  * - /hospital/chat - Uses existing HospitalChatPage component
@@ -19,12 +20,14 @@ import { Box, Alert } from '@mui/material';
 // Import hospital management components
 import { 
   PatientManagement, 
-  DoctorManagement, 
   AppointmentManagement,
   NurseManagement,
   StaffManagement,
   StaffAnalytics
 } from '../hospital/modern';
+
+// Enhanced Doctor Management System
+import { EnhancedDoctorManagement } from '../hospital/doctor';
 
 import HospitalAdminDashboard from '../hospital/HospitalAdminDashboard';
 import HospitalChatPage from '../../pages/hospital/HospitalChatPage';
@@ -59,7 +62,7 @@ const HospitalRouter = () => {
       
       {/* Hospital Management Routes */}
       <Route path="/patients" element={<PatientManagement />} />
-      <Route path="/doctors" element={<DoctorManagement />} />
+      <Route path="/doctors" element={<EnhancedDoctorManagement />} />
       <Route path="/appointments" element={<AppointmentManagement />} />
       
       {/* Staff Management - Using new enhanced component */}

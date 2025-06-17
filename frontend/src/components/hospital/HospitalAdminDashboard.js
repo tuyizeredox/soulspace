@@ -126,8 +126,10 @@ ChartJS.register(
 const HospitalAdminDashboard = () => {
   const theme = useTheme();
   const navigate = useNavigate();
-  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
-  const isTablet = useMediaQuery(theme.breakpoints.down('lg'));
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+  const isTablet = useMediaQuery(theme.breakpoints.down('md'));
+  const isLaptop = useMediaQuery(theme.breakpoints.down('lg'));
+  const isSmallScreen = useMediaQuery(theme.breakpoints.down('md')); // tablets and below
   const { user } = useSelector((state) => state.userAuth);
   const { token } = useSelector((state) => state.userAuth);
   
@@ -1464,17 +1466,17 @@ const HospitalAdminDashboard = () => {
 
   if (loading) {
     return (
-      <Container maxWidth="xl" sx={{ py: isMobile ? 2 : 4, px: isMobile ? 1 : 3 }}>
+      <Container maxWidth="xl" sx={{ py: isSmallScreen ? 2 : 3, px: isSmallScreen ? 1 : 2 }}>
         <Box sx={{ 
           display: 'flex', 
           flexDirection: 'column',
           justifyContent: 'center', 
           alignItems: 'center', 
-          height: isMobile ? 300 : 400,
+          height: isSmallScreen ? 250 : 350,
           gap: 3
         }}>
           <CircularProgress 
-            size={isMobile ? 40 : 60} 
+            size={isSmallScreen ? 40 : 60} 
             thickness={4}
             sx={{
               color: theme.palette.primary.main,
@@ -1484,7 +1486,7 @@ const HospitalAdminDashboard = () => {
             }}
           />
           <Typography 
-            variant={isMobile ? "body1" : "h6"} 
+            variant={isSmallScreen ? "body1" : "h6"} 
             color="text.secondary"
             textAlign="center"
           >
@@ -1492,7 +1494,7 @@ const HospitalAdminDashboard = () => {
           </Typography>
           <LinearProgress 
             sx={{ 
-              width: isMobile ? 250 : 300,
+              width: isSmallScreen ? 200 : 300,
               height: 6,
               borderRadius: 3,
               backgroundColor: alpha(theme.palette.primary.main, 0.1),
@@ -1511,8 +1513,8 @@ const HospitalAdminDashboard = () => {
     <Container 
       maxWidth="xl" 
       sx={{ 
-        py: isMobile ? 2 : 4,
-        px: isMobile ? 1 : 3
+        py: isSmallScreen ? 2 : 3,
+        px: isSmallScreen ? 1 : 2
       }}
     >
       <motion.div
@@ -1525,8 +1527,8 @@ const HospitalAdminDashboard = () => {
           <Paper
             elevation={0}
             sx={{
-              p: isMobile ? 2 : 4,
-              mb: isMobile ? 2 : 4,
+              p: isSmallScreen ? 2 : 3,
+              mb: isSmallScreen ? 2 : 3,
               borderRadius: 4,
               background: theme.palette.mode === 'dark'
                 ? `linear-gradient(135deg, ${alpha(theme.palette.primary.main, 0.1)} 0%, ${alpha(theme.palette.background.paper, 0.9)} 100%)`
@@ -1548,13 +1550,13 @@ const HospitalAdminDashboard = () => {
             <Box sx={{ 
               display: 'flex', 
               justifyContent: 'space-between', 
-              alignItems: isMobile ? 'flex-start' : 'center',
-              flexDirection: isMobile ? 'column' : 'row',
-              gap: isMobile ? 2 : 0
+              alignItems: isSmallScreen ? 'flex-start' : 'center',
+              flexDirection: isSmallScreen ? 'column' : 'row',
+              gap: isSmallScreen ? 2 : 0
             }}>
               <Box>
                 <Typography 
-                  variant={isMobile ? "h4" : "h3"} 
+                  variant={isSmallScreen ? "h5" : "h3"} 
                   fontWeight={800} 
                   color="primary.main" 
                   gutterBottom
@@ -1562,25 +1564,25 @@ const HospitalAdminDashboard = () => {
                   Hospital Dashboard
                 </Typography>
                 <Typography 
-                  variant={isMobile ? "body1" : "h6"} 
+                  variant={isSmallScreen ? "body1" : "h6"} 
                   color="text.secondary" 
                   sx={{ mb: 1 }}
                 >
                   Welcome back, <Box component="span" sx={{ fontWeight: 600, color: 'text.primary' }}>{user?.name}</Box>
                 </Typography>
-                <Typography variant={isMobile ? "body2" : "body1"} color="text.secondary">
+                <Typography variant={isSmallScreen ? "body2" : "body1"} color="text.secondary">
                   {new Date().toLocaleDateString('en-US', { 
-                    weekday: isMobile ? 'short' : 'long', 
+                    weekday: isSmallScreen ? 'short' : 'long', 
                     year: 'numeric', 
-                    month: isMobile ? 'short' : 'long', 
+                    month: isSmallScreen ? 'short' : 'long', 
                     day: 'numeric' 
                   })}
                 </Typography>
               </Box>
               <Box sx={{ 
                 display: 'flex', 
-                gap: isMobile ? 1 : 2,
-                alignSelf: isMobile ? 'flex-end' : 'auto'
+                gap: isSmallScreen ? 1 : 2,
+                alignSelf: isSmallScreen ? 'flex-end' : 'auto'
               }}>
                 <Tooltip title="Notifications">
                   <IconButton
@@ -1588,12 +1590,12 @@ const HospitalAdminDashboard = () => {
                       bgcolor: alpha(theme.palette.primary.main, 0.1),
                       color: theme.palette.primary.main,
                       '&:hover': { bgcolor: alpha(theme.palette.primary.main, 0.2) },
-                      width: isMobile ? 40 : 48,
-                      height: isMobile ? 40 : 48
+                      width: isSmallScreen ? 40 : 48,
+                      height: isSmallScreen ? 40 : 48
                     }}
                   >
                     <Badge badgeContent={4} color="error">
-                      <NotificationsActive fontSize={isMobile ? "small" : "medium"} />
+                      <NotificationsActive fontSize={isSmallScreen ? "small" : "medium"} />
                     </Badge>
                   </IconButton>
                 </Tooltip>
@@ -1604,11 +1606,11 @@ const HospitalAdminDashboard = () => {
                       bgcolor: alpha(theme.palette.success.main, 0.1),
                       color: theme.palette.success.main,
                       '&:hover': { bgcolor: alpha(theme.palette.success.main, 0.2) },
-                      width: isMobile ? 40 : 48,
-                      height: isMobile ? 40 : 48
+                      width: isSmallScreen ? 40 : 48,
+                      height: isSmallScreen ? 40 : 48
                     }}
                   >
-                    <Refresh fontSize={isMobile ? "small" : "medium"} />
+                    <Refresh fontSize={isSmallScreen ? "small" : "medium"} />
                   </IconButton>
                 </Tooltip>
               </Box>
@@ -1617,29 +1619,29 @@ const HospitalAdminDashboard = () => {
         </motion.div>
 
         {/* Quick Stats Cards */}
-        <Grid container spacing={isMobile ? 2 : 3} sx={{ mb: 4 }}>
+        <Grid container spacing={isSmallScreen ? 2 : 3} sx={{ mb: 4 }}>
           {quickStats.map((stat, index) => (
-            <Grid item xs={12} sm={6} md={4} lg={3} xl={3} key={index}>
+            <Grid item xs={12} sm={6} md={4} lg={3} xl={2.4} key={index}>
               <StatCard stat={stat} />
             </Grid>
           ))}
         </Grid>
 
         {/* Main Dashboard Content */}
-        <Grid container spacing={isMobile ? 2 : 4}>
+        <Grid container spacing={isSmallScreen ? 2 : 3}>
           
           {/* Left Column - Analytics & Charts */}
-          <Grid item xs={12} xl={8}>
-            <Grid container spacing={isMobile ? 2 : 3}>
+          <Grid item xs={12} lg={8}>
+            <Grid container spacing={isSmallScreen ? 2 : 3}>
               
               {/* Top Row - Key Analytics */}
               <Grid item xs={12}>
-                <Grid container spacing={isMobile ? 2 : 3}>
-                  <Grid item xs={12} md={6}>
+                <Grid container spacing={isSmallScreen ? 2 : 3}>
+                  <Grid item xs={12} lg={6}>
                     <motion.div variants={itemVariants}>
                       <Card sx={{ 
                         borderRadius: 3, 
-                        height: 320,
+                        height: isSmallScreen ? 280 : 320,
                         boxShadow: theme.shadows[2],
                         '&:hover': {
                           boxShadow: theme.shadows[8],
@@ -1648,11 +1650,11 @@ const HospitalAdminDashboard = () => {
                         }
                       }}>
                         <CardHeader 
-                          title={isMobile ? "Patient Admissions" : "Monthly Patient Admissions"}
+                          title={isSmallScreen ? "Patient Admissions" : "Monthly Patient Admissions"}
                           avatar={<BarChartIcon color="primary" />}
                           titleTypographyProps={{ 
                             fontWeight: 700,
-                            fontSize: isMobile ? '1rem' : '1.25rem'
+                            fontSize: isSmallScreen ? '0.95rem' : '1.1rem'
                           }}
                         />
                         <CardContent sx={{ p: 0, height: 'calc(100% - 80px)' }}>
@@ -1705,11 +1707,11 @@ const HospitalAdminDashboard = () => {
                     </motion.div>
                   </Grid>
 
-                  <Grid item xs={12} md={6}>
+                  <Grid item xs={12} lg={6}>
                     <motion.div variants={itemVariants}>
                       <Card sx={{ 
                         borderRadius: 3, 
-                        height: 320,
+                        height: isSmallScreen ? 280 : 320,
                         boxShadow: theme.shadows[2],
                         '&:hover': {
                           boxShadow: theme.shadows[8],
@@ -1722,7 +1724,7 @@ const HospitalAdminDashboard = () => {
                           avatar={<PieChartIcon color="secondary" />}
                           titleTypographyProps={{ 
                             fontWeight: 700,
-                            fontSize: isMobile ? '1rem' : '1.25rem'
+                            fontSize: isSmallScreen ? '0.95rem' : '1.1rem'
                           }}
                         />
                         <CardContent sx={{ p: 0, height: 'calc(100% - 80px)' }}>
@@ -1849,8 +1851,8 @@ const HospitalAdminDashboard = () => {
 
 
           {/* Right Sidebar */}
-          <Grid item xs={12} xl={4}>
-            <Grid container spacing={isMobile ? 2 : 3}>
+          <Grid item xs={12} lg={4}>
+            <Grid container spacing={isSmallScreen ? 2 : 3}>
               
               {/* Quick Actions - Responsive */}
               <Grid item xs={12}>
@@ -1869,20 +1871,20 @@ const HospitalAdminDashboard = () => {
                       avatar={<Speed color="primary" />}
                       titleTypographyProps={{ 
                         fontWeight: 700,
-                        fontSize: isMobile ? '1rem' : '1.1rem'
+                        fontSize: isSmallScreen ? '0.95rem' : '1.1rem'
                       }}
                     />
                     <CardContent>
-                      <Grid container spacing={isMobile ? 1 : 2}>
+                      <Grid container spacing={isSmallScreen ? 1 : 2}>
                         {quickActions.slice(0, 4).map((action, index) => (
-                          <Grid item xs={6} key={action.id || action.title || `action-${index}`}>
+                          <Grid item xs={isSmallScreen ? 6 : 6} sm={6} key={action.id || action.title || `action-${index}`}>
                             <Button
                               fullWidth
                               variant="outlined"
                               startIcon={action.icon}
                               onClick={() => navigate(action.path)}
                               sx={{
-                                minHeight: isMobile ? 60 : 80,
+                                minHeight: isSmallScreen ? 50 : 70,
                                 borderRadius: 2,
                                 textTransform: 'none',
                                 flexDirection: 'column',
@@ -1916,11 +1918,12 @@ const HospitalAdminDashboard = () => {
               </Grid>
 
               {/* Department Overview */}
-              <Grid item xs={12} md={6} xl={12}>
+              <Grid item xs={12} sm={6} md={6} lg={12}>
                 <motion.div variants={itemVariants}>
                   <Card sx={{ 
                     borderRadius: 3,
                     boxShadow: theme.shadows[2],
+                    height: isSmallScreen ? 'auto' : 350,
                     '&:hover': {
                       boxShadow: theme.shadows[8],
                       transform: 'translateY(-2px)',
@@ -1933,13 +1936,13 @@ const HospitalAdminDashboard = () => {
                       avatar={<LocalHospital color="success" />}
                       titleTypographyProps={{ 
                         fontWeight: 700,
-                        fontSize: isMobile ? '1rem' : '1.1rem'
+                        fontSize: isSmallScreen ? '0.95rem' : '1.1rem'
                       }}
                     />
-                    <CardContent>
+                    <CardContent sx={{ maxHeight: isSmallScreen ? 'none' : 280, overflow: 'auto' }}>
                       <List sx={{ p: 0 }}>
                         {departmentStats.map((dept, index) => (
-                          <ListItem key={dept.name} sx={{ px: 0, py: 1 }}>
+                          <ListItem key={dept.name} sx={{ px: 0, py: isSmallScreen ? 1 : 1.5 }}>
                             <ListItemAvatar>
                               <Avatar 
                                 sx={{ 
@@ -1990,11 +1993,12 @@ const HospitalAdminDashboard = () => {
               </Grid>
 
               {/* System Health */}
-              <Grid item xs={12} md={6} xl={12}>
+              <Grid item xs={12} sm={6} md={6} lg={12}>
                 <motion.div variants={itemVariants}>
                   <Card sx={{ 
                     borderRadius: 3,
                     boxShadow: theme.shadows[2],
+                    height: isSmallScreen ? 'auto' : 350,
                     '&:hover': {
                       boxShadow: theme.shadows[8],
                       transform: 'translateY(-2px)',
@@ -2007,13 +2011,13 @@ const HospitalAdminDashboard = () => {
                       avatar={<Computer color="info" />}
                       titleTypographyProps={{ 
                         fontWeight: 700,
-                        fontSize: isMobile ? '1rem' : '1.1rem'
+                        fontSize: isSmallScreen ? '0.95rem' : '1.1rem'
                       }}
                     />
-                    <CardContent>
-                      <Box sx={{ mb: 2 }}>
+                    <CardContent sx={{ maxHeight: isSmallScreen ? 'none' : 280, overflow: 'auto' }}>
+                      <Box sx={{ mb: isSmallScreen ? 1.5 : 2 }}>
                         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
-                          <Typography variant="body2" fontWeight={600}>
+                          <Typography variant={isSmallScreen ? "caption" : "body2"} fontWeight={600}>
                             Server Status
                           </Typography>
                           <Chip 
@@ -2021,11 +2025,12 @@ const HospitalAdminDashboard = () => {
                             size="small"
                             color={systemHealth.serverStatus === 'online' ? 'success' : 'error'}
                             variant="filled"
+                            sx={{ fontSize: isSmallScreen ? '0.7rem' : '0.75rem' }}
                           />
                         </Box>
                         
                         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
-                          <Typography variant="body2" fontWeight={600}>
+                          <Typography variant={isSmallScreen ? "caption" : "body2"} fontWeight={600}>
                             Database
                           </Typography>
                           <Chip 
@@ -2033,47 +2038,61 @@ const HospitalAdminDashboard = () => {
                             size="small"
                             color={systemHealth.databaseStatus === 'online' ? 'success' : 'error'}
                             variant="filled"
+                            sx={{ fontSize: isSmallScreen ? '0.7rem' : '0.75rem' }}
                           />
                         </Box>
 
-                        <Box sx={{ mb: 2 }}>
-                          <Typography variant="body2" fontWeight={600} sx={{ mb: 1 }}>
+                        <Box sx={{ mb: isSmallScreen ? 1.5 : 2 }}>
+                          <Typography variant={isSmallScreen ? "caption" : "body2"} fontWeight={600} sx={{ mb: 0.5 }}>
                             CPU Usage: {systemHealth.cpuUsage}%
                           </Typography>
                           <LinearProgress 
                             variant="determinate" 
                             value={systemHealth.cpuUsage} 
                             color={systemHealth.cpuUsage > 80 ? 'error' : systemHealth.cpuUsage > 60 ? 'warning' : 'success'}
-                            sx={{ borderRadius: 1 }}
+                            sx={{ 
+                              borderRadius: 1,
+                              height: isSmallScreen ? 6 : 8
+                            }}
                           />
                         </Box>
 
-                        <Box sx={{ mb: 2 }}>
-                          <Typography variant="body2" fontWeight={600} sx={{ mb: 1 }}>
+                        <Box sx={{ mb: isSmallScreen ? 1.5 : 2 }}>
+                          <Typography variant={isSmallScreen ? "caption" : "body2"} fontWeight={600} sx={{ mb: 0.5 }}>
                             Memory Usage: {systemHealth.memoryUsage}%
                           </Typography>
                           <LinearProgress 
                             variant="determinate" 
                             value={systemHealth.memoryUsage} 
                             color={systemHealth.memoryUsage > 80 ? 'error' : systemHealth.memoryUsage > 60 ? 'warning' : 'success'}
-                            sx={{ borderRadius: 1 }}
+                            sx={{ 
+                              borderRadius: 1,
+                              height: isSmallScreen ? 6 : 8
+                            }}
                           />
                         </Box>
 
-                        <Box>
-                          <Typography variant="body2" fontWeight={600} sx={{ mb: 1 }}>
+                        <Box sx={{ mb: isSmallScreen ? 1.5 : 2 }}>
+                          <Typography variant={isSmallScreen ? "caption" : "body2"} fontWeight={600} sx={{ mb: 0.5 }}>
                             Storage Usage: {systemHealth.storageUsage}%
                           </Typography>
                           <LinearProgress 
                             variant="determinate" 
                             value={systemHealth.storageUsage} 
                             color={systemHealth.storageUsage > 80 ? 'error' : systemHealth.storageUsage > 60 ? 'warning' : 'success'}
-                            sx={{ borderRadius: 1 }}
+                            sx={{ 
+                              borderRadius: 1,
+                              height: isSmallScreen ? 6 : 8
+                            }}
                           />
                         </Box>
                       </Box>
 
-                      <Typography variant="caption" color="text.secondary">
+                      <Typography 
+                        variant="caption" 
+                        color="text.secondary"
+                        sx={{ fontSize: isSmallScreen ? '0.7rem' : '0.75rem' }}
+                      >
                         Last backup: {systemHealth.lastBackup.toLocaleDateString()}
                       </Typography>
                     </CardContent>
@@ -2090,11 +2109,11 @@ const HospitalAdminDashboard = () => {
             Management & Activity Overview
           </Typography>
           
-          <Grid container spacing={isMobile ? 2 : 4}>
+          <Grid container spacing={isSmallScreen ? 2 : 3}>
             
             {/* Appointment Management Section */}
             <Grid item xs={12} lg={8}>
-              <Grid container spacing={isMobile ? 2 : 3}>
+              <Grid container spacing={isSmallScreen ? 2 : 3}>
                 
                 {/* Pending Appointments */}
                 <Grid item xs={12} md={6}>
@@ -2123,7 +2142,7 @@ const HospitalAdminDashboard = () => {
                         }
                         titleTypographyProps={{ 
                           fontWeight: 700,
-                          fontSize: isMobile ? '0.9rem' : '1.1rem'
+                          fontSize: isSmallScreen ? '0.9rem' : '1.1rem'
                         }}
                       />
                       <CardContent sx={{ maxHeight: 320, overflow: 'auto' }}>

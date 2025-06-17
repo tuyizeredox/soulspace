@@ -75,12 +75,13 @@ import HospitalRouter from './components/routing/HospitalRouter';
 // New streamlined hospital management components - using modern components
 import { 
   PatientManagement, 
-  DoctorManagement, 
   AppointmentManagement,
   NurseManagement,
   StaffManagement,
   StaffAnalytics
 } from './components/hospital/modern';
+// Enhanced Doctor Management System
+import { EnhancedDoctorManagement } from './components/hospital/doctor';
 
 import HospitalChatPage from './pages/hospital/HospitalChatPage';
 import Staff from './pages/hospital/Staff';
@@ -454,7 +455,7 @@ const App = () => {
             element={
               <PrivateRoute roles={['hospital_admin']}>
                 <Layout>
-                  <DoctorManagement />
+                  <EnhancedDoctorManagement />
                 </Layout>
               </PrivateRoute>
             }
@@ -669,7 +670,7 @@ const App = () => {
                   <Routes>
                     <Route path="dashboard" element={<HospitalAdminDashboard />} />
                     <Route path="patients" element={<PatientManagement />} />
-                    <Route path="doctors" element={<DoctorManagement />} />
+                    <Route path="doctors" element={<EnhancedDoctorManagement />} />
                     <Route path="nurses" element={<NurseManagement />} />
                     <Route path="staff" element={<StaffManagement />} />
                     <Route path="appointments" element={<AppointmentManagement />} />

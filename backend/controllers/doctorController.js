@@ -1,5 +1,6 @@
 const User = require('../models/User');
 const Patient = require('../models/Patient');
+const Doctor = require('../models/Doctor');
 const bcrypt = require('bcryptjs');
 
 exports.getHospitalDoctors = async (req, res) => {
@@ -431,5 +432,224 @@ exports.getDoctorById = async (req, res) => {
   } catch (error) {
     console.error('Error fetching doctor by ID:', error);
     res.status(500).json({ message: 'Error fetching doctor', error: error.message });
+  }
+};
+
+// Get doctor schedules
+exports.getDoctorSchedules = async (req, res) => {
+  try {
+    const doctorId = req.params.id;
+    
+    // Find doctor record with schedule information
+    const doctor = await Doctor.findOne({ userId: doctorId })
+      .populate('userId', 'name email')
+      .populate('scheduleRequests.approvedBy', 'name');
+    
+    if (!doctor) {
+      return res.status(404).json({ message: 'Doctor not found' });
+    }
+
+    // Check if user has permission to view this doctor's schedule
+    if (req.user.role !== 'hospital_admin' && req.user.id !== doctorId) {
+      return res.status(403).json({ message: 'Not authorized to view this schedule' });
+    }
+
+    const scheduleData = {
+      current: doctor.currentSchedule || [],
+      requests: doctor.scheduleRequests || []
+    };
+
+    res.json(scheduleData);
+  } catch (error) {
+    console.error('Error fetching doctor schedules:', error);
+    res.status(500).json({ message: 'Error fetching schedules', error: error.message });
+  }
+};
+
+// Create schedule request
+exports.createScheduleRequest = async (req, res) => {
+  try {
+    const { doctorId, effectiveDate, scheduleSlots } = req.body;
+    
+    // Validate request
+    if (!doctorId || !effectiveDate || !scheduleSlots || !Array.isArray(scheduleSlots)) {
+      return res.status(400).json({ message: 'Doctor ID, effective date, and schedule slots are required' });
+    }
+
+    // Check if user has permission
+    if (req.user.role !== 'hospital_admin' && req.user.id !== doctorId) {
+      return res.status(403).json({ message: 'Not authorized to create schedule for this doctor' });
+    }
+
+    // Find or create doctor record
+    let doctor = await Doctor.findOne({ userId: doctorId });
+    if (!doctor) {
+      const user = await User.findById(doctorId);
+      if (!user || user.role !== 'doctor') {
+        return res.status(404).json({ message: 'Doctor not found' });
+      }
+      
+      doctor = new Doctor({
+        userId: doctorId,
+        hospital: user.hospitalId,
+        specialization: user.profile?.specialization || 'General',
+        department: user.profile?.department || 'General',
+        qualifications: user.profile?.qualifications,
+        experience: user.profile?.experience || 0
+      });
+    }
+
+    // Create new schedule request
+    const scheduleRequest = {
+      scheduleSlots,
+      effectiveDate: new Date(effectiveDate),
+      status: 'pending'
+    };
+
+    doctor.scheduleRequests.push(scheduleRequest);
+    await doctor.save();
+
+    // Populate the doctor info for response
+    await doctor.populate('userId', 'name email');
+
+    res.status(201).json({
+      message: 'Schedule request created successfully',
+      request: doctor.scheduleRequests[doctor.scheduleRequests.length - 1]
+    });
+  } catch (error) {
+    console.error('Error creating schedule request:', error);
+    res.status(500).json({ message: 'Error creating schedule request', error: error.message });
+  }
+};
+
+// Update schedule request
+exports.updateScheduleRequest = async (req, res) => {
+  try {
+    const requestId = req.params.id;
+    const { effectiveDate, scheduleSlots } = req.body;
+
+    const doctor = await Doctor.findOne({ 'scheduleRequests._id': requestId });
+    if (!doctor) {
+      return res.status(404).json({ message: 'Schedule request not found' });
+    }
+
+    const scheduleRequest = doctor.scheduleRequests.id(requestId);
+    if (!scheduleRequest || scheduleRequest.status !== 'pending') {
+      return res.status(400).json({ message: 'Cannot update this schedule request' });
+    }
+
+    // Check permissions
+    if (req.user.role !== 'hospital_admin' && req.user.id !== doctor.userId.toString()) {
+      return res.status(403).json({ message: 'Not authorized to update this schedule request' });
+    }
+
+    // Update the request
+    if (effectiveDate) scheduleRequest.effectiveDate = new Date(effectiveDate);
+    if (scheduleSlots) scheduleRequest.scheduleSlots = scheduleSlots;
+
+    await doctor.save();
+
+    res.json({
+      message: 'Schedule request updated successfully',
+      request: scheduleRequest
+    });
+  } catch (error) {
+    console.error('Error updating schedule request:', error);
+    res.status(500).json({ message: 'Error updating schedule request', error: error.message });
+  }
+};
+
+// Get pending schedule requests (for hospital admins)
+exports.getPendingScheduleRequests = async (req, res) => {
+  try {
+    const hospitalId = req.user.hospitalId;
+    if (!hospitalId) {
+      return res.status(400).json({ message: 'Hospital ID not found' });
+    }
+
+    const doctors = await Doctor.find({ hospital: hospitalId })
+      .populate('userId', 'name email profile')
+      .populate('scheduleRequests.approvedBy', 'name');
+
+    const pendingRequests = [];
+    
+    doctors.forEach(doctor => {
+      doctor.scheduleRequests.forEach(request => {
+        if (request.status === 'pending') {
+          pendingRequests.push({
+            _id: request._id,
+            doctor: {
+              _id: doctor.userId._id,
+              name: doctor.userId.name,
+              email: doctor.userId.email,
+              specialization: doctor.specialization,
+              department: doctor.department,
+              profileImage: doctor.userId.profile?.avatar
+            },
+            scheduleSlots: request.scheduleSlots,
+            effectiveDate: request.effectiveDate,
+            requestedDate: request.requestedDate,
+            status: request.status,
+            createdAt: request.createdAt || request.requestedDate
+          });
+        }
+      });
+    });
+
+    // Sort by creation date (newest first)
+    pendingRequests.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+
+    res.json(pendingRequests);
+  } catch (error) {
+    console.error('Error fetching pending schedule requests:', error);
+    res.status(500).json({ message: 'Error fetching pending requests', error: error.message });
+  }
+};
+
+// Update schedule request status (approve/reject)
+exports.updateScheduleRequestStatus = async (req, res) => {
+  try {
+    const requestId = req.params.id;
+    const { status, adminComments } = req.body;
+
+    if (!['approved', 'rejected'].includes(status)) {
+      return res.status(400).json({ message: 'Invalid status. Must be approved or rejected' });
+    }
+
+    const doctor = await Doctor.findOne({ 'scheduleRequests._id': requestId });
+    if (!doctor) {
+      return res.status(404).json({ message: 'Schedule request not found' });
+    }
+
+    const scheduleRequest = doctor.scheduleRequests.id(requestId);
+    if (!scheduleRequest || scheduleRequest.status !== 'pending') {
+      return res.status(400).json({ message: 'Cannot update this schedule request' });
+    }
+
+    // Update the request status
+    scheduleRequest.status = status;
+    scheduleRequest.adminComments = adminComments;
+    scheduleRequest.approvedBy = req.user.id;
+    
+    if (status === 'approved') {
+      scheduleRequest.approvedAt = new Date();
+      // Replace current schedule with approved schedule
+      doctor.currentSchedule = scheduleRequest.scheduleSlots;
+    } else {
+      scheduleRequest.rejectedAt = new Date();
+    }
+
+    await doctor.save();
+
+    // Populate doctor info for response
+    await doctor.populate('userId', 'name email');
+
+    res.json({
+      message: `Schedule request ${status} successfully`,
+      request: scheduleRequest
+    });
+  } catch (error) {
+    console.error('Error updating schedule request status:', error);
+    res.status(500).json({ message: 'Error updating request status', error: error.message });
   }
 };

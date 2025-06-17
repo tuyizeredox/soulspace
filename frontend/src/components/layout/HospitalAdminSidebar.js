@@ -20,6 +20,7 @@ import {
   useMediaQuery,
 } from '@mui/material';
 import { getAvatarUrl, getInitials, getRoleColor as getUtilRoleColor, getRoleLabel as getUtilRoleLabel } from '../../utils/avatarUtils';
+import useSidebarMinimization from '../../hooks/useSidebarMinimization';
 import DashboardIcon from '@mui/icons-material/Dashboard';
 import PeopleIcon from '@mui/icons-material/People';
 import LocalHospitalIcon from '@mui/icons-material/LocalHospital';
@@ -66,6 +67,28 @@ const HospitalAdminSidebar = ({ mobileOpen, onDrawerToggle }) => {
   const token = newToken || oldToken;
 
   const theme = useTheme();
+  
+  // Responsive breakpoints
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+  const isTablet = useMediaQuery(theme.breakpoints.down('md'));
+  const isLaptop = useMediaQuery(theme.breakpoints.down('lg'));
+  
+  // Use sidebar minimization hook
+  const [isMinimized, toggleMinimized] = useSidebarMinimization('hospitalSidebarMinimized');
+  
+  // Auto-minimize on tablet/laptop sizes, but allow user to override on larger screens
+  // On mobile, always use overlay (drawer), never minimize inline
+  const shouldAutoMinimize = !isMobile && (isTablet || isLaptop);
+  const shouldMinimize = !isMobile && (shouldAutoMinimize || isMinimized);
+  const currentDrawerWidth = shouldMinimize ? miniDrawerWidth : drawerWidth;
+  
+  // Effect to handle responsive auto-minimization
+  useEffect(() => {
+    if (shouldAutoMinimize && !isMinimized) {
+      // Don't actually change the user preference, just visually minimize
+      // The user can still expand it if they want
+    }
+  }, [shouldAutoMinimize, isMinimized]);
   const [stats, setStats] = useState({
     totalDoctors: 0,
     totalPatients: 0,
@@ -292,141 +315,261 @@ const HospitalAdminSidebar = ({ mobileOpen, onDrawerToggle }) => {
   const sidebarTheme = getSidebarTheme();
 
   // Quick Actions section
-  const QuickActions = () => (
-    <Box sx={{ px: 2, py: 2 }}>
-      <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 1, fontWeight: 600, fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-        Quick Actions
-      </Typography>
-      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
-        <Tooltip title="Add Patient">
-          <IconButton
-            size="small"
-            onClick={() => navigate('/hospital/patients')}
-            sx={{
-              bgcolor: alpha(theme.palette.primary.main, 0.1),
-              color: theme.palette.primary.main,
-              '&:hover': { bgcolor: alpha(theme.palette.primary.main, 0.2) }
-            }}
-          >
-            <PersonAddIcon fontSize="small" />
-          </IconButton>
-        </Tooltip>
-        <Tooltip title="Schedule Appointment">
-          <IconButton
-            size="small"
-            onClick={() => navigate('/hospital/appointments')}
-            sx={{
-              bgcolor: alpha(theme.palette.warning.main, 0.1),
-              color: theme.palette.warning.main,
-              '&:hover': { bgcolor: alpha(theme.palette.warning.main, 0.2) }
-            }}
-          >
-            <EventAvailableIcon fontSize="small" />
-          </IconButton>
-        </Tooltip>
-        <Tooltip title="Chat">
-          <IconButton
-            size="small"
-            onClick={() => navigate('/hospital/chat')}
-            sx={{
-              bgcolor: alpha(theme.palette.success.main, 0.1),
-              color: theme.palette.success.main,
-              '&:hover': { bgcolor: alpha(theme.palette.success.main, 0.2) }
-            }}
-          >
-            <ChatIcon fontSize="small" />
-          </IconButton>
-        </Tooltip>
-        <Tooltip title="Manage Staff">
-          <IconButton
-            size="small"
-            onClick={() => navigate('/hospital/staff')}
-            sx={{
-              bgcolor: alpha(theme.palette.info.main, 0.1),
-              color: theme.palette.info.main,
-              '&:hover': { bgcolor: alpha(theme.palette.info.main, 0.2) }
-            }}
-          >
-            <SupervisorAccountIcon fontSize="small" />
-          </IconButton>
-        </Tooltip>
+  const QuickActions = () => {
+    if (shouldMinimize) {
+      // In minimized mode, show only icons vertically
+      return (
+        <Box sx={{ px: 1, py: 1 }}>
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, alignItems: 'center' }}>
+            <Tooltip title="Add Patient" placement="right">
+              <IconButton
+                size="small"
+                onClick={() => navigate('/hospital/patients')}
+                sx={{
+                  bgcolor: alpha(theme.palette.primary.main, 0.1),
+                  color: theme.palette.primary.main,
+                  '&:hover': { bgcolor: alpha(theme.palette.primary.main, 0.2) }
+                }}
+              >
+                <PersonAddIcon fontSize="small" />
+              </IconButton>
+            </Tooltip>
+            <Tooltip title="Schedule Appointment" placement="right">
+              <IconButton
+                size="small"
+                onClick={() => navigate('/hospital/appointments')}
+                sx={{
+                  bgcolor: alpha(theme.palette.warning.main, 0.1),
+                  color: theme.palette.warning.main,
+                  '&:hover': { bgcolor: alpha(theme.palette.warning.main, 0.2) }
+                }}
+              >
+                <EventAvailableIcon fontSize="small" />
+              </IconButton>
+            </Tooltip>
+            <Tooltip title="Chat" placement="right">
+              <IconButton
+                size="small"
+                onClick={() => navigate('/hospital/chat')}
+                sx={{
+                  bgcolor: alpha(theme.palette.success.main, 0.1),
+                  color: theme.palette.success.main,
+                  '&:hover': { bgcolor: alpha(theme.palette.success.main, 0.2) }
+                }}
+              >
+                <ChatIcon fontSize="small" />
+              </IconButton>
+            </Tooltip>
+            <Tooltip title="Manage Staff" placement="right">
+              <IconButton
+                size="small"
+                onClick={() => navigate('/hospital/staff')}
+                sx={{
+                  bgcolor: alpha(theme.palette.info.main, 0.1),
+                  color: theme.palette.info.main,
+                  '&:hover': { bgcolor: alpha(theme.palette.info.main, 0.2) }
+                }}
+              >
+                <SupervisorAccountIcon fontSize="small" />
+              </IconButton>
+            </Tooltip>
+          </Box>
+        </Box>
+      );
+    }
+
+    // Full width mode
+    return (
+      <Box sx={{ px: 2, py: 2 }}>
+        <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 1, fontWeight: 600, fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+          Quick Actions
+        </Typography>
+        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+          <Tooltip title="Add Patient">
+            <IconButton
+              size="small"
+              onClick={() => navigate('/hospital/patients')}
+              sx={{
+                bgcolor: alpha(theme.palette.primary.main, 0.1),
+                color: theme.palette.primary.main,
+                '&:hover': { bgcolor: alpha(theme.palette.primary.main, 0.2) }
+              }}
+            >
+              <PersonAddIcon fontSize="small" />
+            </IconButton>
+          </Tooltip>
+          <Tooltip title="Schedule Appointment">
+            <IconButton
+              size="small"
+              onClick={() => navigate('/hospital/appointments')}
+              sx={{
+                bgcolor: alpha(theme.palette.warning.main, 0.1),
+                color: theme.palette.warning.main,
+                '&:hover': { bgcolor: alpha(theme.palette.warning.main, 0.2) }
+              }}
+            >
+              <EventAvailableIcon fontSize="small" />
+            </IconButton>
+          </Tooltip>
+          <Tooltip title="Chat">
+            <IconButton
+              size="small"
+              onClick={() => navigate('/hospital/chat')}
+              sx={{
+                bgcolor: alpha(theme.palette.success.main, 0.1),
+                color: theme.palette.success.main,
+                '&:hover': { bgcolor: alpha(theme.palette.success.main, 0.2) }
+              }}
+            >
+              <ChatIcon fontSize="small" />
+            </IconButton>
+          </Tooltip>
+          <Tooltip title="Manage Staff">
+            <IconButton
+              size="small"
+              onClick={() => navigate('/hospital/staff')}
+              sx={{
+                bgcolor: alpha(theme.palette.info.main, 0.1),
+                color: theme.palette.info.main,
+                '&:hover': { bgcolor: alpha(theme.palette.info.main, 0.2) }
+              }}
+            >
+              <SupervisorAccountIcon fontSize="small" />
+            </IconButton>
+          </Tooltip>
+        </Box>
       </Box>
-    </Box>
-  );
+    );
+  };
 
   // Hospital Stats section
-  const HospitalStats = () => (
-    <Box sx={{ px: 2, py: 2 }}>
-      <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 1, fontWeight: 600, fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-        Hospital Stats
-      </Typography>
-      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <Typography variant="body2" color="text.secondary">Medical Staff</Typography>
-          <Chip
-            label={`${stats.totalMedicalStaff || 0} total`}
-            size="small"
-            color="primary"
-            sx={{ height: 20, '& .MuiChip-label': { px: 1, py: 0.5, fontSize: '0.65rem' } }}
-          />
+  const HospitalStats = () => {
+    if (shouldMinimize) {
+      // In minimized mode, show only key stats as tooltips with icons
+      return (
+        <Box sx={{ px: 1, py: 1 }}>
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, alignItems: 'center' }}>
+            <Tooltip title={`${stats.totalMedicalStaff || 0} Medical Staff`} placement="right">
+              <Box sx={{ 
+                display: 'flex', 
+                alignItems: 'center', 
+                justifyContent: 'center',
+                width: 32,
+                height: 32,
+                borderRadius: 1,
+                bgcolor: alpha(theme.palette.primary.main, 0.1),
+                color: theme.palette.primary.main
+              }}>
+                <MedicalServicesIcon fontSize="small" />
+              </Box>
+            </Tooltip>
+            <Tooltip title={`${stats.totalDoctors || 0} Doctors`} placement="right">
+              <Box sx={{ 
+                display: 'flex', 
+                alignItems: 'center', 
+                justifyContent: 'center',
+                width: 32,
+                height: 32,
+                borderRadius: 1,
+                bgcolor: alpha(theme.palette.success.main, 0.1),
+                color: theme.palette.success.main
+              }}>
+                <LocalHospitalIcon fontSize="small" />
+              </Box>
+            </Tooltip>
+            <Tooltip title={`${stats.totalPatients || 0} Patients`} placement="right">
+              <Box sx={{ 
+                display: 'flex', 
+                alignItems: 'center', 
+                justifyContent: 'center',
+                width: 32,
+                height: 32,
+                borderRadius: 1,
+                bgcolor: alpha(theme.palette.info.main, 0.1),
+                color: theme.palette.info.main
+              }}>
+                <PeopleIcon fontSize="small" />
+              </Box>
+            </Tooltip>
+          </Box>
         </Box>
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <Typography variant="body2" color="text.secondary">Doctors</Typography>
-          <Chip
-            label={`${stats.totalDoctors || 0} total`}
-            size="small"
-            color="primary"
-            sx={{ height: 20, '& .MuiChip-label': { px: 1, py: 0.5, fontSize: '0.65rem' } }}
-          />
-        </Box>
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <Typography variant="body2" color="text.secondary">Nurses</Typography>
-          <Chip
-            label={`${stats.totalNurses || 0} total`}
-            size="small"
-            color="info"
-            sx={{ height: 20, '& .MuiChip-label': { px: 1, py: 0.5, fontSize: '0.65rem' } }}
-          />
-        </Box>
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <Typography variant="body2" color="text.secondary">Patients</Typography>
-          <Chip
-            label={stats.newPatients > 0 ? `${stats.totalPatients || 0} (${stats.newPatients} new)` : `${stats.totalPatients || 0} total`}
-            size="small"
-            color={stats.newPatients > 0 ? "info" : "default"}
-            sx={{ height: 20, '& .MuiChip-label': { px: 1, py: 0.5, fontSize: '0.65rem' } }}
-          />
-        </Box>
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <Typography variant="body2" color="text.secondary">Appointments</Typography>
-          <Chip
-            label={`${stats.pendingAppointments} pending`}
-            size="small"
-            color={stats.pendingAppointments > 0 ? "warning" : "default"}
-            sx={{ height: 20, '& .MuiChip-label': { px: 1, py: 0.5, fontSize: '0.65rem' } }}
-          />
-        </Box>
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <Typography variant="body2" color="text.secondary">Treatments</Typography>
-          <Chip
-            label={`${stats.activeTreatments || 0} active`}
-            size="small"
-            color="success"
-            sx={{ height: 20, '& .MuiChip-label': { px: 1, py: 0.5, fontSize: '0.65rem' } }}
-          />
-        </Box>
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <Typography variant="body2" color="text.secondary">Messages</Typography>
-          <Chip
-            label={`${stats.unreadMessages} unread`}
-            size="small"
-            color={stats.unreadMessages > 0 ? "error" : "default"}
-            sx={{ height: 20, '& .MuiChip-label': { px: 1, py: 0.5, fontSize: '0.65rem' } }}
-          />
+      );
+    }
+
+    // Full width mode
+    return (
+      <Box sx={{ px: 2, py: 2 }}>
+        <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 1, fontWeight: 600, fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+          Hospital Stats
+        </Typography>
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <Typography variant="body2" color="text.secondary">Medical Staff</Typography>
+            <Chip
+              label={`${stats.totalMedicalStaff || 0} total`}
+              size="small"
+              color="primary"
+              sx={{ height: 20, '& .MuiChip-label': { px: 1, py: 0.5, fontSize: '0.65rem' } }}
+            />
+          </Box>
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <Typography variant="body2" color="text.secondary">Doctors</Typography>
+            <Chip
+              label={`${stats.totalDoctors || 0} total`}
+              size="small"
+              color="primary"
+              sx={{ height: 20, '& .MuiChip-label': { px: 1, py: 0.5, fontSize: '0.65rem' } }}
+            />
+          </Box>
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <Typography variant="body2" color="text.secondary">Nurses</Typography>
+            <Chip
+              label={`${stats.totalNurses || 0} total`}
+              size="small"
+              color="info"
+              sx={{ height: 20, '& .MuiChip-label': { px: 1, py: 0.5, fontSize: '0.65rem' } }}
+            />
+          </Box>
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <Typography variant="body2" color="text.secondary">Patients</Typography>
+            <Chip
+              label={stats.newPatients > 0 ? `${stats.totalPatients || 0} (${stats.newPatients} new)` : `${stats.totalPatients || 0} total`}
+              size="small"
+              color={stats.newPatients > 0 ? "info" : "default"}
+              sx={{ height: 20, '& .MuiChip-label': { px: 1, py: 0.5, fontSize: '0.65rem' } }}
+            />
+          </Box>
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <Typography variant="body2" color="text.secondary">Appointments</Typography>
+            <Chip
+              label={`${stats.pendingAppointments} pending`}
+              size="small"
+              color={stats.pendingAppointments > 0 ? "warning" : "default"}
+              sx={{ height: 20, '& .MuiChip-label': { px: 1, py: 0.5, fontSize: '0.65rem' } }}
+            />
+          </Box>
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <Typography variant="body2" color="text.secondary">Treatments</Typography>
+            <Chip
+              label={`${stats.activeTreatments || 0} active`}
+              size="small"
+              color="success"
+              sx={{ height: 20, '& .MuiChip-label': { px: 1, py: 0.5, fontSize: '0.65rem' } }}
+            />
+          </Box>
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <Typography variant="body2" color="text.secondary">Messages</Typography>
+            <Chip
+              label={`${stats.unreadMessages} unread`}
+              size="small"
+              color={stats.unreadMessages > 0 ? "error" : "default"}
+              sx={{ height: 20, '& .MuiChip-label': { px: 1, py: 0.5, fontSize: '0.65rem' } }}
+            />
+          </Box>
         </Box>
       </Box>
-    </Box>
-  );
+    );
+  };
 
   const drawer = (
     <Box sx={{
@@ -440,7 +583,7 @@ const HospitalAdminSidebar = ({ mobileOpen, onDrawerToggle }) => {
       {/* User Profile Section */}
       <Box
         sx={{
-          p: 3,
+          p: shouldMinimize ? 1 : 3,
           display: 'flex',
           flexDirection: 'column',
           alignItems: 'center',
@@ -461,76 +604,206 @@ const HospitalAdminSidebar = ({ mobileOpen, onDrawerToggle }) => {
           }
         }}
       >
-        <Avatar
-          sx={{
-            width: 90,
-            height: 90,
-            mb: 1,
-            border: '3px solid',
-            borderColor: getRoleColor(user?.role),
-            boxShadow: `0 0 0 3px ${alpha(getRoleColor(user?.role), 0.2)}, 0 8px 16px ${alpha(theme.palette.common.black, 0.15)}`,
-            background: `linear-gradient(135deg, ${alpha(getRoleColor(user?.role), 0.8)} 0%, ${alpha(theme.palette.primary.main, 0.9)} 100%)`,
-            color: '#fff',
-            fontSize: '2rem',
-            fontWeight: 'bold',
-            transition: 'all 0.3s ease',
-            '&:hover': {
-              transform: 'scale(1.05)',
-              boxShadow: `0 0 0 4px ${alpha(getRoleColor(user?.role), 0.3)}, 0 10px 20px ${alpha(theme.palette.common.black, 0.2)}`,
-            }
-          }}
-          alt={user?.name}
-          src={avatarUrl}
-          slotProps={{
-            img: {
-              onError: (e) => {
-                console.error('Sidebar: Error loading avatar image:', e.target.src);
-                // Hide the image and show initials instead
-                e.target.style.display = 'none';
+        {/* Toggle Button for Desktop - Always visible */}
+        {!isMobile && (
+          <Tooltip title={shouldMinimize ? "Expand sidebar" : "Minimize sidebar"} placement="right">
+            <IconButton
+              onClick={toggleMinimized}
+              sx={{
+                position: 'absolute',
+                top: 12,
+                right: shouldMinimize ? 12 : 8,
+                zIndex: 1000, // High z-index to ensure visibility
+                width: shouldMinimize ? 32 : 40,
+                height: shouldMinimize ? 32 : 40,
+                bgcolor: alpha(theme.palette.background.paper, 0.95),
+                border: `2px solid ${alpha(getRoleColor(user?.role), 0.6)}`,
+                boxShadow: `0 4px 20px ${alpha(theme.palette.common.black, 0.2)}`,
+                transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                '&:hover': {
+                  bgcolor: alpha(getRoleColor(user?.role), 0.1),
+                  borderColor: getRoleColor(user?.role),
+                  transform: 'scale(1.15)',
+                  boxShadow: `0 6px 24px ${alpha(getRoleColor(user?.role), 0.4)}`,
+                },
+                '&:active': {
+                  transform: 'scale(1.05)',
+                }
+              }}
+            >
+              {shouldMinimize ? (
+                <ChevronRightIcon 
+                  sx={{ 
+                    fontSize: 20,
+                    color: getRoleColor(user?.role),
+                    fontWeight: 'bold'
+                  }} 
+                />
+              ) : (
+                <ChevronLeftIcon 
+                  sx={{ 
+                    fontSize: 24,
+                    color: getRoleColor(user?.role),
+                    fontWeight: 'bold'
+                  }} 
+                />
+              )}
+            </IconButton>
+          </Tooltip>
+        )}
+        
+        <Tooltip title={shouldMinimize ? `${user?.name} - Click to expand` : user?.name} placement="right">
+          <Avatar
+            onClick={shouldMinimize ? toggleMinimized : undefined}
+            sx={{
+              width: shouldMinimize ? 40 : 90,
+              height: shouldMinimize ? 40 : 90,
+              mb: shouldMinimize ? 0 : 1,
+              border: '3px solid',
+              borderColor: getRoleColor(user?.role),
+              boxShadow: `0 0 0 3px ${alpha(getRoleColor(user?.role), 0.2)}, 0 8px 16px ${alpha(theme.palette.common.black, 0.15)}`,
+              background: `linear-gradient(135deg, ${alpha(getRoleColor(user?.role), 0.8)} 0%, ${alpha(theme.palette.primary.main, 0.9)} 100%)`,
+              color: '#fff',
+              fontSize: shouldMinimize ? '1rem' : '2rem',
+              fontWeight: 'bold',
+              transition: 'all 0.3s ease',
+              cursor: shouldMinimize ? 'pointer' : 'default',
+              '&:hover': {
+                transform: shouldMinimize ? 'scale(1.1)' : 'scale(1.05)',
+                boxShadow: `0 0 0 4px ${alpha(getRoleColor(user?.role), 0.3)}, 0 10px 20px ${alpha(theme.palette.common.black, 0.2)}`,
               }
-            }
-          }}
-        >
-          {getInitials(user?.name)}
-        </Avatar>
-        <Typography variant="h6" sx={{ mt: 1, fontWeight: 700, textAlign: 'center' }}>
-          {user?.name || 'User'}
-        </Typography>
-        <Typography
-          variant="caption"
-          sx={{
-            px: 2,
-            py: 0.7,
-            borderRadius: 5,
-            bgcolor: alpha(getRoleColor(user?.role), 0.15),
-            color: getRoleColor(user?.role),
-            fontWeight: 600,
-            mt: 0.5,
-            boxShadow: `0 2px 6px ${alpha(getRoleColor(user?.role), 0.2)}`,
-            border: `1px solid ${alpha(getRoleColor(user?.role), 0.2)}`,
-            textTransform: 'uppercase',
-            letterSpacing: '0.5px',
-          }}
-        >
-          {getRoleLabel(user?.role)}
-        </Typography>
+            }}
+            alt={user?.name}
+            src={avatarUrl}
+            slotProps={{
+              img: {
+                onError: (e) => {
+                  console.error('Sidebar: Error loading avatar image:', e.target.src);
+                  // Hide the image and show initials instead
+                  e.target.style.display = 'none';
+                }
+              }
+            }}
+          >
+            {getInitials(user?.name)}
+          </Avatar>
+        </Tooltip>
+        
+        {!shouldMinimize && (
+          <>
+            <Typography variant="h6" sx={{ mt: 1, fontWeight: 700, textAlign: 'center' }}>
+              {user?.name || 'User'}
+            </Typography>
+            <Typography
+              variant="caption"
+              sx={{
+                px: 2,
+                py: 0.7,
+                borderRadius: 5,
+                bgcolor: alpha(getRoleColor(user?.role), 0.15),
+                color: getRoleColor(user?.role),
+                fontWeight: 600,
+                mt: 0.5,
+                boxShadow: `0 2px 6px ${alpha(getRoleColor(user?.role), 0.2)}`,
+                border: `1px solid ${alpha(getRoleColor(user?.role), 0.2)}`,
+                textTransform: 'uppercase',
+                letterSpacing: '0.5px',
+              }}
+            >
+              {getRoleLabel(user?.role)}
+            </Typography>
+          </>
+        )}
       </Box>
 
       {/* Quick Actions Section */}
       <QuickActions />
 
-      <Divider sx={{ mx: 2 }} />
+      {!shouldMinimize && <Divider sx={{ mx: 2 }} />}
 
       {/* Hospital Stats Section */}
       <HospitalStats />
 
-      <Divider sx={{ mx: 2 }} />
+      {!shouldMinimize && <Divider sx={{ mx: 2 }} />}
 
       {/* Menu Items */}
-      <Box sx={{ flexGrow: 1, overflow: 'auto', px: 2, py: 3 }}>
+      <Box sx={{ flexGrow: 1, overflow: 'auto', px: shouldMinimize ? 1 : 2, py: shouldMinimize ? 1 : 3 }}>
         <List component="nav" sx={{ width: '100%' }}>
           {getHospitalAdminMenuItems().map((item) => {
             const isActive = location.pathname === item.path;
+            
+            if (shouldMinimize) {
+              // Minimized mode - show only icons with tooltips
+              return (
+                <Tooltip key={item.text} title={item.text} placement="right">
+                  <ListItemButton
+                    selected={isActive}
+                    onClick={() => navigate(item.path)}
+                    sx={{
+                      borderRadius: 2,
+                      mb: 1,
+                      px: 1,
+                      py: 1,
+                      justifyContent: 'center',
+                      minHeight: 48,
+                      position: 'relative',
+                      '&.Mui-selected': {
+                        bgcolor: alpha(getRoleColor(user?.role), 0.12),
+                        '&::before': {
+                          content: '""',
+                          position: 'absolute',
+                          left: 0,
+                          top: 0,
+                          bottom: 0,
+                          width: '4px',
+                          backgroundColor: getRoleColor(user?.role),
+                          borderRadius: '0 4px 4px 0',
+                        }
+                      },
+                      '&:hover': {
+                        bgcolor: alpha(getRoleColor(user?.role), 0.08),
+                      },
+                    }}
+                  >
+                    <ListItemIcon
+                      sx={{
+                        color: isActive ? getRoleColor(user?.role) : 'text.secondary',
+                        minWidth: 'auto',
+                        justifyContent: 'center',
+                        position: 'relative'
+                      }}
+                    >
+                      {item.icon}
+                      {item.badge && (
+                        <Box
+                          sx={{
+                            position: 'absolute',
+                            top: -8,
+                            right: -8,
+                            width: 18,
+                            height: 18,
+                            borderRadius: '50%',
+                            bgcolor: `${item.badge.color}.main`,
+                            color: 'white',
+                            fontSize: '0.7rem',
+                            fontWeight: 'bold',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            border: '2px solid',
+                            borderColor: 'background.paper'
+                          }}
+                        >
+                          {item.badge.count > 9 ? '9+' : item.badge.count}
+                        </Box>
+                      )}
+                    </ListItemIcon>
+                  </ListItemButton>
+                </Tooltip>
+              );
+            }
+            
+            // Full width mode
             return (
               <ListItemButton
                 key={item.text}
@@ -609,31 +882,53 @@ const HospitalAdminSidebar = ({ mobileOpen, onDrawerToggle }) => {
       {/* Footer */}
       <Box
         sx={{
-          p: 2,
+          p: shouldMinimize ? 1 : 2,
           borderTop: '1px solid',
           borderColor: 'divider',
           display: 'flex',
           alignItems: 'center',
-          justifyContent: 'space-between',
+          justifyContent: shouldMinimize ? 'center' : 'space-between',
           background: alpha(theme.palette.background.paper, 0.6),
           backdropFilter: 'blur(8px)',
         }}
       >
-        <Box>
-          <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.5, fontWeight: 500 }}>
-            SoulSpace Health
-          </Typography>
-          <Typography variant="caption" color="text.disabled" sx={{ fontSize: '0.65rem' }}>
-            v1.0.0
-          </Typography>
-        </Box>
-        <Box>
-          <Tooltip title="Settings">
+        {!shouldMinimize && (
+          <Box>
+            <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.5, fontWeight: 500 }}>
+              SoulSpace Health
+            </Typography>
+            <Typography variant="caption" color="text.disabled" sx={{ fontSize: '0.65rem' }}>
+              v1.0.0
+            </Typography>
+          </Box>
+        )}
+        <Box sx={{ display: 'flex', flexDirection: shouldMinimize ? 'column' : 'row', gap: shouldMinimize ? 1 : 0 }}>
+          {shouldMinimize && (
+            <Tooltip title="Expand sidebar" placement="right">
+              <IconButton
+                size="small"
+                onClick={toggleMinimized}
+                sx={{
+                  mb: 1,
+                  color: getRoleColor(user?.role),
+                  bgcolor: alpha(getRoleColor(user?.role), 0.1),
+                  border: `1px solid ${alpha(getRoleColor(user?.role), 0.2)}`,
+                  '&:hover': {
+                    bgcolor: alpha(getRoleColor(user?.role), 0.2),
+                    transform: 'scale(1.1)',
+                  }
+                }}
+              >
+                <ChevronRightIcon fontSize="small" />
+              </IconButton>
+            </Tooltip>
+          )}
+          <Tooltip title="Settings" placement={shouldMinimize ? 'right' : 'top'}>
             <IconButton
               size="small"
               onClick={() => navigate('/hospital/settings')}
               sx={{
-                mr: 1,
+                mr: shouldMinimize ? 0 : 1,
                 color: 'text.secondary',
                 '&:hover': {
                   color: getRoleColor(user?.role),
@@ -644,7 +939,7 @@ const HospitalAdminSidebar = ({ mobileOpen, onDrawerToggle }) => {
               <SettingsIcon fontSize="small" />
             </IconButton>
           </Tooltip>
-          <Tooltip title="Help">
+          <Tooltip title="Help" placement={shouldMinimize ? 'right' : 'top'}>
             <IconButton
               size="small"
               onClick={() => navigate('/hospital/help')}
@@ -668,7 +963,7 @@ const HospitalAdminSidebar = ({ mobileOpen, onDrawerToggle }) => {
     <Box
       component="nav"
       sx={{
-        width: { sm: drawerWidth },
+        width: { sm: currentDrawerWidth },
         flexShrink: { sm: 0 },
         zIndex: (theme) => theme.zIndex.drawer + 2,
       }}
@@ -684,7 +979,7 @@ const HospitalAdminSidebar = ({ mobileOpen, onDrawerToggle }) => {
           display: { xs: 'block', sm: 'none' },
           '& .MuiDrawer-paper': {
             boxSizing: 'border-box',
-            width: drawerWidth,
+            width: drawerWidth, // Always full width on mobile
             borderRight: 'none',
             boxShadow: theme.palette.mode === 'dark'
               ? '4px 0 15px rgba(0, 0, 0, 0.3)'
@@ -720,7 +1015,7 @@ const HospitalAdminSidebar = ({ mobileOpen, onDrawerToggle }) => {
           display: { xs: 'none', sm: 'block' },
           '& .MuiDrawer-paper': {
             boxSizing: 'border-box',
-            width: drawerWidth,
+            width: currentDrawerWidth,
             borderRight: 'none',
             boxShadow: theme.palette.mode === 'dark'
               ? '4px 0 15px rgba(0, 0, 0, 0.3)'

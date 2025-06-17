@@ -5,7 +5,12 @@ const {
   updateDoctor,
   deleteDoctor,
   getPatientsForDoctor,
-  getDoctorById
+  getDoctorById,
+  getDoctorSchedules,
+  createScheduleRequest,
+  updateScheduleRequest,
+  getPendingScheduleRequests,
+  updateScheduleRequestStatus
 } = require('../controllers/doctorController');
 const { getHospitalDoctorPerformance } = require('../controllers/doctorPerformanceController');
 const {
@@ -37,6 +42,13 @@ router.get('/my-appointments', verifyToken, authorizeRoles('doctor'), getDoctorA
 router.post('/', verifyToken, authorizeRoles('hospital_admin'), createDoctor);
 router.put('/:id', verifyToken, authorizeRoles('hospital_admin'), updateDoctor);
 router.delete('/:id', verifyToken, authorizeRoles('hospital_admin'), deleteDoctor);
+
+// Schedule Management Routes
+router.get('/:id/schedules', verifyToken, authorizeRoles('hospital_admin', 'doctor'), getDoctorSchedules);
+router.post('/schedule-requests', verifyToken, authorizeRoles('hospital_admin', 'doctor'), createScheduleRequest);
+router.put('/schedule-requests/:id', verifyToken, authorizeRoles('hospital_admin', 'doctor'), updateScheduleRequest);
+router.get('/schedule-requests/pending', verifyToken, authorizeRoles('hospital_admin'), getPendingScheduleRequests);
+router.put('/schedule-requests/:id/status', verifyToken, authorizeRoles('hospital_admin'), updateScheduleRequestStatus);
 
 // Get doctor by ID - public route for chat functionality
 router.get('/:id', getDoctorById);
