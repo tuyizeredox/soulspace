@@ -41,6 +41,7 @@ import {
   Phone as PhoneIcon,
   Email as EmailIcon,
   CalendarToday as CalendarIcon,
+  Schedule,
   LocalHospital as HospitalIcon,
   Bloodtype as BloodIcon,
   Warning as AllergyIcon,
@@ -69,6 +70,7 @@ const PatientManagement = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [doctorFilter, setDoctorFilter] = useState('all');
+  const [assignmentFilter, setAssignmentFilter] = useState('all');
   const [showFilters, setShowFilters] = useState(false);
   
   // Dialog states
@@ -161,9 +163,24 @@ const PatientManagement = () => {
     
     const matchesDoctor = doctorFilter === 'all' || 
       patient.assignedDoctor?._id === doctorFilter ||
-      patient.assignedDoctor === doctorFilter;
+      patient.assignedDoctor === doctorFilter ||
+      patient.primaryDoctor?._id === doctorFilter;
     
-    return matchesSearch && matchesStatus && matchesDoctor;
+    // Assignment status filtering
+    const doctor = patient.assignedDoctor || patient.primaryDoctor;
+    const hasDoctor = doctor && (typeof doctor === 'object' ? doctor.name : doctor !== 'Unassigned');
+    const fromAppointment = patient.assignmentId || patient.primaryDoctor; // Indicates assignment from appointment
+    
+    let matchesAssignment = true;
+    if (assignmentFilter === 'assigned') {
+      matchesAssignment = hasDoctor;
+    } else if (assignmentFilter === 'unassigned') {
+      matchesAssignment = !hasDoctor;
+    } else if (assignmentFilter === 'from_appointment') {
+      matchesAssignment = hasDoctor && fromAppointment;
+    }
+    
+    return matchesSearch && matchesStatus && matchesDoctor && matchesAssignment;
   });
 
   // Form validation
@@ -285,6 +302,7 @@ const PatientManagement = () => {
     setSearchQuery('');
     setStatusFilter('all');
     setDoctorFilter('all');
+    setAssignmentFilter('all');
   };
 
   // DataGrid columns
@@ -330,47 +348,94 @@ const PatientManagement = () => {
     {
       field: 'assignedDoctor',
       headerName: 'Assigned Doctor',
-      width: 200,
+      width: 220,
       renderCell: (params) => {
-        const doctor = params.value;
+        const doctor = params.value || params.row.primaryDoctor;
         if (!doctor) {
           return (
-            <Chip 
-              label="Unassigned" 
-              size="small" 
-              variant="outlined"
-              color="default"
-            />
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <Chip 
+                label="No Doctor" 
+                size="small" 
+                variant="outlined"
+                color="warning"
+                icon={<AllergyIcon />}
+              />
+            </Box>
           );
         }
+        
+        const doctorName = typeof doctor === 'object' ? doctor.name : doctor;
+        const specialization = typeof doctor === 'object' ? doctor.profile?.specialization : null;
+        
         return (
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-            <HospitalIcon color="primary" fontSize="small" />
-            <Typography variant="body2">
-              {typeof doctor === 'object' ? doctor.name : 'Assigned'}
-            </Typography>
+            <Avatar 
+              sx={{ 
+                width: 32, 
+                height: 32, 
+                bgcolor: theme.palette.primary.main,
+                fontSize: '0.875rem'
+              }}
+            >
+              {doctorName?.charAt(0)?.toUpperCase() || 'D'}
+            </Avatar>
+            <Box>
+              <Typography variant="body2" sx={{ fontWeight: 600, color: 'text.primary' }}>
+                {doctorName}
+              </Typography>
+              {specialization && (
+                <Typography variant="caption" color="text.secondary">
+                  {specialization}
+                </Typography>
+              )}
+            </Box>
           </Box>
         );
       }
     },
     {
       field: 'status',
-      headerName: 'Status',
-      width: 120,
+      headerName: 'Status & Assignment',
+      width: 180,
       renderCell: (params) => {
         const status = params.value || 'pending';
-        const colors = {
+        const doctor = params.row.assignedDoctor || params.row.primaryDoctor;
+        const hasDoctor = doctor && (typeof doctor === 'object' ? doctor.name : doctor !== 'Unassigned');
+        
+        const statusColors = {
           pending: 'warning',
           active: 'success',
-          inactive: 'default'
+          inactive: 'default',
+          discharged: 'info'
         };
+        
         return (
-          <Chip 
-            label={status.charAt(0).toUpperCase() + status.slice(1)} 
-            size="small" 
-            color={colors[status] || 'default'}
-            variant="filled"
-          />
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+            <Chip 
+              label={status.charAt(0).toUpperCase() + status.slice(1)} 
+              size="small" 
+              color={statusColors[status] || 'default'}
+              variant="filled"
+            />
+            {hasDoctor ? (
+              <Chip 
+                label="Doctor Assigned" 
+                size="small" 
+                color="success"
+                variant="outlined"
+                icon={<HospitalIcon />}
+              />
+            ) : (
+              <Chip 
+                label="Needs Assignment" 
+                size="small" 
+                color="warning"
+                variant="outlined"
+                icon={<AllergyIcon />}
+              />
+            )}
+          </Box>
         );
       }
     },
@@ -396,6 +461,56 @@ const PatientManagement = () => {
           </Typography>
         </Tooltip>
       )
+    },
+    {
+      field: 'assignmentSource',
+      headerName: 'Assignment Source',
+      width: 180,
+      renderCell: (params) => {
+        const doctor = params.row.assignedDoctor || params.row.primaryDoctor;
+        const hasDoctor = doctor && (typeof doctor === 'object' ? doctor.name : doctor !== 'Unassigned');
+        
+        if (!hasDoctor) {
+          return (
+            <Typography variant="body2" color="text.secondary">
+              No assignment
+            </Typography>
+          );
+        }
+        
+        // Check if assignment came from appointment (this would be determined by your backend logic)
+        const fromAppointment = params.row.assignmentId || params.row.primaryDoctor;
+        
+        return (
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            {fromAppointment ? (
+              <>
+                <CalendarIcon color="success" fontSize="small" />
+                <Box>
+                  <Typography variant="body2" color="success.main" sx={{ fontWeight: 600 }}>
+                    Via Appointment
+                  </Typography>
+                  <Typography variant="caption" color="text.secondary">
+                    Auto-assigned
+                  </Typography>
+                </Box>
+              </>
+            ) : (
+              <>
+                <PersonIcon color="primary" fontSize="small" />
+                <Box>
+                  <Typography variant="body2" color="primary.main" sx={{ fontWeight: 600 }}>
+                    Manual Assignment
+                  </Typography>
+                  <Typography variant="caption" color="text.secondary">
+                    Admin assigned
+                  </Typography>
+                </Box>
+              </>
+            )}
+          </Box>
+        );
+      }
     },
     {
       field: 'createdAt',
@@ -466,23 +581,97 @@ const PatientManagement = () => {
   return (
     <Box sx={{ p: { xs: 2, md: 3 } }}>
       {/* Header */}
-      <Box sx={{ 
-        display: 'flex', 
-        justifyContent: 'space-between', 
-        alignItems: 'center', 
-        mb: 3,
-        flexWrap: 'wrap',
-        gap: 2
-      }}>
-        <Box>
-          <Typography variant="h4" fontWeight={700} color="primary.main" gutterBottom>
-            Patient Management
-          </Typography>
-          <Typography variant="body2" color="text.secondary">
-            Manage hospital patients and their medical information
-          </Typography>
+      <Box sx={{ mb: 4 }}>
+        <Box sx={{ 
+          display: 'flex', 
+          justifyContent: 'space-between', 
+          alignItems: 'center', 
+          mb: 3,
+          flexWrap: 'wrap',
+          gap: 2
+        }}>
+          <Box>
+            <Typography variant="h4" fontWeight={700} color="primary.main" gutterBottom>
+              Patient Management
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              Manage hospital patients and their medical information
+            </Typography>
+          </Box>
         </Box>
-        <Stack direction="row" spacing={1}>
+
+        {/* Patient Statistics */}
+        <Grid container spacing={3} sx={{ mb: 3 }}>
+          <Grid item xs={12} sm={6} md={3}>
+            <Card sx={{ 
+              p: 2, 
+              textAlign: 'center',
+              backgroundColor: alpha(theme.palette.primary.main, 0.05),
+              border: `1px solid ${alpha(theme.palette.primary.main, 0.1)}`
+            }}>
+              <Typography variant="h4" color="primary.main" fontWeight={700}>
+                {patients.length}
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                Total Patients
+              </Typography>
+            </Card>
+          </Grid>
+          <Grid item xs={12} sm={6} md={3}>
+            <Card sx={{ 
+              p: 2, 
+              textAlign: 'center',
+              backgroundColor: alpha(theme.palette.success.main, 0.05),
+              border: `1px solid ${alpha(theme.palette.success.main, 0.1)}`
+            }}>
+              <Typography variant="h4" color="success.main" fontWeight={700}>
+                {patients.filter(p => p.status === 'active').length}
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                Active Patients
+              </Typography>
+            </Card>
+          </Grid>
+          <Grid item xs={12} sm={6} md={3}>
+            <Card sx={{ 
+              p: 2, 
+              textAlign: 'center',
+              backgroundColor: alpha(theme.palette.success.main, 0.05),
+              border: `1px solid ${alpha(theme.palette.success.main, 0.1)}`
+            }}>
+              <Typography variant="h4" color="success.main" fontWeight={700}>
+                {patients.filter(p => {
+                  const doctor = p.assignedDoctor || p.primaryDoctor;
+                  return doctor && (typeof doctor === 'object' ? doctor.name : doctor !== 'Unassigned');
+                }).length}
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                With Doctors
+              </Typography>
+            </Card>
+          </Grid>
+          <Grid item xs={12} sm={6} md={3}>
+            <Card sx={{ 
+              p: 2, 
+              textAlign: 'center',
+              backgroundColor: alpha(theme.palette.warning.main, 0.05),
+              border: `1px solid ${alpha(theme.palette.warning.main, 0.1)}`
+            }}>
+              <Typography variant="h4" color="warning.main" fontWeight={700}>
+                {patients.filter(p => {
+                  const doctor = p.assignedDoctor || p.primaryDoctor;
+                  return !doctor || (typeof doctor === 'string' && doctor === 'Unassigned');
+                }).length}
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                Need Assignment
+              </Typography>
+            </Card>
+          </Grid>
+        </Grid>
+        
+        {/* Action Buttons */}
+        <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 2, flexWrap: 'wrap' }}>
           <Button
             variant="outlined"
             startIcon={<RefreshIcon />}
@@ -491,6 +680,14 @@ const PatientManagement = () => {
             sx={{ minWidth: 'auto' }}
           >
             Refresh
+          </Button>
+          <Button
+            variant="outlined"
+            startIcon={<Schedule />}
+            onClick={() => window.open('/hospital/appointments', '_blank')}
+            sx={{ minWidth: 'auto' }}
+          >
+            Manage Appointments
           </Button>
           <Button
             variant="contained"
@@ -506,7 +703,7 @@ const PatientManagement = () => {
           >
             Add Patient
           </Button>
-        </Stack>
+        </Box>
       </Box>
 
       {/* Alerts */}
@@ -582,13 +779,39 @@ const PatientManagement = () => {
             </Grid>
 
             <Grid item xs={12} md={4}>
-              <Typography variant="body2" color="text.secondary" textAlign="right">
-                Showing {filteredPatients.length} of {patients.length} patients
-              </Typography>
+              <Box sx={{ textAlign: 'right' }}>
+                <Typography variant="body2" color="text.secondary">
+                  Showing {filteredPatients.length} of {patients.length} patients
+                </Typography>
+                <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 1, mt: 0.5 }}>
+                  {assignmentFilter === 'all' && (
+                    <>
+                      <Chip 
+                        label={`${patients.filter(p => {
+                          const doctor = p.assignedDoctor || p.primaryDoctor;
+                          return doctor && (typeof doctor === 'object' ? doctor.name : doctor !== 'Unassigned');
+                        }).length} assigned`}
+                        size="small" 
+                        color="success" 
+                        variant="outlined"
+                      />
+                      <Chip 
+                        label={`${patients.filter(p => {
+                          const doctor = p.assignedDoctor || p.primaryDoctor;
+                          return !doctor || (typeof doctor === 'string' && doctor === 'Unassigned');
+                        }).length} unassigned`}
+                        size="small" 
+                        color="warning" 
+                        variant="outlined"
+                      />
+                    </>
+                  )}
+                </Box>
+              </Box>
             </Grid>
 
             <Grid item xs={12} md={2}>
-              {(statusFilter !== 'all' || doctorFilter !== 'all') && (
+              {(statusFilter !== 'all' || doctorFilter !== 'all' || assignmentFilter !== 'all') && (
                 <Button
                   variant="text"
                   startIcon={<ClearIcon />}
@@ -637,6 +860,22 @@ const PatientManagement = () => {
                           {doctor.name}
                         </MenuItem>
                       ))}
+                    </Select>
+                  </FormControl>
+                </Grid>
+                
+                <Grid item xs={12} md={4}>
+                  <FormControl fullWidth>
+                    <InputLabel>Assignment Status</InputLabel>
+                    <Select
+                      value={assignmentFilter}
+                      onChange={(e) => setAssignmentFilter(e.target.value)}
+                      label="Assignment Status"
+                    >
+                      <MenuItem value="all">All Patients</MenuItem>
+                      <MenuItem value="assigned">With Doctor</MenuItem>
+                      <MenuItem value="unassigned">Need Assignment</MenuItem>
+                      <MenuItem value="from_appointment">Via Appointment</MenuItem>
                     </Select>
                   </FormControl>
                 </Grid>

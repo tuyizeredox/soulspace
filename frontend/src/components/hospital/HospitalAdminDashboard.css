@@ -1,0 +1,442 @@
+/* Hospital Admin Dashboard Responsive Styles */
+
+@keyframes progress-fill {
+  from { 
+    transform: translateX(-100%); 
+  }
+  to { 
+    transform: translateX(0); 
+  }
+}
+
+@keyframes shimmer {
+  0% { 
+    transform: translateX(-100%); 
+  }
+  100% { 
+    transform: translateX(100%); 
+  }
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes pulse {
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.05);
+  }
+}
+
+@keyframes slideInLeft {
+  from {
+    opacity: 0;
+    transform: translateX(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes slideInRight {
+  from {
+    opacity: 0;
+    transform: translateX(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+/* Chart hover effects */
+.chart-container:hover {
+  transform: translateY(-2px);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Responsive breakpoints */
+@media (max-width: 600px) {
+  .stat-card {
+    padding: 12px !important;
+  }
+  
+  .chart-title {
+    font-size: 1rem !important;
+  }
+  
+  .quick-action-card {
+    padding: 8px !important;
+  }
+  
+  .fab-responsive {
+    width: 48px !important;
+    height: 48px !important;
+  }
+}
+
+@media (max-width: 900px) {
+  .dashboard-header {
+    padding: 16px !important;
+  }
+  
+  .chart-container {
+    height: 280px !important;
+  }
+}
+
+@media (min-width: 1200px) {
+  .chart-container {
+    height: 320px !important;
+  }
+}
+
+/* Custom scrollbar for mobile */
+@media (max-width: 768px) {
+  .scrollable-content {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(0, 0, 0, 0.3) transparent;
+  }
+  
+  .scrollable-content::-webkit-scrollbar {
+    width: 4px;
+  }
+  
+  .scrollable-content::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  
+  .scrollable-content::-webkit-scrollbar-thumb {
+    background-color: rgba(0, 0, 0, 0.3);
+    border-radius: 2px;
+  }
+}
+
+/* Enhanced hover states */
+.interactive-card {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.interactive-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+}
+
+/* Loading states */
+.skeleton-loader {
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 200% 100%;
+  animation: loading 1.5s infinite;
+}
+
+@keyframes loading {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+/* Chart responsiveness improvements */
+.recharts-wrapper {
+  max-width: 100% !important;
+  width: 100% !important;
+  height: 100% !important;
+  min-height: 200px;
+  opacity: 1 !important;
+  visibility: visible !important;
+  display: block !important;
+}
+
+.recharts-surface {
+  max-width: 100% !important;
+  width: 100% !important;
+  height: 100% !important;
+  overflow: visible !important;
+}
+
+/* Enhanced chart container styling */
+.chart-container {
+  width: 100% !important;
+  height: 100% !important;
+  min-height: 200px;
+  position: relative;
+  overflow: visible;
+  background-color: #ffffff;
+  border-radius: 8px;
+  padding: 8px;
+}
+
+/* Chart wrapper for animations */
+.chart-wrapper {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  height: 100%;
+}
+
+/* Chart animation */
+@keyframes chartFadeIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95) translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+.chart-animate {
+  animation: chartFadeIn 0.6s ease-out;
+}
+
+/* Chart card styling */
+.chart-card {
+  background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
+  border: 1px solid rgba(0, 0, 0, 0.05);
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  transition: all 0.3s ease;
+  overflow: visible !important;
+}
+
+.chart-card:hover {
+  box-shadow: 0 10px 25px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+  transform: translateY(-2px);
+}
+
+/* Chart content area */
+.chart-content {
+  padding: 16px;
+  background: #ffffff;
+  border-radius: 8px;
+  overflow: visible !important;
+}
+
+/* Chart title styling */
+.chart-title {
+  color: #1f2937 !important;
+  font-weight: 700 !important;
+  margin-bottom: 16px !important;
+  font-size: 1.125rem !important;
+}
+
+/* Force chart visibility */
+.recharts-responsive-container {
+  width: 100% !important;
+  height: 100% !important;
+  min-height: 200px !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+  display: block !important;
+  position: relative !important;
+}
+
+/* SVG visibility fix */
+.recharts-wrapper svg {
+  width: 100% !important;
+  height: 100% !important;
+  overflow: visible !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+}
+
+/* Recharts customization */
+.recharts-cartesian-axis-line {
+  stroke: #e5e7eb !important;
+}
+
+.recharts-cartesian-axis-tick-line {
+  stroke: #d1d5db !important;
+}
+
+.recharts-cartesian-grid-horizontal line,
+.recharts-cartesian-grid-vertical line {
+  stroke: #f3f4f6 !important;
+  stroke-dasharray: 3 3;
+}
+
+/* Tooltip styling */
+.recharts-default-tooltip {
+  background-color: #ffffff !important;
+  border: 1px solid #e5e7eb !important;
+  border-radius: 8px !important;
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05) !important;
+}
+
+/* Legend styling */
+.recharts-legend-wrapper {
+  padding-top: 16px !important;
+}
+
+.recharts-legend-item-text {
+  color: #374151 !important;
+  font-weight: 500 !important;
+}
+
+/* Pie chart enhancements */
+.pie-chart-legend {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 16px;
+}
+
+.pie-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 8px;
+  border-radius: 4px;
+  transition: background-color 0.2s ease;
+}
+
+.pie-legend-item:hover {
+  background-color: rgba(0, 0, 0, 0.05);
+}
+
+.pie-legend-color {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+/* Mobile-first responsive design */
+.dashboard-grid {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: 1fr;
+}
+
+@media (min-width: 600px) {
+  .dashboard-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (min-width: 900px) {
+  .dashboard-grid {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 24px;
+  }
+}
+
+@media (min-width: 1200px) {
+  .dashboard-grid {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+/* Accessibility improvements */
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* Focus states for keyboard navigation */
+.focusable:focus-visible {
+  outline: 2px solid #1976d2;
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* Print styles */
+@media print {
+  .no-print {
+    display: none !important;
+  }
+  
+  .chart-container {
+    page-break-inside: avoid;
+  }
+}
+
+/* Mobile chart optimizations */
+@media (max-width: 600px) {
+  .chart-container {
+    min-height: 180px !important;
+    padding: 8px !important;
+  }
+  
+  .chart-title {
+    font-size: 0.95rem !important;
+    margin-bottom: 8px !important;
+  }
+  
+  .recharts-wrapper {
+    min-height: 150px !important;
+  }
+  
+  .chart-content {
+    padding: 8px !important;
+  }
+}
+
+/* Ensure proper font rendering in charts */
+.recharts-text {
+  font-family: 'Roboto', 'Helvetica', 'Arial', sans-serif !important;
+}
+
+/* Chart card improvements */
+.MuiCard-root .chart-container {
+  min-height: 220px !important;
+}
+
+/* Chart debugging - remove after charts are working */
+.chart-debug {
+  border: 2px solid red !important;
+  background-color: yellow !important;
+}
+
+/* Force visibility for all chart elements */
+.recharts-wrapper,
+.recharts-responsive-container,
+.recharts-surface,
+.recharts-wrapper > svg {
+  opacity: 1 !important;
+  visibility: visible !important;
+  display: block !important;
+  position: relative !important;
+}
+
+/* Dark theme adjustments */
+@media (prefers-color-scheme: dark) {
+  .skeleton-loader {
+    background: linear-gradient(90deg, #2a2a2a 25%, #3a3a3a 50%, #2a2a2a 75%);
+    background-size: 200% 100%;
+    animation: loading 1.5s infinite;
+  }
+  
+  .chart-container {
+    background-color: #1a1a1a !important;
+    border: 1px solid #333 !important;
+  }
+  
+  .chart-title {
+    color: #ffffff !important;
+  }
+  
+  .chart-card {
+    background: linear-gradient(135deg, #1a1a1a 0%, #2a2a2a 100%) !important;
+  }
+  
+  .chart-content {
+    background: #1a1a1a !important;
+  }
+}
