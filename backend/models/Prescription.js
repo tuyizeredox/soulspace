@@ -21,11 +21,23 @@ const prescriptionSchema = new mongoose.Schema({
     dosage: { type: String, required: true },
     frequency: { type: String, required: true },
     duration: { type: String, required: true },
+    quantity: { type: String, required: true },
     notes: String
   }],
   diagnosis: {
     type: String,
     required: true
+  },
+  notes: {
+    type: String
+  },
+  priority: {
+    type: String,
+    enum: ['low', 'normal', 'medium', 'high'],
+    default: 'normal'
+  },
+  followUpDate: {
+    type: Date
   },
   insuranceDetails: {
     provider: String,
@@ -51,13 +63,26 @@ const prescriptionSchema = new mongoose.Schema({
   },
   status: {
     type: String,
-    enum: ['pending', 'approved', 'dispensed', 'delivered', 'completed'],
+    enum: ['pending', 'approved', 'dispensed', 'delivered', 'completed', 'cancelled'],
     default: 'pending'
   },
   pharmacist: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User'
-  }
+  },
+  refillsRemaining: {
+    type: Number,
+    default: 0,
+    min: 0
+  },
+  refillHistory: [{
+    date: Date,
+    pharmacist: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User'
+    },
+    notes: String
+  }]
 }, { timestamps: true });
 
 module.exports = mongoose.model('Prescription', prescriptionSchema);

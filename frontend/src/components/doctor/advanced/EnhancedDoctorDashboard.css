@@ -1,0 +1,181 @@
+/* Enhanced Doctor Dashboard Mobile Responsive Styles */
+
+/* Extra Small Devices (phones, 480px and down) */
+@media (max-width: 480px) {
+  .dashboard-container {
+    padding: 4px !important;
+  }
+  
+  .dashboard-card {
+    margin: 4px !important;
+    border-radius: 8px !important;
+  }
+  
+  .dashboard-header {
+    text-align: center;
+    padding: 12px !important;
+  }
+  
+  .dashboard-tabs {
+    min-height: 40px !important;
+  }
+  
+  .dashboard-tab {
+    min-width: auto !important;
+    padding: 4px 2px !important;
+    font-size: 0.65rem !important;
+  }
+  
+  .dashboard-tab-icon {
+    font-size: 0.875rem !important;
+  }
+  
+  .dashboard-tab-label {
+    font-size: 0.5rem !important;
+    line-height: 1 !important;
+  }
+  
+  .stats-card {
+    text-align: center;
+    padding: 12px !important;
+  }
+  
+  .stats-avatar {
+    width: 40px !important;
+    height: 40px !important;
+    margin: 0 auto 8px !important;
+  }
+  
+  .stats-value {
+    font-size: 1.25rem !important;
+    line-height: 1.2 !important;
+  }
+  
+  .stats-title {
+    font-size: 0.875rem !important;
+    line-height: 1.2 !important;
+  }
+  
+  .stats-subtitle {
+    font-size: 0.65rem !important;
+    line-height: 1.2 !important;
+  }
+  
+  .chart-container {
+    padding: 12px !important;
+  }
+  
+  .chart-title {
+    font-size: 0.875rem !important;
+    margin-bottom: 8px !important;
+  }
+  
+  .chart-subtitle {
+    font-size: 0.65rem !important;
+    margin-bottom: 12px !important;
+  }
+  
+  /* Hide some elements on very small screens */
+  .hide-on-xs {
+    display: none !important;
+  }
+  
+  /* Compact spacing */
+  .compact-spacing {
+    margin: 2px !important;
+    padding: 4px !important;
+  }
+  
+  /* Touch-friendly buttons */
+  .touch-button {
+    min-height: 44px !important;
+    min-width: 44px !important;
+  }
+}
+
+/* Small Devices (phones, 600px and down) */
+@media (max-width: 600px) {
+  .dashboard-grid {
+    padding: 8px !important;
+  }
+  
+  .mobile-stack {
+    flex-direction: column !important;
+    align-items: center !important;
+  }
+  
+  .mobile-center {
+    text-align: center !important;
+  }
+  
+  .mobile-full-width {
+    width: 100% !important;
+  }
+}
+
+/* Tablet Devices (768px and down) */
+@media (max-width: 768px) {
+  .tablet-responsive {
+    padding: 16px !important;
+  }
+  
+  .tablet-grid {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+/* Landscape phones */
+@media (max-width: 896px) and (orientation: landscape) {
+  .landscape-compact {
+    padding: 8px !important;
+  }
+  
+  .landscape-header {
+    padding: 8px 16px !important;
+  }
+  
+  .landscape-tabs {
+    min-height: 48px !important;
+  }
+}
+
+/* High DPI displays */
+@media (-webkit-min-device-pixel-ratio: 2), (min-resolution: 192dpi) {
+  .high-dpi-text {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+}
+
+/* Accessibility improvements */
+@media (prefers-reduced-motion: reduce) {
+  .dashboard-animation {
+    animation: none !important;
+    transition: none !important;
+  }
+}
+
+/* Dark mode support */
+@media (prefers-color-scheme: dark) {
+  .dashboard-card {
+    background-color: #1e1e1e !important;
+    color: #ffffff !important;
+  }
+}
+
+/* Print styles */
+@media print {
+  .dashboard-container {
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+  
+  .dashboard-tabs {
+    display: none !important;
+  }
+  
+  .dashboard-card {
+    box-shadow: none !important;
+    border: 1px solid #ccc !important;
+  }
+}

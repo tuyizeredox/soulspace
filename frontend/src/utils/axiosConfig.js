@@ -20,11 +20,11 @@ const isProduction = process.env.NODE_ENV === 'production';
 if (isProduction || process.env.REACT_APP_API_URL) {
   // For production, use the deployed API URL
   axios.defaults.baseURL = process.env.REACT_APP_API_URL || 'https://soulspacebackend.onrender.com';
-  console.log('Axios baseURL set to:', axios.defaults.baseURL);
+
 } else {
   // For development, use the local API
   axios.defaults.baseURL = 'http://localhost:5000';
-  console.log('Using development API URL:', axios.defaults.baseURL);
+
 }
 
 // Set timeout to prevent hanging requests
@@ -45,7 +45,7 @@ axios.defaults.headers.post['Content-Type'] = 'application/json';
 const token = getTokenFromStorage();
 if (token) {
   axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-  console.log('Initial auth token set from localStorage:', token.substring(0, 10) + '...');
+
 
   // Store token in all locations for redundancy
   localStorage.setItem('token', token);
@@ -57,11 +57,7 @@ if (token) {
 // Add a request interceptor to include the token in all requests
 axios.interceptors.request.use(
   (config) => {
-    // Log request details for debugging
-    console.log(`Request: ${config.method.toUpperCase()} ${config.url}`, {
-      headers: config.headers,
-      data: config.data
-    });
+
 
     // Always get the best available token for each request
     // This ensures we're using the most up-to-date token
@@ -72,10 +68,7 @@ axios.interceptors.request.use(
       // This ensures we're using the most recent token
       config.headers.Authorization = `Bearer ${token}`;
 
-      // Only log for non-polling requests to reduce console noise
-      if (!config.url.includes('/api/notifications') && !config.url.includes('/api/chats')) {
-        console.log(`Request to ${config.url} with token: ${token.substring(0, 10)}...`);
-      }
+
     } else {
       console.warn('No token found for request:', config.url);
 
@@ -84,7 +77,9 @@ axios.interceptors.request.use(
         '/api/doctors',
         '/api/patients',
         '/api/appointments',
-        '/api/hospital'
+        '/api/hospital',
+        '/api/prescriptions',
+        '/api/medications'
       ];
 
       // Check if this is an auth-required endpoint
@@ -110,10 +105,7 @@ axios.interceptors.request.use(
 // Add a response interceptor to handle authentication errors
 axios.interceptors.response.use(
   (response) => {
-    // Log successful response
-    console.log(`Response: ${response.status} ${response.config.method.toUpperCase()} ${response.config.url}`, {
-      data: response.data
-    });
+
     return response;
   },
   (error) => {

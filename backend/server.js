@@ -29,6 +29,8 @@ const patientDoctorChatRoutes = require('./routes/patientDoctorChatRoutes');
 const profileRoutes = require('./routes/profileRoutes');
 const uploadRoutes = require('./routes/uploadRoutes');
 const patientAssignmentRoutes = require('./routes/patientAssignmentRoutes');
+const medicationRoutes = require('./routes/medicationRoutes');
+const documentRoutes = require('./routes/documentRoutes');
 const errorHandler = require('./middleware/errorHandler');
 const morgan = require('morgan');
 const hospitalRegistrationRoutes = require('./routes/hospitalRegistrationRoutes');
@@ -69,6 +71,13 @@ const avatarsDir = path.join(uploadsDir, 'avatars');
 if (!fs.existsSync(avatarsDir)) {
   fs.mkdirSync(avatarsDir, { recursive: true });
   console.log('Created avatars directory');
+}
+
+// Create documents subdirectory
+const documentsDir = path.join(uploadsDir, 'documents');
+if (!fs.existsSync(documentsDir)) {
+  fs.mkdirSync(documentsDir, { recursive: true });
+  console.log('Created documents directory');
 }
 
 // Serve static files from the uploads directory
@@ -141,6 +150,8 @@ const startServer = async () => {
     app.use('/api/medical-records', require('./routes/medicalRecordRoutes'));
     app.use('/api/patient-assignments', patientAssignmentRoutes);
     app.use('/api/prescriptions', require('./routes/prescriptionRoutes'));
+    app.use('/api/medications', medicationRoutes);
+    app.use('/api/documents', documentRoutes);
 
     // Error handling middleware
     app.use(errorHandler);

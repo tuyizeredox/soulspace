@@ -22,7 +22,8 @@ import {
   ListItemText,
   ListItemIcon,
   Tab,
-  Tabs
+  Tabs,
+  Stack
 } from '@mui/material';
 import {
   Dashboard as DashboardIcon,
@@ -43,7 +44,8 @@ import {
   Timeline as TimelineIcon,
   Assignment as AssignmentIcon,
   Event as EventIcon,
-  Info as InfoIcon
+  Info as InfoIcon,
+  Schedule as ScheduleIcon
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { useSelector, useDispatch } from 'react-redux';
@@ -58,6 +60,8 @@ import DoctorStats from '../../components/doctor/DoctorStats';
 import PatientsList from '../../components/doctor/PatientsList';
 import AppointmentsList from '../../components/doctor/AppointmentsList';
 import PatientCommunication from '../../components/doctor/PatientCommunication';
+import AvailabilityScheduler from '../../components/doctor/advanced/AvailabilityScheduler';
+import DoctorScheduleManager from '../../components/doctor/advanced/DoctorScheduleManager';
 import { fetchUserNotifications, fetchUnreadCount } from '../../store/slices/notificationSlice';
 
 // Helper function to calculate age from date of birth
@@ -99,6 +103,8 @@ const NewDoctorDashboard = () => {
   const [appointmentTrends, setAppointmentTrends] = useState([]);
   const [upcomingShifts, setUpcomingShifts] = useState([]);
   const [activeTab, setActiveTab] = useState(0);
+  const [schedules, setSchedules] = useState([]);
+  const [scheduleLoading, setScheduleLoading] = useState(false);
   const [stats, setStats] = useState({
     totalPatients: 0,
     todayAppointments: 0,
@@ -729,6 +735,32 @@ const NewDoctorDashboard = () => {
     setRefreshing(false);
   };
 
+  // Fetch doctor schedules
+  const fetchSchedules = useCallback(async () => {
+    try {
+      setScheduleLoading(true);
+      const config = {
+        headers: { Authorization: `Bearer ${token}` }
+      };
+
+      const response = await axios.get('/api/doctors/my-schedules', config);
+      setSchedules(response.data.current || []);
+    } catch (error) {
+      console.error('Error fetching schedules:', error);
+      // Don't show error for schedules, just log it
+    } finally {
+      setScheduleLoading(false);
+    }
+  }, [token]);
+
+  // Handle schedule update
+  const handleScheduleUpdate = (updatedSchedule) => {
+    if (updatedSchedule) {
+      // Refresh schedules
+      fetchSchedules();
+    }
+  };
+
   // Initial data fetch
   useEffect(() => {
     // Set a flag to track initial load
@@ -850,6 +882,10 @@ const NewDoctorDashboard = () => {
   // Handle tab change
   const handleTabChange = (event, newValue) => {
     setActiveTab(newValue);
+    if (newValue === 3) {
+      // Schedule tab selected, fetch schedules
+      fetchSchedules();
+    }
   };
 
   // Handle navigation to patients page
@@ -1096,6 +1132,7 @@ const NewDoctorDashboard = () => {
           <Tab label="Overview" icon={<DashboardIcon />} iconPosition="start" />
           <Tab label="Appointments" icon={<CalendarIcon />} iconPosition="start" />
           <Tab label="Patients" icon={<PersonIcon />} iconPosition="start" />
+          <Tab label="My Schedule" icon={<ScheduleIcon />} iconPosition="start" />
         </Tabs>
 
         {/* Tab Content */}
@@ -1312,6 +1349,124 @@ const NewDoctorDashboard = () => {
                   onViewAll={() => navigate('/doctor/patients')}
                   showAll={true}
                 />
+              </Grid>
+            </Grid>
+          )}
+
+          {/* My Schedule Tab */}
+          {activeTab === 3 && (
+            <Grid container spacing={3} component={motion.div} variants={containerVariants} initial="hidden" animate="visible">
+              <Grid item xs={12}>
+                <Box sx={{ mb: 3 }}>
+                  <Typography variant="h5" fontWeight={600} gutterBottom>
+                    My Schedule
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    Manage your working hours and availability
+                  </Typography>
+                </Box>
+
+                {/* Schedule Management Components */}
+                <Grid container spacing={3}>
+                  {/* Current Schedule */}
+                  <Grid item xs={12} lg={6}>
+                    <Card
+                      elevation={0}
+                      sx={{
+                        borderRadius: 3,
+                        boxShadow: '0 4px 20px rgba(0, 0, 0, 0.05)',
+                        overflow: 'hidden',
+                        height: 'fit-content'
+                      }}
+                    >
+                      <CardContent>
+                        <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                          <CheckCircleIcon color="success" sx={{ mr: 1 }} />
+                          <Typography variant="h6" fontWeight={600}>
+                            Current Approved Schedule
+                          </Typography>
+                        </Box>
+
+                        {scheduleLoading ? (
+                          <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
+                            <CircularProgress />
+                          </Box>
+                        ) : schedules && schedules.length > 0 ? (
+                          <Stack spacing={2}>
+                            {schedules.map((slot, index) => (
+                              <Paper
+                                key={index}
+                                sx={{
+                                  p: 2,
+                                  border: 1,
+                                  borderColor: alpha(theme.palette.success.main, 0.3),
+                                  background: alpha(theme.palette.success.main, 0.05),
+                                  borderRadius: 2
+                                }}
+                              >
+                                <Grid container spacing={2} alignItems="center">
+                                  <Grid item xs={12} sm={3}>
+                                    <Typography variant="subtitle2" fontWeight="bold">
+                                      {slot.day}
+                                    </Typography>
+                                  </Grid>
+                                  <Grid item xs={12} sm={4}>
+                                    <Stack direction="row" alignItems="center" spacing={1}>
+                                      <AccessTimeIcon fontSize="small" color="action" />
+                                      <Typography variant="body2">
+                                        {slot.startTime} - {slot.endTime}
+                                      </Typography>
+                                    </Stack>
+                                  </Grid>
+                                  <Grid item xs={12} sm={3}>
+                                    <Typography variant="body2" color="text.secondary">
+                                      Max: {slot.maxPatients} patients
+                                    </Typography>
+                                  </Grid>
+                                  <Grid item xs={12} sm={2}>
+                                    <Chip
+                                      label={slot.isActive ? 'Active' : 'Inactive'}
+                                      size="small"
+                                      color={slot.isActive ? 'success' : 'default'}
+                                    />
+                                  </Grid>
+                                  {slot.breakStartTime && slot.breakEndTime && (
+                                    <Grid item xs={12}>
+                                      <Typography variant="caption" color="text.secondary">
+                                        Break: {slot.breakStartTime} - {slot.breakEndTime}
+                                      </Typography>
+                                    </Grid>
+                                  )}
+                                </Grid>
+                              </Paper>
+                            ))}
+                          </Stack>
+                        ) : (
+                          <Alert severity="info">
+                            No approved schedule found. Create a schedule request to get started.
+                          </Alert>
+                        )}
+                      </CardContent>
+                    </Card>
+                  </Grid>
+
+                  {/* Schedule Management */}
+                  <Grid item xs={12} lg={6}>
+                    <DoctorScheduleManager
+                      onScheduleUpdate={handleScheduleUpdate}
+                      currentSchedule={schedules}
+                      loading={scheduleLoading}
+                    />
+                  </Grid>
+                </Grid>
+
+                {/* Availability Scheduler */}
+                <Box sx={{ mt: 3 }}>
+                  <AvailabilityScheduler
+                    onScheduleUpdate={handleScheduleUpdate}
+                    currentSchedule={schedules}
+                  />
+                </Box>
               </Grid>
             </Grid>
           )}

@@ -74,26 +74,19 @@ export const getBestToken = () => {
   const persistentToken = localStorage.getItem('persistentToken');
   const reduxToken = localStorage.getItem('reduxToken');
 
-  // Log token availability for debugging
-  console.log('Token availability check:', {
-    commonToken: !!commonToken,
-    userToken: !!userToken,
-    doctorToken: !!doctorToken,
-    persistentToken: !!persistentToken,
-    reduxToken: !!reduxToken
-  });
+
 
   // Use the first available token, with priority
   let bestToken = null;
 
   if (commonToken) {
-    console.log('Using common token from localStorage');
+
     bestToken = commonToken;
   } else if (doctorToken) {
-    console.log('Using doctorToken from localStorage');
+
     bestToken = doctorToken;
   } else if (userToken) {
-    console.log('Using userToken from localStorage');
+
     bestToken = userToken;
   } else if (persistentToken) {
     console.log('Using persistentToken from localStorage');

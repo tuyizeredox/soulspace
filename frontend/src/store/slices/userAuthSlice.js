@@ -40,9 +40,13 @@ export const loginUser = createAsyncThunk(
       // Also store in common token location for cross-compatibility
       localStorage.setItem('token', response.data.token);
 
+      // Store user ID for API calls
+      localStorage.setItem('userId', response.data.user._id || response.data.user.id);
+
       // Store role-specific data
       if (response.data.user.role === 'doctor') {
         localStorage.setItem('doctorName', response.data.user.name);
+        localStorage.setItem('doctorId', response.data.user._id || response.data.user.id);
       }
 
       console.log('Login successful, user role:', response.data.user.role);
@@ -115,9 +119,13 @@ export const registerUser = createAsyncThunk(
       // Also store in common token location for cross-compatibility
       localStorage.setItem('token', response.data.token);
 
+      // Store user ID for API calls
+      localStorage.setItem('userId', response.data.user._id || response.data.user.id);
+
       // Store role-specific data
       if (response.data.user.role === 'doctor') {
         localStorage.setItem('doctorName', response.data.user.name);
+        localStorage.setItem('doctorId', response.data.user._id || response.data.user.id);
       }
 
       console.log('Registration successful, user role:', response.data.user.role);
@@ -192,6 +200,7 @@ export const getCurrentUser = createAsyncThunk(
 
       // Store updated user data
       localStorage.setItem('userData', JSON.stringify(response.data.user));
+      localStorage.setItem('userId', response.data.user._id || response.data.user.id);
 
       // Also store token in common location
       localStorage.setItem('token', token);
@@ -199,6 +208,7 @@ export const getCurrentUser = createAsyncThunk(
       // Store role-specific data
       if (response.data.user.role === 'doctor') {
         localStorage.setItem('doctorName', response.data.user.name);
+        localStorage.setItem('doctorId', response.data.user._id || response.data.user.id);
       }
 
       console.log('User data fetched successfully:', response.data.user.name);

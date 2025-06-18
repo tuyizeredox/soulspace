@@ -301,6 +301,7 @@ const PatientSidebar = ({ user, mobileOpen, handleDrawerToggle }) => {
       items: [
         { text: 'Book Appointment', path: '/appointments/book', badge: null },
         { text: 'My Appointments', path: '/appointments', badge: { count: 2, color: 'primary' } },
+        { text: 'Online Consultation', path: '/patient/online-consultation', badge: { count: 'NEW', color: 'success' } },
         { text: 'Virtual Consultations', path: '/appointments/virtual', badge: null },
         { text: 'Upcoming Visits', path: '/appointments/upcoming', badge: null },
         { text: 'Appointment History', path: '/appointments/history', badge: null },

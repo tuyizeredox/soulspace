@@ -65,6 +65,8 @@ const DoctorScheduleManagement = ({ doctors, onRefresh, onSuccess, onError }) =>
   const [editingSchedule, setEditingSchedule] = useState(null);
   const [viewScheduleDialog, setViewScheduleDialog] = useState(false);
   const [selectedScheduleRequest, setSelectedScheduleRequest] = useState(null);
+  const [deleteScheduleDialog, setDeleteScheduleDialog] = useState(false);
+  const [deletingSchedule, setDeletingSchedule] = useState(false);
 
   const [scheduleForm, setScheduleForm] = useState({
     effectiveDate: '',
@@ -90,17 +92,20 @@ const DoctorScheduleManagement = ({ doctors, onRefresh, onSuccess, onError }) =>
     
     try {
       setLoading(true);
+      console.log('Fetching schedules for doctor ID:', doctorId);
       const config = {
         headers: { Authorization: `Bearer ${token}` }
       };
 
       const response = await axios.get(`/api/doctors/${doctorId}/schedules`, config);
+      console.log('Schedule response:', response.data);
       setDoctorSchedules(prev => ({
         ...prev,
         [doctorId]: response.data
       }));
     } catch (error) {
       console.error('Error fetching schedules:', error);
+      console.error('Error details:', error.response?.data);
       onError('Failed to fetch doctor schedules');
     } finally {
       setLoading(false);
@@ -109,6 +114,8 @@ const DoctorScheduleManagement = ({ doctors, onRefresh, onSuccess, onError }) =>
 
   // Handle doctor selection
   const handleDoctorSelect = (doctorId) => {
+    console.log('Doctor selected:', doctorId);
+    console.log('Available doctors:', doctors);
     setSelectedDoctor(doctorId);
     if (doctorId) {
       fetchDoctorSchedules(doctorId);
@@ -208,6 +215,39 @@ const DoctorScheduleManagement = ({ doctors, onRefresh, onSuccess, onError }) =>
     setEditingSchedule(null);
   };
 
+  // Delete doctor's current schedule
+  const handleDeleteSchedule = async () => {
+    if (!selectedDoctor) {
+      onError('No doctor selected');
+      return;
+    }
+
+    try {
+      setDeletingSchedule(true);
+      const config = {
+        headers: { Authorization: `Bearer ${token}` }
+      };
+
+      await axios.delete(`/api/doctors/${selectedDoctor}/schedule`, config);
+      
+      onSuccess('Doctor schedule deleted successfully');
+      setDeleteScheduleDialog(false);
+      fetchDoctorSchedules(selectedDoctor);
+      onRefresh();
+      
+    } catch (error) {
+      console.error('Error deleting schedule:', error);
+      onError(error.response?.data?.message || 'Failed to delete doctor schedule');
+    } finally {
+      setDeletingSchedule(false);
+    }
+  };
+
+  // Open delete confirmation dialog
+  const openDeleteScheduleDialog = () => {
+    setDeleteScheduleDialog(true);
+  };
+
   // Get status color
   const getStatusColor = (status) => {
     switch (status) {
@@ -238,7 +278,7 @@ const DoctorScheduleManagement = ({ doctors, onRefresh, onSuccess, onError }) =>
     }
   };
 
-  const selectedDoctorData = doctors.find(doc => doc._id === selectedDoctor);
+  const selectedDoctorData = doctors.find(doc => (doc.id || doc._id) === selectedDoctor);
   const scheduleData = doctorSchedules[selectedDoctor] || { current: [], requests: [] };
 
   return (
@@ -256,7 +296,7 @@ const DoctorScheduleManagement = ({ doctors, onRefresh, onSuccess, onError }) =>
                   label="Select Doctor"
                 >
                   {doctors.map(doctor => (
-                    <MenuItem key={doctor._id} value={doctor._id}>
+                    <MenuItem key={doctor.id || doctor._id} value={doctor.id || doctor._id}>
                       <Stack direction="row" alignItems="center" spacing={2}>
                         <PersonIcon color="action" />
                         <Box>
@@ -301,18 +341,36 @@ const DoctorScheduleManagement = ({ doctors, onRefresh, onSuccess, onError }) =>
           <Grid item xs={12} lg={6}>
             <Card sx={{ borderRadius: 2, height: 'fit-content' }}>
               <CardContent>
-                <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: 2 }}>
-                  <CheckIcon color="success" />
-                  <Typography variant="h6" fontWeight="bold">
-                    Current Approved Schedule
-                  </Typography>
+                <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mb: 2 }}>
+                  <Stack direction="row" alignItems="center" spacing={1}>
+                    <CheckIcon color="success" />
+                    <Typography variant="h6" fontWeight="bold">
+                      Current Approved Schedule
+                    </Typography>
+                  </Stack>
+                  {scheduleData.current && scheduleData.current.length > 0 && (
+                    <Tooltip title="Delete current schedule">
+                      <IconButton
+                        color="error"
+                        onClick={openDeleteScheduleDialog}
+                        size="small"
+                        sx={{
+                          '&:hover': {
+                            backgroundColor: alpha(theme.palette.error.main, 0.1)
+                          }
+                        }}
+                      >
+                        <DeleteIcon />
+                      </IconButton>
+                    </Tooltip>
+                  )}
                 </Stack>
 
                 {loading ? (
                   <Box display="flex" justifyContent="center" py={4}>
                     <CircularProgress />
                   </Box>
-                ) : scheduleData.current.length > 0 ? (
+                ) : scheduleData.current && scheduleData.current.length > 0 ? (
                   <Stack spacing={2}>
                     {scheduleData.current.map((slot, index) => (
                       <Paper
@@ -362,9 +420,18 @@ const DoctorScheduleManagement = ({ doctors, onRefresh, onSuccess, onError }) =>
                     ))}
                   </Stack>
                 ) : (
-                  <Alert severity="info">
-                    No approved schedule found. Create a schedule request to get started.
-                  </Alert>
+                  <Box>
+                    <Alert severity="info" sx={{ mb: 2 }}>
+                      No approved schedule found. Create a schedule request to get started.
+                    </Alert>
+                    {/* Debug info */}
+                    <Alert severity="info" sx={{ mt: 2 }}>
+                      <Typography variant="caption">
+                        Debug: Selected Doctor: {selectedDoctor}<br/>
+                        Schedule Data: {JSON.stringify(scheduleData, null, 2)}
+                      </Typography>
+                    </Alert>
+                  </Box>
                 )}
               </CardContent>
             </Card>
@@ -471,9 +538,18 @@ const DoctorScheduleManagement = ({ doctors, onRefresh, onSuccess, onError }) =>
                     ))}
                   </Stack>
                 ) : (
-                  <Alert severity="info">
-                    No schedule requests found.
-                  </Alert>
+                  <Box>
+                    <Alert severity="info" sx={{ mb: 2 }}>
+                      No schedule requests found.
+                    </Alert>
+                    {/* Debug info */}
+                    <Alert severity="info">
+                      <Typography variant="caption">
+                        Debug: Requests Length: {scheduleData.requests?.length || 0}<br/>
+                        Requests Data: {JSON.stringify(scheduleData.requests, null, 2)}
+                      </Typography>
+                    </Alert>
+                  </Box>
                 )}
               </CardContent>
             </Card>
@@ -785,6 +861,85 @@ const DoctorScheduleManagement = ({ doctors, onRefresh, onSuccess, onError }) =>
         <DialogActions>
           <Button onClick={() => setViewScheduleDialog(false)}>
             Close
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Delete Schedule Confirmation Dialog */}
+      <Dialog
+        open={deleteScheduleDialog}
+        onClose={() => setDeleteScheduleDialog(false)}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle>
+          <Stack direction="row" alignItems="center" spacing={1}>
+            <DeleteIcon color="error" />
+            <Typography variant="h6" fontWeight="bold">
+              Delete Doctor Schedule
+            </Typography>
+          </Stack>
+        </DialogTitle>
+        
+        <DialogContent>
+          <Alert severity="warning" sx={{ mb: 2 }}>
+            <Typography variant="body2">
+              <strong>Warning:</strong> This action cannot be undone. The doctor's current schedule will be permanently deleted.
+            </Typography>
+          </Alert>
+          
+          {selectedDoctorData && (
+            <Box sx={{ p: 2, bgcolor: alpha(theme.palette.error.main, 0.05), borderRadius: 1, mb: 2 }}>
+              <Typography variant="subtitle1" fontWeight="bold" gutterBottom>
+                Doctor Information:
+              </Typography>
+              <Typography variant="body2">
+                <strong>Name:</strong> {selectedDoctorData.name}
+              </Typography>
+              <Typography variant="body2">
+                <strong>Specialization:</strong> {selectedDoctorData.specialization || 'General'}
+              </Typography>
+              <Typography variant="body2">
+                <strong>Department:</strong> {selectedDoctorData.department || 'General'}
+              </Typography>
+            </Box>
+          )}
+          
+          <Typography variant="body1" gutterBottom>
+            Are you sure you want to delete this doctor's current schedule? This will:
+          </Typography>
+          
+          <Box component="ul" sx={{ pl: 2, mt: 1 }}>
+            <Typography component="li" variant="body2" color="text.secondary">
+              Remove all current schedule slots
+            </Typography>
+            <Typography component="li" variant="body2" color="text.secondary">
+              Cancel any upcoming appointments based on this schedule
+            </Typography>
+            <Typography component="li" variant="body2" color="text.secondary">
+              Notify the doctor about the schedule deletion
+            </Typography>
+            <Typography component="li" variant="body2" color="text.secondary">
+              Require the doctor to submit a new schedule request
+            </Typography>
+          </Box>
+        </DialogContent>
+        
+        <DialogActions>
+          <Button 
+            onClick={() => setDeleteScheduleDialog(false)}
+            disabled={deletingSchedule}
+          >
+            Cancel
+          </Button>
+          <Button
+            variant="contained"
+            color="error"
+            onClick={handleDeleteSchedule}
+            disabled={deletingSchedule}
+            startIcon={deletingSchedule ? <CircularProgress size={16} /> : <DeleteIcon />}
+          >
+            {deletingSchedule ? 'Deleting...' : 'Delete Schedule'}
           </Button>
         </DialogActions>
       </Dialog>

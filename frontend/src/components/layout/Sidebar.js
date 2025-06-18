@@ -63,6 +63,7 @@ import ChatIcon from '@mui/icons-material/Chat';
 import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
 import ChevronRightIcon from '@mui/icons-material/ChevronRight';
 import MenuIcon from '@mui/icons-material/Menu';
+import DescriptionIcon from '@mui/icons-material/Description';
 
 // Full width and minimized width for the drawer
 const drawerWidth = 240;
@@ -396,6 +397,12 @@ const Sidebar = ({ mobileOpen, onDrawerToggle }) => {
       badge: { count: 1, color: 'warning' }
     },
     {
+      text: 'My Documents',
+      icon: <DescriptionIcon />,
+      path: '/patient/documents',
+      badge: null
+    },
+    {
       text: 'Health Monitoring',
       icon: <MonitorHeartIcon />,
       path: '/monitoring',
@@ -418,12 +425,6 @@ const Sidebar = ({ mobileOpen, onDrawerToggle }) => {
       icon: <SmartToyIcon />,
       path: '/ai-assistant',
       badge: null
-    },
-    {
-      text: 'Messages',
-      icon: <MessageIcon />,
-      path: '/messages',
-      badge: { count: 3, color: 'error' }
     },
     {
       text: 'Help & Support',
@@ -462,6 +463,12 @@ const Sidebar = ({ mobileOpen, onDrawerToggle }) => {
       text: 'Prescriptions',
       icon: <MedicationIcon />,
       path: '/doctor/prescriptions',
+      badge: null
+    },
+    {
+      text: 'Document Center',
+      icon: <DescriptionIcon />,
+      path: '/doctor/documents',
       badge: null
     },
     {

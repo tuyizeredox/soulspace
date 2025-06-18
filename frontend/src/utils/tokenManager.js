@@ -19,7 +19,7 @@ const TOKEN_KEYS = {
  */
 export const storeTokenPermanently = (token, userData, expiresIn = 7 * 24 * 60 * 60) => {
   try {
-    console.log('Storing token permanently...');
+
     
     // Calculate expiry timestamp
     const expiryTime = Date.now() + (expiresIn * 1000);
@@ -35,7 +35,7 @@ export const storeTokenPermanently = (token, userData, expiresIn = 7 * 24 * 60 *
     localStorage.setItem('userToken', token);
     localStorage.setItem('user', JSON.stringify(userData));
     
-    console.log('Token stored successfully in all locations');
+
     return true;
   } catch (error) {
     console.error('Error storing token:', error);
@@ -86,6 +86,12 @@ export const getStoredUserData = () => {
     }
     
     // Try legacy location
+    userData = localStorage.getItem('userData');
+    if (userData) {
+      return JSON.parse(userData);
+    }
+    
+    // Try another legacy location
     userData = localStorage.getItem('user');
     if (userData) {
       return JSON.parse(userData);
@@ -96,6 +102,32 @@ export const getStoredUserData = () => {
     console.error('Error parsing user data:', error);
     return null;
   }
+};
+
+/**
+ * Get stored user ID
+ * @returns {string|null} User ID or null if not found
+ */
+export const getStoredUserId = () => {
+  // Try direct userId storage first
+  let userId = localStorage.getItem('userId');
+  if (userId) {
+    return userId;
+  }
+  
+  // Try doctorId for backward compatibility
+  userId = localStorage.getItem('doctorId');
+  if (userId) {
+    return userId;
+  }
+  
+  // Try extracting from user data
+  const userData = getStoredUserData();
+  if (userData && (userData._id || userData.id)) {
+    return userData._id || userData.id;
+  }
+  
+  return null;
 };
 
 /**
@@ -117,7 +149,7 @@ export const isTokenValid = (token) => {
   // Check if token is expired based on stored expiry
   const expiryTime = localStorage.getItem(TOKEN_KEYS.EXPIRY);
   if (expiryTime && Date.now() > parseInt(expiryTime)) {
-    console.log('Token expired based on stored expiry time');
+
     return false;
   }
   
@@ -129,7 +161,7 @@ export const isTokenValid = (token) => {
  * Call this only on explicit logout
  */
 export const clearAllTokens = () => {
-  console.log('Clearing all authentication tokens...');
+
   
   // Clear primary storage
   Object.values(TOKEN_KEYS).forEach(key => {
@@ -157,7 +189,7 @@ export const clearAllTokens = () => {
     }
   });
   
-  console.log('All authentication data cleared');
+
 };
 
 /**
@@ -196,16 +228,16 @@ export const ensureValidToken = async () => {
   const token = getStoredToken();
   
   if (!token) {
-    console.log('No token found, user needs to login');
+
     return false;
   }
   
   if (isTokenValid(token)) {
-    console.log('Token is valid');
+
     return true;
   }
   
-  console.log('Token appears invalid, clearing and requiring re-login');
+
   clearAllTokens();
   return false;
 };
@@ -214,6 +246,7 @@ export default {
   storeTokenPermanently,
   getStoredToken,
   getStoredUserData,
+  getStoredUserId,
   isTokenValid,
   clearAllTokens,
   isAuthenticated,

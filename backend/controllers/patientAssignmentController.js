@@ -139,3 +139,46 @@ exports.getMyAssignment = async (req, res) => {
     });
   }
 };
+
+// Get all patients assigned to a doctor
+exports.getDoctorAssignments = async (req, res) => {
+  try {
+    // Get doctor ID from params or from authenticated user
+    const doctorId = req.params.doctorId || req.user.id || req.user._id;
+    
+    console.log(`Looking for assignments for doctor ID: ${doctorId}`);
+    
+    // Find all active assignments where this doctor is either a primary doctor or in the doctors array
+    const assignments = await PatientAssignment.find({
+      $or: [
+        { primaryDoctor: doctorId },
+        { doctors: doctorId }
+      ],
+      active: true
+    })
+      .populate({
+        path: 'patient',
+        select: 'name email profile gender dateOfBirth phone address allergies bloodType',
+        populate: {
+          path: 'profile',
+          select: 'avatar'
+        }
+      })
+      .populate('hospital', 'name location')
+      .sort('-updatedAt');
+
+    if (!assignments || assignments.length === 0) {
+      console.log(`No active assignments found for doctor ID: ${doctorId}`);
+      return res.json([]);
+    }
+    
+    console.log(`Found ${assignments.length} assignments for doctor ID: ${doctorId}`);
+    res.json(assignments);
+  } catch (error) {
+    console.error('Error fetching doctor assignments:', error);
+    res.status(500).json({ 
+      message: 'Error fetching doctor assignments', 
+      error: error.message 
+    });
+  }
+};

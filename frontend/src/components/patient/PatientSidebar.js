@@ -40,6 +40,7 @@ import {
   Favorite as FavoriteIcon,
   ChevronLeft as ChevronLeftIcon,
   ChevronRight as ChevronRightIcon,
+  VideoCall as VideoCallIcon,
 } from '@mui/icons-material';
 import axios from '../../utils/axiosConfig';
 import { getAvatarUrl, getInitials } from '../../utils/avatarUtils';
@@ -170,6 +171,13 @@ const PatientSidebar = () => {
       icon: <EventIcon />,
       path: '/patient/appointments',
       badge: upcomingAppointments > 0 ? { count: upcomingAppointments, color: 'primary' } : null
+    },
+    {
+      text: 'Online Consultation',
+      icon: <VideoCallIcon />,
+      path: '/patient/online-consultation',
+      badge: null,
+      highlight: true
     },
     {
       text: 'Medical Records',

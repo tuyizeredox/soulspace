@@ -158,16 +158,20 @@ exports.getDoctorAppointments = async (req, res) => {
     // Format appointments
     const formattedAppointments = appointments.map(apt => ({
       _id: apt._id,
-      patientId: apt.patient ? apt.patient._id : null,
-      patientName: apt.patient ? apt.patient.name : 'Unknown Patient',
-      patientEmail: apt.patient ? apt.patient.email : null,
-      patientPhone: apt.patient?.profile?.phone || 'Not provided',
+      patient: apt.patient ? {
+        _id: apt.patient._id,
+        name: apt.patient.name,
+        email: apt.patient.email,
+        phone: apt.patient?.profile?.phone || 'Not provided',
+        avatar: apt.patient?.profile?.avatar || null
+      } : null,
       date: apt.date,
       time: new Date(apt.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       type: apt.type,
       status: apt.status,
       reason: apt.reason,
-      notes: apt.notes
+      notes: apt.notes,
+      duration: apt.duration || 30 // Default duration if not specified
     }));
     
     res.json(formattedAppointments);

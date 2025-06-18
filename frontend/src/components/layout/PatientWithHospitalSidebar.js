@@ -31,6 +31,7 @@ import Favorite from '@mui/icons-material/Favorite';
 import HomeIcon from '@mui/icons-material/Home';
 import CalendarMonthIcon from '@mui/icons-material/CalendarMonth';
 import VideoCallIcon from '@mui/icons-material/VideoCall';
+import DescriptionIcon from '@mui/icons-material/Description';
 // Utility functions (implement or import as needed)
 import mockChatService from '../../utils/mockChatService';
 
@@ -938,6 +939,40 @@ const PatientWithHospitalSidebar = ({ user, mobileOpen, handleDrawerToggle, assi
               </ListItemIcon>
             </Tooltip>
             {!isMinimized && <ListItemText primary="Lab Results" />}
+          </ListItemButton>
+
+          <ListItemButton
+            selected={isActive('/patient/documents')}
+            onClick={() => navigate('/patient/documents')}
+            sx={{
+              borderRadius: 2,
+              mb: 0.5,
+              justifyContent: isMinimized ? 'center' : 'flex-start',
+              px: isMinimized ? 0.5 : 2.5,
+              py: isMinimized ? 1.5 : 2,
+              minHeight: isMinimized ? 60 : 64,
+              boxShadow: isMinimized ? 2 : 0,
+              bgcolor: isMinimized ? alpha(theme.palette.background.paper, 0.7) : 'transparent',
+              transition: 'all 0.2s',
+              '&:hover, &:focus': {
+                bgcolor: isMinimized
+                  ? alpha(theme.palette.secondary.main, 0.10)
+                  : alpha(theme.palette.secondary.main, 0.07),
+                boxShadow: isMinimized ? 4 : 2,
+                border: `1.5px solid ${alpha(theme.palette.secondary.main, 0.13)}`,
+              },
+              display: 'flex',
+              flexDirection: isMinimized ? 'column' : 'row',
+              alignItems: 'center',
+              gap: isMinimized ? 0.5 : 2,
+            }}
+          >
+            <Tooltip title={isMinimized ? 'My Documents' : ''} placement="right">
+              <ListItemIcon sx={{ minWidth: 0, justifyContent: 'center', color: isActive('/patient/documents') ? theme.palette.primary.main : 'inherit', fontSize: isMinimized ? 32 : 28, mb: isMinimized ? 0.5 : 0 }}>
+                <DescriptionIcon fontSize="medium" />
+              </ListItemIcon>
+            </Tooltip>
+            {!isMinimized && <ListItemText primary="My Documents" />}
           </ListItemButton>
 
           {/* Health Monitoring Section */}

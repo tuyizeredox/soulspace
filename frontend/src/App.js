@@ -30,6 +30,9 @@ import Appointments from './pages/appointments/Appointments';
 import Monitoring from './pages/monitoring/DeviceMonitoring';
 import HealthMonitoring from './pages/monitoring/HealthMonitoring';
 import VirtualConsultations from './pages/appointments/VirtualConsultations';
+import OnlineConsultation from './components/doctor/OnlineConsultation';
+import PatientOnlineConsultation from './components/patient/OnlineConsultation';
+import PrescriptionDashboard from './components/doctor/prescriptions';
 import BookAppointment from './pages/appointments/BookAppointment';
 import Prescriptions from './pages/prescriptions/Prescriptions';
 import Profile from './pages/profile/Profile';
@@ -84,7 +87,6 @@ import {
 import { EnhancedDoctorManagement } from './components/hospital/doctor';
 
 import HospitalChatPage from './pages/hospital/HospitalChatPage';
-import Staff from './pages/hospital/Staff';
 import StaffDetail from './pages/hospital/StaffDetail';
 import HospitalAnalytics from './pages/hospital/HospitalAnalytics';
 import HospitalDirectory from './pages/hospitals/HospitalDirectory';
@@ -93,11 +95,22 @@ import HospitalDirectory from './pages/hospitals/HospitalDirectory';
 import NewDoctorDashboard from './pages/doctor/NewDoctorDashboard';
 import DoctorPatients from './pages/doctor/DoctorPatients';
 import DoctorChatPage from './pages/doctor/DoctorChatPage';
+// Enhanced Doctor Dashboard Components
+import { 
+  EnhancedDoctorDashboard, 
+  DoctorAppointmentManagement,
+  EnhancedPatientManagement,
+  EnhancedHealthMonitoring
+} from './components/doctor/advanced';
 import PatientCallPage from './pages/patient/PatientCallPage';
 import PatientDoctorsPage from './pages/patient/PatientDoctorsPage';
 import OnlineAppointment from './components/appointments/OnlineAppointment';
 import PatientDashboardRouter from './components/routing/PatientDashboardRouter';
 import PatientChatPage from './pages/patient/PatientChatPage';
+
+// Document Components
+import DoctorDocumentCenter from './components/doctor/documents/DoctorDocumentCenter';
+import PatientHealthDocumentViewer from './components/patient/documents/PatientHealthDocumentViewer';
 
 // Patient Pages
 import AIAssistantPage from './pages/patient/AIAssistantPage';
@@ -700,12 +713,26 @@ const App = () => {
               <PrivateRoute roles={['doctor']}>
                 <Layout>
                   <Routes>
-                    <Route path="dashboard" element={<NewDoctorDashboard />} />
-                    <Route path="patients" element={<DoctorPatients />} />
+                    {/* Enhanced Dashboard */}
+                    <Route path="enhanced-dashboard" element={<EnhancedDoctorDashboard />} />
+                    <Route path="dashboard" element={<EnhancedDoctorDashboard />} />
+                    
+                    {/* Enhanced Patient Management */}
+                    <Route path="patient-management" element={<EnhancedPatientManagement />} />
+                    <Route path="patients" element={<EnhancedPatientManagement />} />
+                    
+                    {/* Enhanced Appointment Management */}
+                    <Route path="appointment-management" element={<DoctorAppointmentManagement />} />
+                    <Route path="appointments" element={<DoctorAppointmentManagement />} />
+                    
+                    {/* Enhanced Health Monitoring */}
+                    <Route path="health-monitoring" element={<EnhancedHealthMonitoring />} />
+                    <Route path="monitoring" element={<EnhancedHealthMonitoring />} />
+                    
+                    {/* Legacy routes for backward compatibility */}
                     <Route path="patient/:patientId/records" element={<HealthMonitoring />} />
-                    <Route path="appointments" element={<Appointments />} />
                     <Route path="appointments/new" element={<BookAppointment />} />
-                    <Route path="online-appointments" element={<VirtualConsultations />} />
+                    <Route path="online-appointments" element={<OnlineConsultation />} />
                     <Route path="online-appointment/:appointmentId" element={
                       <AuthProvider>
                         <OnlineAppointment userRole="doctor" />
@@ -731,7 +758,8 @@ const App = () => {
                         </ChatProvider>
                       </AuthProvider>
                     } />
-                    <Route path="prescriptions" element={<Prescriptions />} />
+                    <Route path="documents" element={<DoctorDocumentCenter />} />
+                    <Route path="prescriptions" element={<PrescriptionDashboard />} />
                     <Route path="schedule" element={<Appointments />} />
                   </Routes>
                 </Layout>
@@ -790,12 +818,14 @@ const App = () => {
                         </ChatProvider>
                       </AuthProvider>
                     } />
+                    <Route path="online-consultation" element={<PatientOnlineConsultation />} />
                     <Route path="health-records" element={<HealthMonitoring />} />
                     <Route path="prescriptions" element={<Prescriptions />} />
                     <Route path="profile" element={<Profile />} />
                     <Route path="medical-records" element={<HealthMonitoring />} />
                     <Route path="hospitals" element={<HospitalDirectory />} />
                     <Route path="lab-results" element={<LabResultsPage />} />
+                    <Route path="documents" element={<PatientHealthDocumentViewer />} />
                     <Route path="ai-assistant" element={<AIAssistantPage />} />
                     <Route path="settings" element={<SettingsPage />} />
                     <Route path="help" element={<HelpCenterPage />} />

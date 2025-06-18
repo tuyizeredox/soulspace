@@ -29,7 +29,9 @@ import {
   Stack,
   Paper,
   Fade,
-  Slide
+  Slide,
+  Tab,
+  Tabs
 } from '@mui/material';
 import {
   Add as AddIcon,
@@ -46,11 +48,15 @@ import {
   FilterList as FilterIcon,
   Clear as ClearIcon,
   Visibility as VisibilityIcon,
-  VisibilityOff as VisibilityOffIcon
+  VisibilityOff as VisibilityOffIcon,
+  Schedule as ScheduleIcon,
+  Assignment as AssignmentIcon
 } from '@mui/icons-material';
 import { DataGrid } from '@mui/x-data-grid';
 import { format, parseISO } from 'date-fns';
 import axios from '../../../utils/axiosConfig';
+import DoctorScheduleManagement from '../doctor/DoctorScheduleManagement';
+import ScheduleApprovalQueue from '../doctor/ScheduleApprovalQueue';
 
 const DoctorManagement = () => {
   const theme = useTheme();
@@ -75,6 +81,13 @@ const DoctorManagement = () => {
   const [deleteDialog, setDeleteDialog] = useState(false);
   const [doctorToDelete, setDoctorToDelete] = useState(null);
   const [showPassword, setShowPassword] = useState(false);
+  
+  // Tab management
+  const [activeTab, setActiveTab] = useState(0);
+  
+  // Schedule management states
+  const [pendingSchedules, setPendingSchedules] = useState([]);
+  const [scheduleLoading, setScheduleLoading] = useState(false);
   
   // Form data
   const [formData, setFormData] = useState({
@@ -145,6 +158,7 @@ const DoctorManagement = () => {
 
       const response = await axios.get('/api/doctors/hospital', config);
       console.log('Doctors fetch successful:', response.data?.length || 0, 'doctors');
+      console.log('Sample doctor data:', response.data?.[0]);
       setDoctors(response.data || []);
     } catch (error) {
       console.error('Error fetching doctors:', error);
@@ -283,6 +297,48 @@ const DoctorManagement = () => {
     } finally {
       setSubmitLoading(false);
     }
+  };
+
+  // Fetch pending schedule requests
+  const fetchPendingSchedules = useCallback(async () => {
+    try {
+      setScheduleLoading(true);
+      const config = {
+        headers: { Authorization: `Bearer ${token}` }
+      };
+
+      const response = await axios.get('/api/doctors/schedule-requests/pending', config);
+      setPendingSchedules(response.data || []);
+    } catch (error) {
+      console.error('Error fetching pending schedules:', error);
+      // Don't show error for schedules, just log it
+    } finally {
+      setScheduleLoading(false);
+    }
+  }, [token]);
+
+  // Handle tab change
+  const handleTabChange = (event, newValue) => {
+    setActiveTab(newValue);
+    if (newValue === 1) {
+      // Schedule Management tab
+      fetchPendingSchedules();
+    }
+  };
+
+  // Handle schedule success/error
+  const handleScheduleSuccess = (message) => {
+    setSuccess(message);
+    fetchPendingSchedules();
+  };
+
+  const handleScheduleError = (message) => {
+    setError(message);
+  };
+
+  const handleScheduleRefresh = () => {
+    fetchPendingSchedules();
+    fetchDoctors();
   };
 
   // Form helpers
@@ -607,7 +663,44 @@ const DoctorManagement = () => {
         </Box>
       </Fade>
 
-      {/* Search and Filters */}
+      {/* Tabs */}
+      <Paper sx={{ mb: 3 }}>
+        <Tabs
+          value={activeTab}
+          onChange={handleTabChange}
+          variant="fullWidth"
+          sx={{
+            borderBottom: 1,
+            borderColor: 'divider',
+            '& .MuiTab-root': {
+              textTransform: 'none',
+              fontWeight: 600,
+              py: 2
+            }
+          }}
+        >
+          <Tab 
+            label="Doctor Management" 
+            icon={<PersonIcon />} 
+            iconPosition="start"
+          />
+          <Tab 
+            label="Schedule Management" 
+            icon={<ScheduleIcon />} 
+            iconPosition="start"
+          />
+          <Tab 
+            label="Schedule Approvals" 
+            icon={<AssignmentIcon />} 
+            iconPosition="start"
+          />
+        </Tabs>
+      </Paper>
+
+      {/* Tab Content */}
+      {activeTab === 0 && (
+        <>
+          {/* Search and Filters */}
       <Card sx={{ mb: 3, overflow: 'visible' }}>
         <CardContent>
           <Grid container spacing={2} alignItems="center">
@@ -740,6 +833,41 @@ const DoctorManagement = () => {
           }}
         />
       </Paper>
+        </>
+      )}
+
+      {/* Schedule Management Tab */}
+      {activeTab === 1 && (
+        <Box sx={{ mt: 2 }}>
+          <DoctorScheduleManagement
+            doctors={doctors}
+            onRefresh={handleScheduleRefresh}
+            onSuccess={handleScheduleSuccess}
+            onError={handleScheduleError}
+          />
+        </Box>
+      )}
+
+      {/* Schedule Approvals Tab */}
+      {activeTab === 2 && (
+        <Box sx={{ mt: 2 }}>
+          <Typography variant="h6" fontWeight={600} sx={{ mb: 3 }}>
+            Pending Schedule Approvals
+          </Typography>
+          {scheduleLoading ? (
+            <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
+              <CircularProgress />
+            </Box>
+          ) : (
+            <ScheduleApprovalQueue
+              pendingSchedules={pendingSchedules}
+              onRefresh={handleScheduleRefresh}
+              onSuccess={handleScheduleSuccess}
+              onError={handleScheduleError}
+            />
+          )}
+        </Box>
+      )}
 
       {/* Add/Edit Doctor Dialog */}
       <Dialog 

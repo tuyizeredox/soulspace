@@ -545,4 +545,4 @@ class WebRTCService {
   }
 }
 
-export default new WebRTCService();
+export default WebRTCService;

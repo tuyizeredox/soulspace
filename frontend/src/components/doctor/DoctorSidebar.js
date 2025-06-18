@@ -32,6 +32,7 @@ import {
   Logout as LogoutIcon,
   MedicalServices as MedicalServicesIcon,
   MonitorHeart as MonitorHeartIcon,
+  Description as DocumentIcon,
 } from '@mui/icons-material';
 import axios from '../../utils/axiosConfig';
 import { getAvatarUrl, getInitials } from '../../utils/avatarUtils';
@@ -112,21 +113,27 @@ const DoctorSidebar = ({ mobileOpen, handleDrawerToggle }) => {
   // Menu items
   const menuItems = [
     {
-      text: 'Dashboard',
+      text: 'Enhanced Dashboard',
       icon: <DashboardIcon />,
-      path: '/doctor/dashboard',
+      path: '/doctor/enhanced-dashboard',
       badge: null
     },
     {
-      text: 'Appointments',
+      text: 'Appointment Management',
       icon: <EventIcon />,
-      path: '/doctor/appointments',
+      path: '/doctor/appointment-management',
       badge: upcomingAppointments > 0 ? { count: upcomingAppointments, color: 'primary' } : null
     },
     {
-      text: 'My Patients',
+      text: 'Patient Management',
       icon: <PeopleIcon />,
-      path: '/doctor/patients',
+      path: '/doctor/patient-management',
+      badge: null
+    },
+    {
+      text: 'Health Monitoring',
+      icon: <MonitorHeartIcon />,
+      path: '/doctor/health-monitoring',
       badge: null
     },
     {
@@ -149,9 +156,9 @@ const DoctorSidebar = ({ mobileOpen, handleDrawerToggle }) => {
       highlight: true
     },
     {
-      text: 'Health Monitoring',
-      icon: <MonitorHeartIcon />,
-      path: '/doctor/monitoring',
+      text: 'Document Center',
+      icon: <DocumentIcon />,
+      path: '/doctor/documents',
       badge: null
     },
     {

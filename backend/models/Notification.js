@@ -31,7 +31,8 @@ const notificationSchema = new mongoose.Schema({
       'info',
       'success',
       'error',
-      'alert'
+      'alert',
+      'schedule'
     ],
     default: 'system'
   },
